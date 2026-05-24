@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^powershell -NoProfile -ExecutionPolicy Bypass -Command \"Set-Location 'c:\\Users\\fpineda\\.pnaturalyst\\Documents\\Proyectos\\ENJ'; npm\\.cmd install\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
