@@ -8,20 +8,459 @@ const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
-const scouts_groups = [
-  "Grupo Scout Nro. 1 - Caracas",
-  "Grupo Scout Nro. 2 - Maracaibo",
-  "Grupo Scout Nro. 3 - Valencia",
-  "Grupo Scout Nro. 4 - Barquisimeto",
-  "Grupo Scout Nro. 5 - Mérida",
-  "Grupo Scout Nro. 6 - San Cristóbal",
-  "Grupo Scout Nro. 7 - Puerto La Cruz",
-  "Grupo Scout Nro. 8 - Guárico",
-  "Grupo Scout Nro. 9 - Maracay",
-  "Otro",
+type ScoutDistrict = {
+  district: string;
+  groups: string[];
+};
+
+type ScoutRegion = {
+  region: string;
+  districts: ScoutDistrict[];
+};
+
+const scoutRegions: ScoutRegion[] = [
+  {
+    region: "ARAGUA",
+    districts: [
+      {
+        district: "Guarico",
+        groups: ["INDEPENDENCIA"],
+      },
+      {
+        district: "HENRI PITTIER",
+        groups: [
+          "ARAGUANEY",
+          "CIUDAD JARDIN",
+          "HUMBOLDT",
+          "JOSE SMITH",
+          "LIBERTADOR",
+        ],
+      },
+      {
+        district: "JOSE FELIX RIBAS",
+        groups: ["GUSTAVO JOSE VOLLMER H."],
+      },
+      {
+        district: "MANUEL ATANASIO GIRARDOT",
+        groups: [
+          "GRAN MARISCAL DE AYACUCHO",
+          "LA SAGRADA FAMILIA",
+        ],
+      },
+      {
+        district: "SANTIAGO MARIÑO",
+        groups: [
+          "GENERAL SANTIAGO MARIÑO",
+          "INDEPENDENCIA",
+          "ORION",
+        ],
+      },
+      {
+        district: "SUCRE ZAMORA",
+        groups: [
+          "AGUSTÍN CODAZZI",
+          "FRANCISCO DE MIRANDA",
+        ],
+      },
+    ],
+  },
+  {
+    region: "ATENDIDOS POR LA OSN",
+    districts: [
+      {
+        district: "BOLIVAR",
+        groups: [
+          "KENYA",
+          "SAN FRANCISCO DE ASIS",
+          "SOROCAIMA",
+        ],
+      },
+      {
+        district: "COJEDES",
+        groups: ["GENAZARET"],
+      },
+      {
+        district: "FALCON",
+        groups: [
+          "FRANCISCO DE MIRANDA",
+          "NAZARET",
+          "POSEIDON",
+        ],
+      },
+      {
+        district: "GUARAPICHE",
+        groups: [
+          "CECILIO ACOSTA",
+          "MORICHE",
+          "TIPURO",
+          "VILLA DE MORICHAL",
+        ],
+      },
+      {
+        district: "PORTUGUESA",
+        groups: [
+          "BADEN POWELL",
+          "CENTAURO DE LOS LLANOS",
+          "GUANAGUANARE",
+          "TAMANACO",
+        ],
+      },
+      {
+        district: "PUERTO LA CRUZ",
+        groups: [
+          "ANDRES ELOY BLANCO",
+          "ARAUCA",
+          "CIVO",
+          "DON BOSCO VII",
+          "MARIA AUXILIADORA",
+          "PADRE JOSE MARIA VELAZ",
+        ],
+      },
+      {
+        district: "TRUJILLO",
+        groups: ["SANTA TERESITA"],
+      },
+      {
+        district: "YARACUY",
+        groups: [
+          "BOGDAN PLEGUNOV TOMM",
+          "ELIGIO VARGAS OCHOA",
+          "PIONEROS DE YARACUY",
+          "ROLAND ERASMUS PHILIPPS",
+        ],
+      },
+    ],
+  },
+  {
+    region: "CARABOBO",
+    districts: [
+      {
+        district: "GUACARA",
+        groups: [
+          "GEA",
+          "PADRE JORGE DEVOS",
+          "SAN AGUSTIN",
+        ],
+      },
+      {
+        district: "SAN ESTEBAN",
+        groups: [
+          "EXPLORADORES DE BROWNSEA",
+          "HEROES DE BADEN POWELL",
+          "INAGUANAGOA",
+          "LIBERTADOR",
+          "NUESTRA SEÑORA DE BEGOÑA",
+          "RELAMPAGO DEL CATATUMBO",
+          "SAN DIEGO DE ALCALA",
+          "VALENCIA DEL REY",
+        ],
+      },
+      {
+        district: "VALENCIA NORTE",
+        groups: [
+          "ACUARIUS",
+          "BATALLA DE CARABOBO",
+          "CASUPO",
+          "DON BOSCO",
+          "JUPITER",
+          "LA SALLE GUAPARO",
+        ],
+      },
+      {
+        district: "VALENCIA SUR",
+        groups: [
+          "MONSEÑOR AROCHA",
+          "RAFAEL URDANETA",
+        ],
+      },
+    ],
+  },
+  {
+    region: "DISTRITO CAPITAL",
+    districts: [
+      {
+        district: "AVILA",
+        groups: [
+          "ARISTIDES ROJAS",
+          "BICENTENARIO",
+          "DON BOSCO 21",
+          "HENRI PITTIER",
+          "LA SALLE LA COLINA",
+          "NEPTUNO",
+        ],
+      },
+      {
+        district: "CARICUAO",
+        groups: [
+          "AGUSTINO",
+          "CLAUDIO FELICIANO",
+          "SAN AGUSTIN",
+          "SAN BENITO 20",
+          "SAN BENITO XIV",
+          "TOMAS SANABRIA",
+        ],
+      },
+      {
+        district: "JOSE ANTONIO PAEZ",
+        groups: [
+          "ANDROMEDA",
+          "CARACAS RIMOR",
+          "DON BOSCO",
+          "SIMON BOLIVAR",
+        ],
+      },
+      {
+        district: "LOS PROCERES",
+        groups: [
+          "FRANCISCO DE MIRANDA",
+          "RORAIMA",
+        ],
+      },
+      {
+        district: "MARISCAL SUCRE",
+        groups: [
+          "ALDEBARAN",
+          "COMETA",
+          "RENACER",
+          "SAN JOSE DE CALASANZ 38",
+          "SAN JOSE DE CALASANZ 40",
+        ],
+      },
+      {
+        district: "SANTIAGO DE LEON",
+        groups: [
+          "LA SALLE TIENDA HONDA",
+          "LIBERTADOR",
+          "MADRE RAFOLS",
+          "SAN BENITO 18",
+        ],
+      },
+    ],
+  },
+  {
+    region: "LARA",
+    districts: [
+      {
+        district: "ANDRES ELOY BLANCO",
+        groups: ["GUERREROS DE YACAMBU"],
+      },
+      {
+        district: "CATEDRAL",
+        groups: [
+          "GENERAL JACINTO LARA",
+          "LA SALLE",
+          "NUEVA SEGOVIA",
+          "SIMON BOLIVAR",
+        ],
+      },
+      {
+        district: "CREPUSCULAR",
+        groups: [
+          "CARLOS LAURER",
+          "HERMANO JUAN",
+          "MONSEÑOR ROMERO",
+        ],
+      },
+      {
+        district: "PALAVECINO",
+        groups: [
+          "LISANDRO ALVARADO",
+          "TEREPAIMA",
+        ],
+      },
+    ],
+  },
+  {
+    region: "MERIDA",
+    districts: [
+      {
+        district: "CARI",
+        groups: [
+          "GUAKES",
+          "JOSE FELIX RIBAS",
+          "YUKOS",
+        ],
+      },
+      {
+        district: "LIBERTADOR",
+        groups: [
+          "LIBERTADOR",
+          "ORION LXXII",
+          "SANTIAGO DE LOS CABALLEROS",
+          "ZUHE",
+        ],
+      },
+      {
+        district: "NO APLICA",
+        groups: ["ELITE"],
+      },
+    ],
+  },
+  {
+    region: "METROPOLITANA",
+    districts: [
+      {
+        district: "BARUTA",
+        groups: [
+          "AUTANA",
+          "DIPAHO",
+          "KURENAN",
+          "SANTA ROSALIA DE PALERMO",
+          "SEONEE",
+        ],
+      },
+      {
+        district: "CHACAO",
+        groups: [
+          "DON BOSCO",
+          "SANTO TOMAS DE AQUINO",
+        ],
+      },
+      {
+        district: "SUCRE NORTE",
+        groups: [
+          "CLARET",
+          "DOMINGO SAVIO",
+          "MACONDO",
+          "SAN CAYETANO",
+        ],
+      },
+      {
+        district: "SUCRE SUR",
+        groups: [
+          "AMAZONIA",
+          "MAFEKING 100",
+          "PLEYADES 7",
+          "SIGUANOI",
+        ],
+      },
+    ],
+  },
+  {
+    region: "MIRANDA",
+    districts: [
+      {
+        district: "ALTOS MIRANDINOS",
+        groups: [
+          "CAYAURIMA",
+          "DON BOSCO",
+          "LOS NUEVOS TEQUES",
+          "MIRANDA",
+          "PARAMACONI",
+        ],
+      },
+      {
+        district: "GUARENAS GUATIRE",
+        groups: [
+          "AGUATIRI",
+          "ALIANZA",
+          "GAMMA",
+          "MAFEKING100",
+          "ORION 84",
+          "SIRIO 23",
+        ],
+      },
+      {
+        district: "VALLES DEL TUY",
+        groups: [
+          "CACIQUE CUE",
+          "CHARALLAVE",
+          "RAMON OCANDO PEREZ",
+        ],
+      },
+    ],
+  },
+  {
+    region: "TACHIRA",
+    districts: [
+      {
+        district: "RIO TORBES",
+        groups: [
+          "BADEN POWELL G.S DON BOSCO",
+          "LAS VEGAS DE TARIBA",
+          "SAN FRANCISCO DE ASIS",
+        ],
+      },
+      {
+        district: "SAN CRISTOBAL ESTE",
+        groups: [
+          "ALCALDIA DE SAN CRISTOBAL",
+          "ASOGATA",
+          "CAPROU",
+          "FRANKLIN EDUARDO VILLAMIZAR VELAZCO",
+          "FUNTHA SIND",
+          "POOLE DE DORSET",
+        ],
+      },
+      {
+        district: "SAN CRISTOBAL OESTE",
+        groups: [
+          "BADEN POWELL XVIII",
+          "CIPRIANO CASTRO",
+          "GISA",
+          "ROBERTO RAMIREZ G.",
+        ],
+      },
+    ],
+  },
+  {
+    region: "ZULIA",
+    districts: [
+      {
+        district: "COQUIVACOA",
+        groups: [
+          "BRAVOS DE PAEZ",
+          "INDEPENDENCIA",
+          "LA TRINIDAD",
+          "LUCILA PALACIOS",
+          "PAOLA PRINCE",
+        ],
+      },
+      {
+        district: "FRANCISCO POLANCO - PERIJA",
+        groups: ["MARANATHA"],
+      },
+      {
+        district: "PEDRO HENRIQUEZ AMADO",
+        groups: [
+          "SAN JORGE",
+          "SAN SEBASTIAN",
+        ],
+      },
+      {
+        district: "SAMUEL MARTINEZ",
+        groups: [
+          "CIUDADELA FARIA",
+          "L.U.Z",
+          "LA VICTORIA",
+          "LOS OLIVOS",
+          "RAFAEL URDANETA",
+        ],
+      },
+      {
+        district: "SAN FRANCISCO",
+        groups: [
+          "ADRIEL ENRIQUE",
+          "BADEN POWELL",
+          "MANAURE",
+          "MARA",
+          "MARISCAL SUCRE",
+          "VENEZUELA",
+        ],
+      },
+      {
+        district: "ZULIA ORIENTAL",
+        groups: [
+          "COPAIBA",
+          "OMEGA",
+          "SANTA RITA",
+        ],
+      },
+    ],
+  },
 ];
 
-const ramas = ["Manada (Lobatos)", "Tropa (Scouts)", "Comunidad (Caminantes)", "Clan (Rovers)"];
+const ramas = [ "Comunidad (Caminantes)", "Clan (Rovers)" ];
 
 function InputField({
   label,
@@ -29,12 +468,16 @@ function InputField({
   type = "text",
   icon,
   required = true,
+  value,
+  onChange,
 }: {
   label: string;
   placeholder: string;
   type?: string;
   icon?: React.ReactNode;
   required?: boolean;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -51,6 +494,8 @@ function InputField({
         <input
           type={type}
           placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange?.(e.currentTarget.value)}
           style={{
             width: "100%",
             padding: icon ? "11px 14px 11px 40px" : "11px 14px",
@@ -72,7 +517,7 @@ function InputField({
   );
 }
 
-function SelectField({ label, options, required = true }: { label: string; options: string[]; required?: boolean }) {
+function SelectField({ label, options, value, onChange, placeholder = "Seleccionar...", required = true, disabled = false }: { label: string; options: string[]; value?: string; onChange?: (value: string) => void; placeholder?: string; required?: boolean; disabled?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY, letterSpacing: "0.01em" }}>
@@ -81,23 +526,25 @@ function SelectField({ label, options, required = true }: { label: string; optio
       </label>
       <div style={{ position: "relative" }}>
         <select
-          defaultValue=""
+          value={value ?? ""}
+          onChange={(e) => onChange?.(e.currentTarget.value)}
+          disabled={disabled}
           style={{
             width: "100%",
             padding: "11px 40px 11px 14px",
             borderRadius: 10,
             border: "1.5px solid rgba(0,11,111,0.15)",
-            background: "#FAFBFF",
+            background: disabled ? "#F4F5FA" : "#FAFBFF",
             fontFamily: "Inter, sans-serif",
             fontSize: 14,
-            color: "#0D0D2B",
+            color: disabled ? "rgba(0,11,111,0.35)" : "#0D0D2B",
             outline: "none",
             appearance: "none",
-            cursor: "pointer",
+            cursor: disabled ? "not-allowed" : "pointer",
             boxSizing: "border-box",
           }}
         >
-          <option value="" disabled>Seleccionar...</option>
+          <option value="" disabled>{placeholder}</option>
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
         <ChevronDown size={16} color="rgba(0,11,111,0.4)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
@@ -122,7 +569,26 @@ function SectionDivider({ title, icon }: { title: string; icon: React.ReactNode 
 
 export function Inscripcion() {
   const [submitted, setSubmitted] = useState(false);
+  const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [age, setAge] = useState<number | null>(null);
   const navigate = useNavigate();
+
+  function calculateAge(dateString: string) {
+    const date = new Date(dateString);
+    if (!dateString || Number.isNaN(date.getTime())) return null;
+    const now = new Date();
+    let years = now.getFullYear() - date.getFullYear();
+    const monthDiff = now.getMonth() - date.getMonth();
+    const dayDiff = now.getDate() - date.getDate();
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+      years -= 1;
+    }
+    return years >= 0 ? years : null;
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -224,6 +690,31 @@ export function Inscripcion() {
           ))}
         </div>
 
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 30, flexWrap: "wrap" }}>
+          {[
+            { label: "Joven", value: "joven" },
+            { label: "Adulto", value: "adulto" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setParticipantType(option.value as "joven" | "adulto")}
+              style={{
+                borderRadius: 999,
+                border: `1.5px solid ${participantType === option.value ? ENJ_MAGENTA : "rgba(0,11,111,0.18)"}`,
+                background: participantType === option.value ? ENJ_MAGENTA : "#fff",
+                color: participantType === option.value ? "#fff" : ENJ_NAVY,
+                padding: "12px 28px",
+                cursor: "pointer",
+                fontWeight: 700,
+                boxShadow: participantType === option.value ? "0 12px 30px rgba(215,0,126,0.16)" : "none",
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         {/* form card */}
         <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10), 0 1px 4px rgba(0,11,111,0.06)" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -238,12 +729,66 @@ export function Inscripcion() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <InputField label="Cédula de Identidad" placeholder="V-12.345.678" icon={<Hash size={16} />} />
-              <InputField label="Fecha de Nacimiento" placeholder="dd/mm/aaaa" type="date" />
+              <InputField
+                label="Fecha de Nacimiento"
+                placeholder="dd/mm/aaaa"
+                type="date"
+                value={birthDate}
+                onChange={(value) => {
+                  setBirthDate(value);
+                  setAge(calculateAge(value));
+                }}
+              />
             </div>
+            {age !== null && (
+              <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.65)", fontWeight: 600 }}>
+                Edad: {age} años
+              </p>
+            )}
 
-            <SelectField label="Grupo Scout" options={scouts_groups} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <SelectField
+                label="Región Scout"
+                options={scoutRegions.map((region) => region.region)}
+                value={selectedRegion}
+                onChange={(value) => {
+                  setSelectedRegion(value);
+                  setSelectedDistrict("");
+                  setSelectedGroup("");
+                }}
+              />
+              <SelectField
+                label="Distrito Scout"
+                options={
+                  selectedRegion
+                    ? scoutRegions.find((region) => region.region === selectedRegion)?.districts.map((district) => district.district) ?? []
+                    : []
+                }
+                value={selectedDistrict}
+                onChange={(value) => {
+                  setSelectedDistrict(value);
+                  setSelectedGroup("");
+                }}
+                disabled={!selectedRegion}
+                placeholder={selectedRegion ? "Seleccionar distrito..." : "Selecciona región primero"}
+              />
+            </div>
+            <SelectField
+              label="Grupo Scout"
+              options={
+                selectedDistrict && selectedRegion
+                  ? scoutRegions
+                      .find((region) => region.region === selectedRegion)
+                      ?.districts.find((district) => district.district === selectedDistrict)
+                      ?.groups ?? []
+                  : []
+              }
+              value={selectedGroup}
+              onChange={setSelectedGroup}
+              disabled={!selectedDistrict}
+              placeholder={selectedDistrict ? "Seleccionar grupo..." : "Selecciona distrito primero"}
+            />
             <SelectField label="Rama Scout" options={ramas} />
-            <InputField label="Nombre del Jefe de Grupo" placeholder="Prof. Carlos Rodríguez" icon={<Shield size={16} />} />
 
             {/* ── 2. CONTACTO ── */}
             <SectionDivider title="Datos de Contacto" icon={<Mail size={16} color={ENJ_NAVY} />} />
@@ -254,6 +799,29 @@ export function Inscripcion() {
               <InputField label="Teléfono" placeholder="+58 412 000 0000" type="tel" icon={<Phone size={16} />} />
               <InputField label="Estado / Ciudad" placeholder="Caracas, D.C." icon={<MapPin size={16} />} />
             </div>
+
+            <SectionDivider title={participantType === "adulto" ? "Datos del Adulto" : "Datos del Joven"} icon={<User size={16} color={ENJ_NAVY} />} />
+            {participantType === "joven" ? (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <SelectField label="Rama Actual" options={ramas} />
+                  <InputField label="Líder de Rama" placeholder="Prof. Carlos Rodríguez" />
+                </div>
+                <InputField label="Año de Grupo" placeholder="2026" />
+                <InputField label="Talla de Uniforme" placeholder="M / L / XL" />
+              </>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Ocupación / Profesión" placeholder="Abogado" />
+                  <InputField label="Rol en Scouts" placeholder="Dirigente / Adulto en el Movimiento" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Años de experiencia scout" placeholder="Ej. 5" type="number" />
+                  <InputField label="Teléfono de emergencia" placeholder="+58 412 000 0000" type="tel" />
+                </div>
+              </>
+            )}
 
             {/* ── 3. PAGO ── */}
             <SectionDivider title="Información de Pago" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
@@ -279,7 +847,7 @@ export function Inscripcion() {
             <SectionDivider title="Documentos Requeridos" icon={<GoogleDriveIcon size={16} />} />
 
             <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.55)", lineHeight: 1.6 }}>
-              Sube los archivos solicitados. Puedes arrastrar y soltar o hacer clic para seleccionarlos desde tu dispositivo.
+              Sube los archivos solicitados directamente desde tu dispositivo. Puedes arrastrar y soltar o hacer clic para seleccionarlos.
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
@@ -301,6 +869,17 @@ export function Inscripcion() {
                 <FileDropzone
                   label="Subir foto"
                   sublabel="JPG o PNG · Fondo blanco · Máx. 2MB"
+                  accept=".jpg,.jpeg,.png"
+                  icon={<GoogleDriveIcon size={24} />}
+                />
+              </div>
+              <div>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Screenshot ficha médica
+                </p>
+                <FileDropzone
+                  label="Subir screenshot"
+                  sublabel="PNG o JPG · Máx. 5MB"
                   accept=".jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
                 />
