@@ -1,6 +1,7 @@
-import { Outlet, NavLink } from "react-router";
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Outlet, NavLink, useLocation } from "react-router-dom"; // <-- Corregido aquí
+import { useState, useEffect } from "react";
+import { Menu, X, Bell } from "lucide-react";
+import { Login } from "../pages/Login";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -22,6 +23,64 @@ function ScoutsLogo() {
 
 export function Root() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.ok) setUser(data.user);
+        else localStorage.removeItem('token');
+      } catch (e) {
+        console.error("Auth check failed", e);
+      }
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  const subscribeToNotifications = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const registration = await navigator.serviceWorker.ready;
+      const resKey = await fetch('/api/notifications/key');
+      const { publicKey } = await resKey.json();
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKey
+      });
+
+      await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        body: JSON.stringify(subscription),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      alert("¡Notificaciones activadas!");
+    } catch (err) {
+      console.error("Error al suscribir:", err);
+    }
+  };
+
+  if (loading) {
+    return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>Cargando...</div>;
+  }
+
+  if (!user) {
+    return <Login />;
+  }
 
   return (
     <div style={{ minHeight: "100vh", fontFamily: "Inter, sans-serif", background: "#F0F2FA" }}>
@@ -62,6 +121,23 @@ export function Root() {
             </div>
           </NavLink>
 
+          {/* Botón Notificaciones */}
+          <button 
+            onClick={subscribeToNotifications}
+            style={{ 
+              background: 'rgba(255,255,255,0.1)', 
+              border: 'none', 
+              borderRadius: '50%', 
+              padding: '8px', 
+              cursor: 'pointer',
+              marginLeft: 'auto',
+              marginRight: '12px',
+              color: ENJ_YELLOW 
+            }}
+          >
+            <Bell size={18} />
+          </button>
+
           {/* desktop links */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }} className="hidden-mobile">
             <NavLink
@@ -94,6 +170,21 @@ export function Root() {
               })}
             >
               Conócenos
+            </NavLink>
+            <NavLink
+              to="/consultas"
+              style={({ isActive }) => ({
+                padding: "7px 16px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontSize: 14,
+                fontWeight: 600,
+                color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
+                background: isActive ? "rgba(247,191,22,0.18)" : "transparent",
+                transition: "all 0.15s",
+              })}
+            >
+              Consultas
             </NavLink>
             <NavLink
               to="/inscripcion"
@@ -172,6 +263,21 @@ export function Root() {
               Conócenos
             </NavLink>
             <NavLink
+              to="/consultas"
+              onClick={() => setMobileOpen(false)}
+              style={({ isActive }) => ({
+                padding: "10px 14px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#fff",
+                background: isActive ? "rgba(247,191,22,0.18)" : "transparent",
+              })}
+            >
+              Consultas
+            </NavLink>
+            <NavLink
               to="/inscripcion"
               onClick={() => setMobileOpen(false)}
               style={({ isActive }) => ({
@@ -194,7 +300,7 @@ export function Root() {
 
       {/* FOOTER */}
       <footer style={{ background: ENJ_NAVY, padding: "32px 24px", textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+        <div style={{ display: "center", justifyContent: "center", marginBottom: 14 }}>
           <ScoutsLogo />
         </div>
         <p style={{ margin: "0 0 5px", fontSize: 13, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase", letterSpacing: "0.12em" }}>

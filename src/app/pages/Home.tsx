@@ -1,10 +1,10 @@
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import { MapPin, Calendar, Users, Tent, Flame, Star, ChevronRight, Clock } from "lucide-react";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
-const ENJ_MAGENTA = "#D7007E";
+const ENJ_MAGENTA = "#50039D";
 
 function ScoutsLogo({ size = 44 }: { size?: number }) {
   return (
@@ -22,14 +22,59 @@ function ScoutsLogo({ size = 44 }: { size?: number }) {
 
 const agenda = [
   {
+    day: "Martes 01",
+    date: "01 Sep",
+    color: "#2D9CDB",
+    events: [
+      { time: "20:00 – 20:15", title: "Inicio de Oro (Bienvenida)" },
+      { time: "20:15 – 20:45", title: "Normas y Protocolos" },
+      { time: "20:45 – 21:15", title: "Plan Comunicacional" },
+      { time: "21:15 – 21:40", title: "Ambientación y Cronograma" },
+    ],
+  },
+  {
+    day: "Jueves 03",
+    date: "03 Sep",
+    color: "#F2C94C",
+    events: [
+      { time: "19:30 – 21:20", title: "Motor RDJ (Red de Jóvenes)" },
+    ],
+  },
+  {
+    day: "Lunes 07",
+    date: "07 Sep",
+    color: "#BB6BD9",
+    events: [
+      { time: "20:00 – 20:45", title: "Consejos de Abuelos (Buenas Prácticas)" },
+      { time: "20:45 – 21:45", title: "La Red en Vivo (Mesa de Trabajo 1)" },
+    ],
+  },
+  {
+    day: "Miércoles 09",
+    date: "09 Sep",
+    color: "#F2994A",
+    events: [
+      { time: "20:00 – 20:45", title: "Vitamina (Bienestar y sus Dimensiones)" },
+      { time: "20:45 – 21:45", title: "Acetaminofén (Comunidad y Bienestar Social)" },
+    ],
+  },
+  {
     day: "Viernes 11",
     date: "11 Sep",
     color: ENJ_NAVY,
     events: [
-      { time: "08:00 – 12:00", title: "Llegada y registro de participantes" },
-      { time: "12:00 – 14:00", title: "Almuerzo de bienvenida" },
-      { time: "15:00 – 18:00", title: "Apertura oficial y acto inaugural" },
-      { time: "19:00 – 21:00", title: "Fogón de inicio · Noche de campamento" },
+      { time: "10:00 – 12:00", title: "Inicio de Oro (Registro e Instalación)" },
+      { time: "12:00 – 13:30", title: "Vitamina - Bloque Físico (0 Filtros)" },
+      { time: "13:30 – 13:45", title: "Pausa Activa" },
+      { time: "13:45 – 14:45", title: "Vitamina - Bloque Mental (Frecuencia Cero)" },
+      { time: "14:45 – 15:30", title: "Arte Terapia con Mindfulness" },
+      { time: "15:30 – 16:30", title: "La Churuata del Encuentro (Bloque A)" },
+      { time: "16:30 – 17:30", title: "La Red en Vivo (Mesa de Trabajo 2)" },
+      { time: "17:30 – 17:45", title: "Pausa Activa" },
+      { time: "17:45 – 18:45", title: "La Red en Vivo (Mesa de Trabajo 3)" },
+      { time: "18:45 – 20:00", title: "Vitamina - Sazón en el Set" },
+      { time: "20:00 – 20:45", title: "Cena" },
+      { time: "20:45 – 22:00", title: "La Churuata del Encuentro (Bloque B)" },
     ],
   },
   {
@@ -37,10 +82,16 @@ const agenda = [
     date: "12 Sep",
     color: ENJ_MAGENTA,
     events: [
-      { time: "07:00 – 08:30", title: "Formación matutina y desayuno" },
-      { time: "09:00 – 12:00", title: "Talleres y actividades por ramas" },
-      { time: "14:00 – 17:00", title: "Gran Hike ENJ · Reto de orientación" },
-      { time: "20:00 – 23:00", title: "Noche cultural y presentaciones artísticas" },
+      { time: "07:00 – 07:15", title: "Despertarse y Calistenia" },
+      { time: "07:15 – 08:00", title: "Desayuno" },
+      { time: "08:00 – 08:30", title: "Ceremonia" },
+      { time: "08:30 – 09:00", title: "Casting Nacional" },
+      { time: "08:30 – 12:00", title: "La Red en Vivo (Asamblea General)" },
+      { time: "12:00 – 12:45", title: "Almuerzo" },
+      { time: "12:45 – 19:00", title: "Bloques de Rotación Temática (Ruta Viva / Aldea Global)" },
+      { time: "19:30 – 20:30", title: "La Red en Vivo (Conclusiones Finales)" },
+      { time: "20:30 – 21:30", title: "El Último Filtro" },
+      { time: "21:30 – 23:00", title: "Festival y Cena (La Churuata del Encuentro)" },
     ],
   },
   {
@@ -48,10 +99,13 @@ const agenda = [
     date: "13 Sep",
     color: "#1A8F3C",
     events: [
-      { time: "07:30 – 09:00", title: "Desayuno y servicio comunitario" },
-      { time: "10:00 – 11:30", title: "Asamblea nacional de jóvenes scouts" },
-      { time: "12:00 – 13:30", title: "Ceremonia de clausura y premiación" },
-      { time: "14:00", title: "Retorno a grupos de origen" },
+      { time: "07:00 – 07:15", title: "Despertarse y Calistenia" },
+      { time: "07:15 – 07:50", title: "Desayuno" },
+      { time: "07:50 – 08:00", title: "Ceremonia" },
+      { time: "08:00 – 09:00", title: "Motor RDJ (Elecciones)" },
+      { time: "09:00 – 12:45", title: "Uso de Instalaciones" },
+      { time: "12:45 – 13:20", title: "Almuerzo" },
+      { time: "13:20 – 13:30", title: "Ceremonia de Cierre" },
     ],
   },
 ];
@@ -65,13 +119,17 @@ const highlights = [
 
 export function Home() {
   const navigate = useNavigate();
+  const virtualDays = ["Martes 01", "Jueves 03", "Lunes 07", "Miércoles 09"];
+  const virtualAgenda = agenda.filter((a) => virtualDays.includes(a.day));
+  const presencialAgenda = agenda.filter((a) => !virtualDays.includes(a.day));
 
   return (
     <div>
       {/* ── HERO ── */}
       <section
         style={{
-          background: `linear-gradient(140deg, ${ENJ_NAVY} 0%, #001299 55%, #0018C0 100%)`,
+          background: "radial-gradient(circle at 90% 10%, rgba(247,191,22,0.18), transparent 22%), radial-gradient(circle at 15% 20%, rgba(215,0,126,0.18), transparent 18%), linear-gradient(180deg, #020B62 0%, #081076 40%, #0E1995 100%)",
+          minHeight: "calc(100vh - 120px)",
           position: "relative",
           overflow: "hidden",
           padding: "72px 24px 96px",
@@ -83,9 +141,7 @@ export function Home() {
 
         <div style={{ maxWidth: 820, margin: "0 auto", position: "relative", zIndex: 1, textAlign: "center" }}>
           {/* logo */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
-            <ScoutsLogo size={60} />
-          </div>
+          {/* (logos removed) */}
 
           {/* org label */}
           <p style={{ margin: "0 0 16px", fontSize: 12, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase", letterSpacing: "0.18em" }}>
@@ -103,7 +159,7 @@ export function Home() {
           <h1
             style={{
               margin: "0 0 14px",
-              color: "#fff",
+              color: "#FFFFFF",
               fontSize: "clamp(38px, 7vw, 72px)",
               fontWeight: 900,
               lineHeight: 1.05,
@@ -115,16 +171,18 @@ export function Home() {
             <span style={{ color: ENJ_YELLOW }}>de Jóvenes</span>
           </h1>
 
-          <p style={{ margin: "0 auto 28px", color: "rgba(255,255,255,0.72)", fontSize: 17, maxWidth: 520, lineHeight: 1.65 }}>
+          <p style={{ margin: "0 auto 28px", color: "rgba(255,255,255,0.82)", fontSize: 17, maxWidth: 520, lineHeight: 1.65 }}>
             El evento más importante del escultismo venezolano. Tres días de aventura, liderazgo y hermandad scout.
           </p>
+
+          {/* hero uses HERO_IMAGE as background (editable via constants above) */}
 
           {/* meta pills */}
           <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", marginBottom: 52 }}>
             {[
-              { icon: <Calendar size={14} />, text: "11 · 12 · 13 Septiembre 2026" },
-              { icon: <MapPin size={14} />, text: "Guárico, Venezuela" },
-              { icon: <Users size={14} />, text: "+2.000 Participantes" },
+              { icon: <Calendar size={14} color="#fff" />, text: `${agenda[0].date} - ${agenda[agenda.length - 1].date}` },
+              { icon: <MapPin size={14} color="#fff" />, text: "Guárico, Venezuela" },
+              { icon: <Users size={14} color="#fff" />, text: "+2.000 Participantes" },
             ].map(({ icon, text }) => (
               <div
                 key={text}
@@ -132,14 +190,14 @@ export function Home() {
                   display: "flex",
                   alignItems: "center",
                   gap: 7,
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "rgba(255,255,255,0.12)",
+                  border: "1px solid rgba(255,255,255,0.18)",
                   borderRadius: 100,
                   padding: "7px 16px",
-                  color: "rgba(255,255,255,0.9)",
+                  color: "#fff",
                   fontSize: 13,
                   fontWeight: 500,
-                  backdropFilter: "blur(6px)",
+                  backdropFilter: "blur(8px)",
                 }}
               >
                 {icon}
@@ -150,7 +208,7 @@ export function Home() {
 
           {/* COUNTDOWN */}
           <div style={{ marginBottom: 48 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 20 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255, 255, 255, 0.75)", textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 20 }}>
               Cuenta regresiva al evento
             </p>
             <Countdown />
@@ -181,13 +239,33 @@ export function Home() {
               Inscribirme ahora
               <ChevronRight size={18} />
             </button>
+            <button
+              onClick={() => navigate("/consultas")}
+              style={{
+                padding: "14px 28px",
+                borderRadius: 12,
+                border: "1.5px solid rgba(255,255,255,0.3)",
+                background: "rgba(255,255,255,0.08)",
+                color: "#fff",
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: "pointer",
+                textDecoration: "none",
+                transition: "transform 0.15s, box-shadow 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              Ver consultas
+              <ChevronRight size={18} />
+            </button>
             <a
               href="#info"
               style={{
                 padding: "14px 28px",
                 borderRadius: 12,
-                border: "1.5px solid rgba(255,255,255,0.3)",
-                color: "rgba(255,255,255,0.9)",
+                border: "1.5px solid rgba(255,255,255,0.4)",
+                color: "#fff",
                 fontSize: 16,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -196,11 +274,11 @@ export function Home() {
                 alignItems: "center",
                 gap: 8,
                 backdropFilter: "blur(6px)",
-                background: "rgba(255,255,255,0.07)",
+                background: "rgba(255,255,255,0.08)",
                 transition: "background 0.15s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.13)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.07)")}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
             >
               Ver información
             </a>
@@ -209,9 +287,9 @@ export function Home() {
       </section>
 
       {/* wave */}
-      <div style={{ background: `linear-gradient(140deg, ${ENJ_NAVY} 0%, #0018C0 100%)`, lineHeight: 0 }}>
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ display: "block", height: 60 }}>
-          <path d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z" fill="#F0F2FA" />
+      <div style={{ background: `linear-gradient(140deg, ${ENJ_NAVY} 0%, #0018C0 100%)`, lineHeight: 0, overflow: "hidden" }}>
+        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 100 }}>
+          <path d="M0,100 C360,0 1080,0 1440,100 L1440,0 L0,0 Z" fill="#F0F2FA" />
         </svg>
       </div>
 
@@ -283,7 +361,7 @@ export function Home() {
             <div>
               <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase", letterSpacing: "0.14em" }}>Fecha y lugar</p>
               <h2 style={{ margin: "0 0 10px", fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>
-                11, 12 y 13 de Septiembre
+                {`${agenda[0].date} - ${agenda[agenda.length - 1].date}`}
               </h2>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.75)", fontSize: 15 }}>
                 <MapPin size={16} color={ENJ_YELLOW} />
@@ -292,22 +370,25 @@ export function Home() {
             </div>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {["Vie 11", "Sáb 12", "Dom 13"].map((d, i) => (
-                <div
-                  key={d}
-                  style={{
-                    background: i === 1 ? ENJ_MAGENTA : "rgba(255,255,255,0.1)",
-                    border: i === 1 ? "none" : "1.5px solid rgba(255,255,255,0.2)",
-                    borderRadius: 12,
-                    padding: "14px 20px",
-                    textAlign: "center",
-                    minWidth: 70,
-                  }}
-                >
-                  <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 900, color: i === 1 ? "#fff" : ENJ_YELLOW }}>{10 + i + 1}</p>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: i === 1 ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Sep</p>
-                </div>
-              ))}
+              {agenda.map(({ day, date }) => {
+                const [dayNumber, monthLabel] = date.split(" ");
+                return (
+                  <div
+                    key={day + date}
+                    style={{
+                      background: "rgba(255,255,255,0.1)",
+                      border: "1.5px solid rgba(255,255,255,0.2)",
+                      borderRadius: 12,
+                      padding: "14px 20px",
+                      textAlign: "center",
+                      minWidth: 70,
+                    }}
+                  >
+                    <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 900, color: "#fff" }}>{dayNumber}</p>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{monthLabel}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -325,57 +406,116 @@ export function Home() {
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 20 }}>
-            {agenda.map(({ day, date, color, events }) => (
-              <div
-                key={day}
-                style={{
-                  background: "#fff",
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  boxShadow: "0 2px 16px rgba(0,11,111,0.07)",
-                  border: "1px solid rgba(0,11,111,0.06)",
-                }}
-              >
-                {/* day header */}
-                <div
-                  style={{
-                    background: color,
-                    padding: "18px 22px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{day}</h3>
-                  <span
+          {/* Virtual activities */}
+          {virtualAgenda.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: ENJ_NAVY }}>Programa de Actividades Virtuales</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 12 }}>
+                {virtualAgenda.map(({ day, date, color, events }) => (
+                  <div
+                    key={day}
                     style={{
-                      background: "rgba(255,255,255,0.2)",
-                      color: "#fff",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      padding: "4px 10px",
-                      borderRadius: 100,
+                      background: "#fff",
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      boxShadow: "0 2px 16px rgba(0,11,111,0.07)",
+                      border: "1px solid rgba(0,11,111,0.06)",
                     }}
                   >
-                    {date}
-                  </span>
-                </div>
-
-                {/* events */}
-                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-                  {events.map(({ time, title }) => (
-                    <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, marginTop: 1 }}>
-                        <Clock size={12} color={color} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color, whiteSpace: "nowrap" }}>{time}</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 13, color: "#2D2D5A", lineHeight: 1.5, fontWeight: 500 }}>{title}</p>
+                    <div
+                      style={{
+                        background: color,
+                        padding: "18px 22px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{day}</h3>
+                      <span
+                        style={{
+                          background: "rgba(255,255,255,0.2)",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          padding: "4px 10px",
+                          borderRadius: 100,
+                        }}
+                      >
+                        {date}
+                      </span>
                     </div>
-                  ))}
-                </div>
+
+                    <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+                      {events.map(({ time, title }) => (
+                        <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, marginTop: 1 }}>
+                            <Clock size={12} color={color} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color, whiteSpace: "nowrap" }}>{time}</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 13, color: "#2D2D5A", lineHeight: 1.5, fontWeight: 500 }}>{title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Presencial / Programa general */}
+          <div style={{ marginTop: 8 }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: ENJ_NAVY }}>Programa General (Presencial)</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 20 }}>
+              {presencialAgenda.map(({ day, date, color, events }) => (
+                <div
+                  key={day}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    boxShadow: "0 2px 16px rgba(0,11,111,0.07)",
+                    border: "1px solid rgba(0,11,111,0.06)",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: color,
+                      padding: "18px 22px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{day}</h3>
+                    <span
+                      style={{
+                        background: "rgba(255,255,255,0.2)",
+                        color: "#fff",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: "4px 10px",
+                        borderRadius: 100,
+                      }}
+                    >
+                      {date}
+                    </span>
+                  </div>
+
+                  <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+                    {events.map(({ time, title }) => (
+                      <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, marginTop: 1 }}>
+                          <Clock size={12} color={color} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color, whiteSpace: "nowrap" }}>{time}</span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 13, color: "#2D2D5A", lineHeight: 1.5, fontWeight: 500 }}>{title}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
