@@ -20,13 +20,10 @@ export const router = createBrowserRouter(
         }
           path: "consultas", 
           element: <Consultas /> 
-        },
-        { 
-          path: "inscripcion", 
-          element: <Inscripcion /> 
-        },
-      ],
-      {
+        {
+          // Force root basename so router always matches on deployed site
+          basename: '/',
+        }
         basename:
           import.meta.env.BASE_URL && import.meta.env.BASE_URL !== './'
             ? import.meta.env.BASE_URL
