@@ -4,11 +4,11 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "deploy": "npm run build && gh-pages -d dist",
+    "build": "npm exec -- vite build",
+    "dev": "npm exec -- vite",
+    "deploy": "npm run build && npm exec -- gh-pages -d dist",
     "start:server": "node server/index.js",
-    "preview": "vite preview"
+    "preview": "npm exec -- vite preview"
   },
   "homepage": "https://BetoRepo.github.io/Encuentro/",
   "repository": {
