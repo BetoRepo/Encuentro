@@ -6,9 +6,10 @@ interface FileDropzoneProps {
   sublabel: string;
   accept?: string;
   icon?: React.ReactNode;
+  name?: string;
 }
 
-export function FileDropzone({ label, sublabel, accept = "*", icon }: FileDropzoneProps) {
+export function FileDropzone({ label, sublabel, accept = "*", icon, name }: FileDropzoneProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +64,7 @@ export function FileDropzone({ label, sublabel, accept = "*", icon }: FileDropzo
       <input
         ref={inputRef}
         type="file"
+        name={name}
         accept={accept}
         style={{ display: "none" }}
         onChange={handleChange}

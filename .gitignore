@@ -1,4 +1,14 @@
 node_modules/
+.env
+/.env.local
+server/*.json
+dist/
+/.vite
+npm-debug.log
+pnpm-lock.yaml
+yarn.lock
+/.cachenode_modules/
 dist/
 .DS_Store
 npm-debug.log*
+.vercel

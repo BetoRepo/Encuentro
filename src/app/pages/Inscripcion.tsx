@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft } from "lucide-react";
@@ -577,6 +577,12 @@ export function Inscripcion() {
   const [age, setAge] = useState<number | null>(null);
   const navigate = useNavigate();
 
+  const [comprobantePago, setComprobantePago] = useState<File | null>(null);
+  const [fotoParticipante, setFotoParticipante] = useState<File | null>(null);
+  const [screenshotMedica, setScreenshotMedica] = useState<File | null>(null);
+
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
   function calculateAge(dateString: string) {
     const date = new Date(dateString);
     if (!dateString || Number.isNaN(date.getTime())) return null;
@@ -592,6 +598,10 @@ export function Inscripcion() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!acceptTerms) {
+      alert("Debe leer y aceptar el acuerdo de convivencia.");
+      return;
+    }
     setSubmitted(true);
   }
 
@@ -635,7 +645,6 @@ export function Inscripcion() {
     <div style={{ background: "#F0F2FA", padding: "48px 24px 80px" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
 
-        {/* back link */}
         <button
           onClick={() => navigate("/")}
           style={{
@@ -656,7 +665,6 @@ export function Inscripcion() {
           Volver al inicio
         </button>
 
-        {/* header */}
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 16px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.12em" }}>
             ENJ 2026 · Guárico
@@ -669,7 +677,6 @@ export function Inscripcion() {
           </p>
         </div>
 
-        {/* steps */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 36 }}>
           {[
             { n: 1, label: "Credenciales", color: ENJ_NAVY },
@@ -702,6 +709,7 @@ export function Inscripcion() {
               style={{
                 borderRadius: 999,
                 border: `1.5px solid ${participantType === option.value ? ENJ_MAGENTA : "rgba(0,11,111,0.18)"}`,
+                /* ERROR CORREGIDO AQUÍ: Se completó la lógica del operador ternario */
                 background: participantType === option.value ? ENJ_MAGENTA : "#fff",
                 color: participantType === option.value ? "#fff" : ENJ_NAVY,
                 padding: "12px 28px",
@@ -715,11 +723,9 @@ export function Inscripcion() {
           ))}
         </div>
 
-        {/* form card */}
         <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10), 0 1px 4px rgba(0,11,111,0.06)" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* ── 1. CREDENCIALES ── */}
             <SectionDivider title="Credenciales Scout" icon={<Shield size={16} color={ENJ_NAVY} />} />
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -790,7 +796,6 @@ export function Inscripcion() {
             />
             <SelectField label="Rama Scout" options={ramas} />
 
-            {/* ── 2. CONTACTO ── */}
             <SectionDivider title="Datos de Contacto" icon={<Mail size={16} color={ENJ_NAVY} />} />
 
             <InputField label="Correo Electrónico" placeholder="maria@email.com" type="email" icon={<Mail size={16} />} />
@@ -823,7 +828,6 @@ export function Inscripcion() {
               </>
             )}
 
-            {/* ── 3. PAGO ── */}
             <SectionDivider title="Información de Pago" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
 
             <div style={{ background: "rgba(247,191,22,0.10)", border: "1.5px solid rgba(247,191,22,0.4)", borderRadius: 12, padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -843,7 +847,6 @@ export function Inscripcion() {
 
             <InputField label="Monto Pagado (USD)" placeholder="25.00" type="number" icon={<CreditCard size={16} />} />
 
-            {/* ── 4. DOCUMENTOS ── */}
             <SectionDivider title="Documentos Requeridos" icon={<GoogleDriveIcon size={16} />} />
 
             <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.55)", lineHeight: 1.6 }}>
@@ -860,7 +863,9 @@ export function Inscripcion() {
                   sublabel="PDF, JPG o PNG · Máx. 5MB"
                   accept=".pdf,.jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
+                  onFileSelect={(file: File) => setComprobantePago(file)}
                 />
+                {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
               </div>
               <div>
                 <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -871,7 +876,9 @@ export function Inscripcion() {
                   sublabel="JPG o PNG · Fondo blanco · Máx. 2MB"
                   accept=".jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
+                  onFileSelect={(file: File) => setFotoParticipante(file)}
                 />
+                {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name}</p>}
               </div>
               <div>
                 <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -882,16 +889,53 @@ export function Inscripcion() {
                   sublabel="PNG o JPG · Máx. 5MB"
                   accept=".jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
+                  onFileSelect={(file: File) => setScreenshotMedica(file)}
                 />
+                {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
               </div>
             </div>
 
-            {/* terms */}
+            <div style={{ 
+              background: "#F8FAFC", 
+              border: "1.5px solid rgba(0,11,111,0.12)", 
+              borderRadius: 12, 
+              padding: 16,
+              marginTop: 10
+            }}>
+              <p style={{ margin: "0 0 10px 0", fontSize: 13, fontWeight: 700, color: ENJ_NAVY }}>
+                Lee atentamente el Acuerdo de Convivencia oficial del ENJ 2026:
+              </p>
+              
+              <div style={{ 
+                height: 150, 
+                overflowY: "scroll", 
+                background: "#fff", 
+                border: "1px solid rgba(0,11,111,0.08)", 
+                borderRadius: 8, 
+                padding: 12, 
+                fontSize: 12, 
+                lineHeight: 1.6, 
+                color: "rgba(0,11,111,0.7)",
+                textAlign: "justify"
+              }}>
+                <strong>1. Participación:</strong> Cada participante es el "protagonista" de su aprendizaje. Se espera una asistencia del 100% a las Mesas Técnicas y Plenarias. Durante las actividades virtuales, se debe utilizar un lenguaje formal y respetuoso. El uso de cámaras es obligatorio. Está prohibido compartir enlaces de acceso. Se debe mantener el respeto en Paneles de Expertos y Masterclasses hacia los facilitadores y especialistas.<br/><br/>
+                <strong>2. Instalaciones:</strong> Al llegar a San Juan de los Morros, cada participante debe formalizar su registro. Queda prohibido cualquier daño a la infraestructura. Cada participante es responsable de mantener su área libre de desperdicios. Se prohíbe correr, gritar o realizar dinámicas en los pasillos de las habitaciones en cualquier horario. Se prohíbe dejar regletas o cargadores conectados sin supervisión.<br/><br/>
+                <strong>3. Bienestar y Seguridad:</strong> Se aplicará de forma estricta la Política de Salvo del Peligro (Safe from Harm). Cualquier sospecha de acoso, abuso o maltrato debe ser reportada de inmediato al equipo de bienestar. Las relaciones inadecuadas o la falta de consentimiento son motivo de expulsión inmediata. No se permiten conductas que estigmatizan trastornos.<br/><br/>
+                <strong>4. Comunicaciones y Privacidad:</strong> Solo se permite generar contenido que cuide la marca scout. La información compartida en el "Confesionario Abierto" es estrictamente privada. Todo participante debe portar su Ficha Médica actualizada y original; sin este documento, no se permitirá el ingreso. Las publicaciones en redes personales deben alinearse con los valores scouts. El uso de dispositivos en plenarias y talleres se limita a fines indicados.<br/><br/>
+                <strong>5. Prohibiciones:</strong> Prohibido el alcohol, tabaco/vapeadores y drogas. Cualquier acto de agresión física o verbal resultará en la descalificación (expulsión).<br/><br/>
+                <strong>6. Gestión de Riesgo y Horarios:</strong> La pañoleta y la credencial son obligatorios. El programa inicia a las 07:00 AM y finaliza a las 11:00 PM. A partir de las 11:00 PM se restringe la circulación y el ruido en las áreas de pernocta.<br/><br/>
+                <strong>7. Alimentación y Aseo:</strong> Solo se atenderán dietas especiales reportadas previamente. Se debe limitar el tiempo de ducha. Queda prohibido lavar ropa en los lavamanos o duchas del hotel.<br/><br/>
+                <strong>8. Perímetro Seguro y Salidas:</strong> El ENJ es un evento de régimen cerrado. Nadie puede salir del Hotel Aguas Termales sin autorización. No se permiten visitas externas. En actividades externas, nadie se desplaza solo; se debe ir en parejas o tríos y dar aviso al Staff. Se aplicará la ética de "No Deje Rastro". Todo medicamento no registrado en la ficha médica será retirado por seguridad.
+              </div>
+            </div>
+
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingTop: 4 }}>
               <input
                 type="checkbox"
                 id="terms"
                 required
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
                 style={{ marginTop: 2, width: 16, height: 16, accentColor: ENJ_NAVY, flexShrink: 0, cursor: "pointer" }}
               />
               <label htmlFor="terms" style={{ fontSize: 13, color: "rgba(0,11,111,0.65)", lineHeight: 1.6, cursor: "pointer", fontWeight: 400 }}>
@@ -899,11 +943,10 @@ export function Inscripcion() {
                 <span style={{ color: ENJ_MAGENTA, fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}>
                   términos y condiciones
                 </span>{" "}
-                del ENJ 2026 y confirmo que la información proporcionada es correcta y verídica.
+                del ENJ 2026 y confirmo que he leído y me comprometo a cumplir el Acuerdo de Convivencia.
               </label>
             </div>
 
-            {/* submit */}
             <button
               type="submit"
               style={{

@@ -1,0 +1,320 @@
+import express from 'express';
+import multer from 'multer';
+import cors from 'cors';
+import { google } from 'googleapis';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
+
+dotenv.config();
+
+const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
+const PORT = process.env.PORT || 3000;
+const USERS_FILE = path.join(process.cwd(), 'server', 'users.json');
+
+// Helper para manejar la DB interna de usuarios
+const getUsers = () => {
+  if (!fs.existsSync(USERS_FILE)) return [];
+  return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+};
+const saveUser = (user) => {
+  const users = getUsers();
+  users.push(user);
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+};
+
+// Middleware de autenticación simplificado (usa un token simple en LocalStorage)
+const authenticateUser = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const users = getUsers();
+  const user = users.find(u => u.id === token);
+  
+  if (!user) {
+    return res.status(401).json({ ok: false, error: 'No autorizado. Inicia sesión.' });
+  }
+  req.user = user;
+  next();
+};
+
+// Middleware para verificar si el usuario es administrador
+const isAdmin = (req, res, next) => {
+  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+  if (req.user && adminEmails.includes(req.user.email.toLowerCase())) {
+    next();
+  } else {
+    res.status(403).json({ ok: false, error: 'Acceso denegado. No tienes permisos de administrador.' });
+  }
+};
+
+const PARENT_FOLDER_ID = process.env.DRIVE_PARENT_FOLDER_ID || '1FeRqD2Ng-TRX6hSVE8TLWZUCiLecMZOr';
+
+async function getAuthClient() {
+  // Support either a path in GOOGLE_APPLICATION_CREDENTIALS or a JSON string in GOOGLE_SERVICE_ACCOUNT_KEY
+  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const keyJsonEnv = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+
+  if (keyJsonEnv) {
+    // try parse JSON
+    let keyObj;
+    try {
+      keyObj = JSON.parse(keyJsonEnv);
+    } catch (err) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is not valid JSON');
+    }
+    const client = new google.auth.JWT({
+      email: keyObj.client_email,
+      key: keyObj.private_key,
+      scopes: ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets'],
+    });
+    await client.authorize();
+    return client;
+  }
+
+  if (keyFile && fs.existsSync(keyFile)) {
+    const auth = new google.auth.GoogleAuth({
+      keyFile,
+      scopes: ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets'],
+    });
+    return auth;
+  }
+
+  throw new Error('Google credentials not found. Set GOOGLE_SERVICE_ACCOUNT_KEY (JSON) or GOOGLE_APPLICATION_CREDENTIALS (path)');
+}
+
+app.use(cors());
+app.use(express.json());
+
+// Ruta de Login Interno
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  const users = getUsers();
+  const user = users.find(u => u.email === email && u.password === password);
+  
+  if (user) {
+    res.json({ ok: true, token: user.id, user: { email: user.email, name: user.name } });
+  } else {
+    res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
+  }
+});
+
+// Ruta de Registro Interno (Para que los scouts se creen su cuenta)
+app.post('/api/auth/register', (req, res) => {
+  const { email, password, name } = req.body;
+  const users = getUsers();
+  if (users.find(u => u.email === email)) {
+    return res.status(400).json({ ok: false, error: 'El email ya está registrado' });
+  }
+  const newUser = { id: Date.now().toString(), email, password, name };
+  saveUser(newUser);
+  res.json({ ok: true, token: newUser.id });
+});
+
+// Verificar estado de sesión
+app.get('/api/auth/me', authenticateUser, (req, res) => {
+  res.json({ ok: true, user: { email: req.user.email, name: req.user.name } });
+});
+
+app.post('/api/register', authenticateUser, upload.any(), async (req, res) => {
+  try {
+    // Basic server-side validation
+    const required = ['firstName', 'lastName', 'idNumber', 'email'];
+    const missing = required.filter((k) => !req.body[k] || String(req.body[k]).trim() === '');
+    if (missing.length) {
+      return res.status(400).json({ ok: false, error: `Faltan campos requeridos: ${missing.join(', ')}` });
+    }
+
+    const firstName = req.body.firstName.trim();
+    const lastName = req.body.lastName.trim();
+    const idNumber = req.body.idNumber.trim();
+    const email = req.body.email.trim();
+
+    // Duplicate check: search for existing folder with same idNumber under parent
+    if (idNumber) {
+      const authDup = await getAuthClient();
+      const driveDup = google.drive({ version: 'v3', auth: authDup });
+      const q = `'${PARENT_FOLDER_ID}' in parents and name contains '${idNumber}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      const listRes = await driveDup.files.list({ q, fields: 'files(id,name)', spaces: 'drive' });
+      if (listRes.data.files && listRes.data.files.length) {
+        return res.status(409).json({ ok: false, error: 'Ya existe una inscripción con esa cédula.', existing: listRes.data.files });
+      }
+    }
+
+    const auth = await getAuthClient();
+    const drive = google.drive({ version: 'v3', auth });
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // Build a folder name from form fields (include idNumber)
+    const folderName = `ENJ - ${firstName} ${lastName} (${idNumber}) - ${Date.now()}`;
+
+    // Create folder in Drive
+    const parent = PARENT_FOLDER_ID ? [PARENT_FOLDER_ID] : [];
+    const folderMeta = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: parent,
+      },
+      fields: 'id,name',
+    });
+    const folderId = folderMeta.data.id;
+
+    // Upload files (if any)
+    const uploaded = [];
+    for (const f of req.files || []) {
+      const fileMeta = await drive.files.create({
+        requestBody: {
+          name: f.originalname,
+          parents: folderId ? [folderId] : undefined,
+        },
+        media: {
+          mimeType: f.mimetype,
+          body: Buffer.from(f.buffer),
+        },
+        fields: 'id, name',
+      });
+      uploaded.push({ fieldname: f.fieldname, id: fileMeta.data.id, name: fileMeta.data.name });
+    }
+
+    // Upload a data.json file with the form fields
+    try {
+      const dataJson = JSON.stringify(req.body, null, 2);
+      const dataFile = await drive.files.create({
+        requestBody: {
+          name: 'inscripcion.json',
+          parents: folderId ? [folderId] : undefined,
+          mimeType: 'application/json',
+        },
+        media: {
+          mimeType: 'application/json',
+          body: Buffer.from(dataJson),
+        },
+        fields: 'id, name',
+      });
+      uploaded.push({ fieldname: 'inscripcion.json', id: dataFile.data.id, name: dataFile.data.name });
+    } catch (err) {
+      console.warn('No se pudo subir inscripcion.json:', err.message || err);
+    }
+
+    // Create a Google Sheet with the form data
+    const sheetTitle = `${firstName} ${lastName} · ENJ`;
+    const createResp = await sheets.spreadsheets.create({
+      requestBody: {
+        properties: { title: sheetTitle },
+      },
+    });
+    const spreadsheetId = createResp.data.spreadsheetId;
+
+    // Prepare rows: header + values
+    const headers = Object.keys(req.body);
+    const values = [headers, headers.map((k) => req.body[k])];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: 'A1',
+      valueInputOption: 'RAW',
+      requestBody: { values },
+    });
+
+    // Move the spreadsheet to the same folder (Drive file update)
+    await drive.files.update({
+      fileId: spreadsheetId,
+      addParents: folderId,
+      removeParents: PARENT_FOLDER_ID || undefined,
+      fields: 'id, parents',
+    });
+
+    // Notify admin by email (if configured)
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    if (ADMIN_EMAIL && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: Number(process.env.SMTP_PORT || 587),
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
+        const sheetUrl = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}` : undefined;
+        const html = `<p>Nueva inscripción recibida:</p>
+          <ul>
+            <li><strong>Nombre:</strong> ${firstName} ${lastName}</li>
+            <li><strong>Cédula:</strong> ${idNumber}</li>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Carpeta:</strong> <a href="${folderUrl}" target="_blank">${folderUrl}</a></li>
+            ${sheetUrl ? `<li><strong>Hoja:</strong> <a href="${sheetUrl}" target="_blank">${sheetUrl}</a></li>` : ''}
+          </ul>`;
+
+        await transporter.sendMail({
+          from: process.env.SMTP_USER,
+          to: ADMIN_EMAIL,
+          subject: `ENJ - Nueva inscripción: ${firstName} ${lastName}`,
+          html,
+        });
+      } catch (err) {
+        console.warn('Error sending admin email:', err.message || err);
+      }
+    }
+
+    res.json({ ok: true, folderId, spreadsheetId, uploaded });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(String(err.message || err));
+  }
+});
+
+// Test endpoint to send a test email to ADMIN_EMAIL
+app.get('/api/test-email', async (_req, res) => {
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+  if (!ADMIN_EMAIL) return res.status(400).json({ ok: false, error: 'ADMIN_EMAIL not configured' });
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return res.status(400).json({ ok: false, error: 'SMTP credentials not configured' });
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: ADMIN_EMAIL,
+      subject: 'ENJ - Prueba de correo',
+      text: 'Este es un correo de prueba enviado desde el servidor ENJ.',
+    });
+
+    return res.json({ ok: true, message: 'Correo de prueba enviado' });
+  } catch (err) {
+    console.error('Error sending test email:', err);
+    return res.status(500).json({ ok: false, error: String(err.message || err) });
+  }
+});
+
+// Nueva ruta para que el administrador vea la lista de inscritos
+app.get('/api/admin/registrations', authenticateUser, isAdmin, async (req, res) => {
+  try {
+    const auth = await getAuthClient();
+    const drive = google.drive({ version: 'v3', auth });
+    
+    // Listar las carpetas dentro de la carpeta principal de inscripciones
+    const q = `'${PARENT_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const listRes = await drive.files.list({ q, fields: 'files(id, name, createdTime)', orderBy: 'createdTime desc' });
+    
+    res.json({ ok: true, registrations: listRes.data.files });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`ENJ server listening on http://localhost:${PORT}`);
+});

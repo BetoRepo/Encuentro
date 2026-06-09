@@ -15,20 +15,31 @@ export function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(isLogin ? '/api/auth/login' : '/api/auth/register', {
+      const API_BASE = (import.meta.env.VITE_API_BASE as string) || '';
+      const url = isLogin ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
       });
-      const data = await res.json();
-      if (data.ok) {
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (err) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+
+      if (res.ok && data && data.ok) {
         localStorage.setItem('token', data.token);
         window.location.reload();
       } else {
-        alert(data.error);
+        alert(data?.error || `Error: ${res.status} ${res.statusText}`);
       }
     } catch (err) {
-      alert("Error de conexión con el servidor.");
+      console.error(err);
+      alert(err.message || "Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }
