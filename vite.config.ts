@@ -26,7 +26,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     // Enable PWA plugin only in development to avoid service worker caching old builds on Vercel
-    ...(import.meta.env.DEV
+    ...((process.env.NODE_ENV !== 'production')
       ? [
           VitePWA({
             registerType: 'autoUpdate',
