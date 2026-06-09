@@ -1,19 +1,43 @@
+import express from 'express';
+import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
+
+const app = express();
+
+// Middlewares obligatorios
+app.use(cors());
+app.use(express.json());
+
+// Leer credenciales de Supabase desde las Variables de Entorno de Vercel
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+// Inicialización defensiva: Evita que el servidor colapse si las variables están vacías
+const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
+
+// Ruta de prueba para verificar que el backend responde en Vercel
+app.get('/api', (req, res) => {
+  res.json({ ok: true, message: 'Backend de ENJ 2026 corriendo en Vercel Serverless' });
+});
+
+// 1. RUTA DE REGISTRO
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+      return res.status(400).json({ ok: false, error: 'El correo y la contraseña son obligatorios.' });
+    }
+
+    if (!supabase) {
+      return res.status(500).json({ ok: false, error: 'Error de configuración: Faltan SUPABASE_URL o SUPABASE_ANON_KEY en Vercel.' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Validamos que el cliente de Supabase esté inicializado correctamente
-    if (!supabase) {
-      return res.status(500).json({ ok: false, error: 'El cliente de Supabase no está configurado.' });
-    }
-
-    // Buscamos si existe el correo en Supabase
+    // Verificar si el usuario ya existe en Supabase
     const { data: existingUser, error: searchError } = await supabase
       .from('users')
       .select('id')
@@ -28,41 +52,41 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Usuario ya existe' });
     }
     
-    // Generamos un ID seguro en formato string
+    // Generar un ID único seguro
     const userId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newUser = { id: userId, email: cleanEmail, password, name };
+    const newUser = { id: userId, email: cleanEmail, password, name: name || '' };
     
-    // Guardamos en la base de datos
+    // Insertar en la tabla 'users'
     const { error: insertError } = await supabase.from('users').insert([newUser]);
     
     if (insertError) {
-      return res.status(500).json({ ok: false, error: `Error al insertar: ${insertError.message}` });
+      return res.status(500).json({ ok: false, error: `Error al insertar usuario: ${insertError.message}` });
     }
 
-    return res.json({ ok: true, token: newUser.id, user: { email: cleanEmail, name } });
+    return res.json({ ok: true, token: newUser.id, user: { email: cleanEmail, name: newUser.name } });
 
   } catch (globalError) {
-    console.error("Error crítico en el registro:", globalError);
-    return res.status(500).json({ ok: false, error: `Excepción del servidor: ${globalError.message}` });
+    console.error("Error en registro:", globalError);
+    return res.status(500).json({ ok: false, error: `Excepción interna: ${globalError.message}` });
   }
 });
 
-// 5. RUTA DE LOGIN INTEGRAL Y SEGURA
+// 2. RUTA DE INICIO DE SESIÓN (LOGIN)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
     if (!email || !password) {
-      return res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+      return res.status(400).json({ ok: false, error: 'El correo y la contraseña son obligatorios.' });
+    }
+
+    if (!supabase) {
+      return res.status(500).json({ ok: false, error: 'Error de configuración: Faltan las credenciales de Supabase en Vercel.' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!supabase) {
-      return res.status(500).json({ ok: false, error: 'El cliente de Supabase no está configurado.' });
-    }
-
-    // Validamos las credenciales contra la base de datos en Supabase
+    // Validar credenciales directamente en la tabla
     const { data: user, error: loginError } = await supabase
       .from('users')
       .select('*')
@@ -70,14 +94,27 @@ app.post('/api/auth/login', async (req, res) => {
       .eq('password', password)
       .maybeSingle();
     
-    if (loginError || !user) {
+    if (loginError) {
+      return res.status(500).json({ ok: false, error: `Error de base de datos: ${loginError.message}` });
+    }
+
+    if (!user) {
       return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
     return res.json({ ok: true, token: user.id, user: { email: user.email, name: user.name } });
 
   } catch (globalError) {
-    console.error("Error crítico en el login:", globalError);
-    return res.status(500).json({ ok: false, error: `Excepción del servidor: ${globalError.message}` });
+    console.error("Error en login:", globalError);
+    return res.status(500).json({ ok: false, error: `Excepción interna: ${globalError.message}` });
   }
 });
+
+// Levantar puerto únicamente si estás ejecutando de forma Local (No en producción)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Servidor local en http://localhost:${PORT}`));
+}
+
+// EXPORTACIÓN OBLIGATORIA PARA EL PUENTE DE VERCEL
+export default app;
