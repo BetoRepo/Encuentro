@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation } from "react-router-dom"; // <-- Corregido aquí
 import { useState, useEffect } from "react";
 import { Menu, X, Bell } from "lucide-react";
-import { Login } from "../pages/Login";
+import Login from "../pages/Login";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
