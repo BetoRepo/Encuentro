@@ -11,12 +11,13 @@ export const router = createBrowserRouter(
         { 
           index: true, 
           element: <Home /> 
-        },
-        { 
-          path: "conocenos", 
-          element: <Conocenos /> 
-        },
-        { 
+        {
+          basename: (() => {
+            const raw = import.meta.env.BASE_URL ?? '/'
+            const cleaned = String(raw).replace(/\\/g, '/').replace(/(^\.?\/+|\/+$/g, '')
+            return cleaned ? `/${cleaned}` : '/'
+          })(),
+        }
           path: "consultas", 
           element: <Consultas /> 
         },
