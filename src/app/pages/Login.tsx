@@ -17,17 +17,22 @@ export function Login() {
     try {
       const API_BASE = (import.meta.env.VITE_API_BASE as string) || '';
       const url = isLogin ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
+      
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
       });
 
+      // SOLUCIÓN: Leemos el texto plano una única vez de forma segura
+      const text = await res.text();
       let data: any = null;
+
       try {
-        data = await res.json();
+        // Si el texto es una estructura JSON válida, la parseamos
+        data = JSON.parse(text);
       } catch (err) {
-        const text = await res.text();
+        // Si no es JSON (es un error de red o HTML plano), tiramos el texto crudo
         throw new Error(text || `HTTP ${res.status}`);
       }
 
@@ -35,9 +40,10 @@ export function Login() {
         localStorage.setItem('token', data.token);
         window.location.reload();
       } else {
+        // Aquí atrapamos correctamente los mensajes de Supabase ("Usuario ya existe", etc.)
         alert(data?.error || `Error: ${res.status} ${res.statusText}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       alert(err.message || "Error de conexión con el servidor.");
     } finally {
@@ -116,5 +122,4 @@ export function Login() {
     </div>
   );
 }
-
 export default Login;
