@@ -25,40 +25,34 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true // Permite probar la PWA en desarrollo
-      },
-      strategies: 'generateSW',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-      manifest: {
-        name: 'Encuentro Nacional de Jóvenes',
-        short_name: 'ENJ 2026',
-        description: 'Plataforma oficial del Encuentro Nacional de Jóvenes - Scouts de Venezuela',
-        theme_color: '#000B6F',
-        background_color: '#F0F2FA',
-        display: 'standalone',
-        scope: '/',
-        start_url: '/',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
+    // Enable PWA plugin only in development to avoid service worker caching old builds on Vercel
+    ...(import.meta.env.DEV
+      ? [
+          VitePWA({
+            registerType: 'autoUpdate',
+            devOptions: {
+              enabled: true,
+            },
+            strategies: 'generateSW',
+            includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+            manifest: {
+              name: 'Encuentro Nacional de Jóvenes',
+              short_name: 'ENJ 2026',
+              description: 'Plataforma oficial del Encuentro Nacional de Jóvenes - Scouts de Venezuela',
+              theme_color: '#000B6F',
+              background_color: '#F0F2FA',
+              display: 'standalone',
+              scope: '/',
+              start_url: '/',
+              icons: [
+                { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+                { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+              ],
+            },
+            workbox: { runtimeCaching: [] },
+          }),
         ]
-      },
-      workbox: {
-        // Permite que la app responda a eventos push de fondo
-        runtimeCaching: [] 
-      },
-    })
+      : []),
   ],
   resolve: {
     alias: {
