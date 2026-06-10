@@ -50,54 +50,63 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// 2. RUTA DE INICIO DE SESIÓN (LOGIN) - MODO DIAGNÓSTICO ABSOLUTO
+// 2. RUTA DE INICIO DE SESIÓN (LOGIN)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ ok: false, error: 'Falta escribir el correo o la contraseña.' });
-    }
-
-    if (!supabase) {
-      return res.status(500).json({ ok: false, error: 'Error: El backend no está conectado a Supabase.' });
-    }
+    if (!email || !password) return res.status(400).json({ ok: false, error: 'Faltan campos' });
+    if (!supabase) return res.status(500).json({ ok: false, error: 'Faltan credenciales de Supabase.' });
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim(); 
 
-    // PASO 1: Busquemos al usuario ÚNICAMENTE por su correo
     const { data: user, error: loginError } = await supabase
       .from('users')
       .select('*')
       .eq('email', cleanEmail)
       .maybeSingle();
     
-    if (loginError) {
-      return res.status(500).json({ ok: false, error: `Error directo de Supabase: ${loginError.message}` });
-    }
+    if (loginError) return res.status(500).json({ ok: false, error: loginError.message });
+    if (!user) return res.status(401).json({ ok: false, error: 'Usuario no encontrado' });
 
-    // SI SUPABASE NO DEVUELVE NADA: El 99% de las veces es por el bloqueo RLS de la tabla
-    if (!user) {
-      return res.status(401).json({ 
-        ok: false, 
-        error: `El correo [${cleanEmail}] no devolvió datos. Esto significa que la tabla 'users' tiene el bloqueo RLS activado en Supabase y no permite leer filas públicamente.` 
-      });
-    }
-
-    // PASO 2: Si el usuario existe, comparemos las contraseñas cara a cara
     if (user.password !== cleanPassword) {
-      return res.status(401).json({ 
-        ok: false, 
-        error: `Contraseña incorrecta. El formulario envió: [${cleanPassword}], pero la base de datos tiene guardado: [${user.password}].` 
-      });
+      return res.status(401).json({ ok: false, error: 'Contraseña incorrecta' });
     }
 
-    // Si todo coincide perfectamente
+    // Retornamos el id como token para que el frontend lo guarde
     return res.json({ ok: true, token: user.id, user: { email: user.email, name: user.name } });
-
   } catch (globalError) {
-    return res.status(500).json({ ok: false, error: `Error interno del servidor: ${globalError.message}` });
+    return res.status(500).json({ ok: false, error: globalError.message });
+  }
+});
+
+// 3. RUTA FALTANTE: /api/auth/me (LA QUE ESTÁ DANDO EL ERROR 404)
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    // Normalmente el frontend envía el token en las cabeceras (Authorization: Bearer <token>)
+    const authHeader = req.headers.authorization;
+    const token = authHeader ? authHeader.split(' ')[1] : null;
+
+    if (!token) {
+      return res.status(401).json({ ok: false, error: 'No hay token de sesión.' });
+    }
+
+    if (!supabase) return res.status(500).json({ ok: false, error: 'Faltan credenciales de Supabase.' });
+
+    // Buscamos al usuario por el ID (que fue lo que guardamos como token)
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', token)
+      .maybeSingle();
+
+    if (userError || !user) {
+      return res.status(401).json({ ok: false, error: 'Sesión inválida o expirada.' });
+    }
+
+    return res.json({ ok: true, user: { email: user.email, name: user.name } });
+  } catch (globalError) {
+    return res.status(500).json({ ok: false, error: globalError.message });
   }
 });
 
