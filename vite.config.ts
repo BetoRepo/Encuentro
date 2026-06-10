@@ -18,7 +18,7 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
-  base: './', // Use relative paths so deployed index references local assets
+  base: '/', // Use relative paths so deployed index references local assets
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
