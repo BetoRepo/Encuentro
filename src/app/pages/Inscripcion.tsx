@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
@@ -22,445 +22,103 @@ const scoutRegions: ScoutRegion[] = [
   {
     region: "ARAGUA",
     districts: [
-      {
-        district: "Guarico",
-        groups: ["INDEPENDENCIA"],
-      },
-      {
-        district: "HENRI PITTIER",
-        groups: [
-          "ARAGUANEY",
-          "CIUDAD JARDIN",
-          "HUMBOLDT",
-          "JOSE SMITH",
-          "LIBERTADOR",
-        ],
-      },
-      {
-        district: "JOSE FELIX RIBAS",
-        groups: ["GUSTAVO JOSE VOLLMER H."],
-      },
-      {
-        district: "MANUEL ATANASIO GIRARDOT",
-        groups: [
-          "GRAN MARISCAL DE AYACUCHO",
-          "LA SAGRADA FAMILIA",
-        ],
-      },
-      {
-        district: "SANTIAGO MARIÑO",
-        groups: [
-          "GENERAL SANTIAGO MARIÑO",
-          "INDEPENDENCIA",
-          "ORION",
-        ],
-      },
-      {
-        district: "SUCRE ZAMORA",
-        groups: [
-          "AGUSTÍN CODAZZI",
-          "FRANCISCO DE MIRANDA",
-        ],
-      },
+      { district: "Guarico", groups: ["INDEPENDENCIA"] },
+      { district: "HENRI PITTIER", groups: ["ARAGUANEY", "CIUDAD JARDIN", "HUMBOLDT", "JOSE SMITH", "LIBERTADOR"] },
+      { district: "JOSE FELIX RIBAS", groups: ["GUSTAVO JOSE VOLLMER H."] },
+      { district: "MANUEL ATANASIO GIRARDOT", groups: ["GRAN MARISCAL DE AYACUCHO", "LA SAGRADA FAMILIA"] },
+      { district: "SANTIAGO MARIÑO", groups: ["GENERAL SANTIAGO MARIÑO", "INDEPENDENCIA", "ORION"] },
+      { district: "SUCRE ZAMORA", groups: ["AGUSTÍN CODAZZI", "FRANCISCO DE MIRANDA"] },
     ],
   },
   {
     region: "ATENDIDOS POR LA OSN",
     districts: [
-      {
-        district: "BOLIVAR",
-        groups: [
-          "KENYA",
-          "SAN FRANCISCO DE ASIS",
-          "SOROCAIMA",
-        ],
-      },
-      {
-        district: "COJEDES",
-        groups: ["GENAZARET"],
-      },
-      {
-        district: "FALCON",
-        groups: [
-          "FRANCISCO DE MIRANDA",
-          "NAZARET",
-          "POSEIDON",
-        ],
-      },
-      {
-        district: "GUARAPICHE",
-        groups: [
-          "CECILIO ACOSTA",
-          "MORICHE",
-          "TIPURO",
-          "VILLA DE MORICHAL",
-        ],
-      },
-      {
-        district: "PORTUGUESA",
-        groups: [
-          "BADEN POWELL",
-          "CENTAURO DE LOS LLANOS",
-          "GUANAGUANARE",
-          "TAMANACO",
-        ],
-      },
-      {
-        district: "PUERTO LA CRUZ",
-        groups: [
-          "ANDRES ELOY BLANCO",
-          "ARAUCA",
-          "CIVO",
-          "DON BOSCO VII",
-          "MARIA AUXILIADORA",
-          "PADRE JOSE MARIA VELAZ",
-        ],
-      },
-      {
-        district: "TRUJILLO",
-        groups: ["SANTA TERESITA"],
-      },
-      {
-        district: "YARACUY",
-        groups: [
-          "BOGDAN PLEGUNOV TOMM",
-          "ELIGIO VARGAS OCHOA",
-          "PIONEROS DE YARACUY",
-          "ROLAND ERASMUS PHILIPPS",
-        ],
-      },
+      { district: "BOLIVAR", groups: ["KENYA", "SAN FRANCISCO DE ASIS", "SOROCAIMA"] },
+      { district: "COJEDES", groups: ["GENAZARET"] },
+      { district: "FALCON", groups: ["FRANCISCO DE MIRANDA", "NAZARET", "POSEIDON"] },
+      { district: "GUARAPICHE", groups: ["CECILIO ACOSTA", "MORICHE", "TIPURO", "VILLA DE MORICHAL"] },
+      { district: "PORTUGUESA", groups: ["BADEN POWELL", "CENTAURO DE LOS LLANOS", "GUANAGUANARE", "TAMANACO"] },
+      { district: "PUERTO LA CRUZ", groups: ["ANDRES ELOY BLANCO", "ARAUCA", "CIVO", "DON BOSCO VII", "MARIA AUXILIADORA", "PADRE JOSE MARIA VELAZ"] },
+      { district: "TRUJILLO", groups: ["SANTA TERESITA"] },
+      { district: "YARACUY", groups: ["BOGDAN PLEGUNOV TOMM", "ELIGIO VARGAS OCHOA", "PIONEROS DE YARACUY", "ROLAND ERASMUS PHILIPPS"] },
     ],
   },
   {
     region: "CARABOBO",
     districts: [
-      {
-        district: "GUACARA",
-        groups: [
-          "GEA",
-          "PADRE JORGE DEVOS",
-          "SAN AGUSTIN",
-        ],
-      },
-      {
-        district: "SAN ESTEBAN",
-        groups: [
-          "EXPLORADORES DE BROWNSEA",
-          "HEROES DE BADEN POWELL",
-          "INAGUANAGOA",
-          "LIBERTADOR",
-          "NUESTRA SEÑORA DE BEGOÑA",
-          "RELAMPAGO DEL CATATUMBO",
-          "SAN DIEGO DE ALCALA",
-          "VALENCIA DEL REY",
-        ],
-      },
-      {
-        district: "VALENCIA NORTE",
-        groups: [
-          "ACUARIUS",
-          "BATALLA DE CARABOBO",
-          "CASUPO",
-          "DON BOSCO",
-          "JUPITER",
-          "LA SALLE GUAPARO",
-        ],
-      },
-      {
-        district: "VALENCIA SUR",
-        groups: [
-          "MONSEÑOR AROCHA",
-          "RAFAEL URDANETA",
-        ],
-      },
+      { district: "GUACARA", groups: ["GEA", "PADRE JORGE DEVOS", "SAN AGUSTIN"] },
+      { district: "SAN ESTEBAN", groups: ["EXPLORADORES DE BROWNSEA", "HEROES DE BADEN POWELL", "INAGUANAGOA", "LIBERTADOR", "NUESTRA SEÑORA DE BEGOÑA", "RELAMPAGO DEL CATATUMBO", "SAN DIEGO DE ALCALA", "VALENCIA DEL REY"] },
+      { district: "VALENCIA NORTE", groups: ["ACUARIUS", "BATALLA DE CARABOBO", "CASUPO", "DON BOSCO", "JUPITER", "LA SALLE GUAPARO"] },
+      { district: "VALENCIA SUR", groups: ["MONSEÑOR AROCHA", "RAFAEL URDANETA"] },
     ],
   },
   {
     region: "DISTRITO CAPITAL",
     districts: [
-      {
-        district: "AVILA",
-        groups: [
-          "ARISTIDES ROJAS",
-          "BICENTENARIO",
-          "DON BOSCO 21",
-          "HENRI PITTIER",
-          "LA SALLE LA COLINA",
-          "NEPTUNO",
-        ],
-      },
-      {
-        district: "CARICUAO",
-        groups: [
-          "AGUSTINO",
-          "CLAUDIO FELICIANO",
-          "SAN AGUSTIN",
-          "SAN BENITO 20",
-          "SAN BENITO XIV",
-          "TOMAS SANABRIA",
-        ],
-      },
-      {
-        district: "JOSE ANTONIO PAEZ",
-        groups: [
-          "ANDROMEDA",
-          "CARACAS RIMOR",
-          "DON BOSCO",
-          "SIMON BOLIVAR",
-        ],
-      },
-      {
-        district: "LOS PROCERES",
-        groups: [
-          "FRANCISCO DE MIRANDA",
-          "RORAIMA",
-        ],
-      },
-      {
-        district: "MARISCAL SUCRE",
-        groups: [
-          "ALDEBARAN",
-          "COMETA",
-          "RENACER",
-          "SAN JOSE DE CALASANZ 38",
-          "SAN JOSE DE CALASANZ 40",
-        ],
-      },
-      {
-        district: "SANTIAGO DE LEON",
-        groups: [
-          "LA SALLE TIENDA HONDA",
-          "LIBERTADOR",
-          "MADRE RAFOLS",
-          "SAN BENITO 18",
-        ],
-      },
+      { district: "AVILA", groups: ["ARISTIDES ROJAS", "BICENTENARIO", "DON BOSCO 21", "HENRI PITTIER", "LA SALLE LA COLINA", "NEPTUNO"] },
+      { district: "CARICUAO", groups: ["AGUSTINO", "CLAUDIO FELICIANO", "SAN AGUSTIN", "SAN BENITO 20", "SAN BENITO XIV", "TOMAS SANABRIA"] },
+      { district: "JOSE ANTONIO PAEZ", groups: ["ANDROMEDA", "CARACAS RIMOR", "DON BOSCO", "SIMON BOLIVAR"] },
+      { district: "LOS PROCERES", groups: ["FRANCISCO DE MIRANDA", "RORAIMA"] },
+      { district: "MARISCAL SUCRE", groups: ["ALDEBARAN", "COMETA", "RENACER", "SAN JOSE DE CALASANZ 38", "SAN JOSE DE CALASANZ 40"] },
+      { district: "SANTIAGO DE LEON", groups: ["LA SALLE TIENDA HONDA", "LIBERTADOR", "MADRE RAFOLS", "SAN BENITO 18"] },
     ],
   },
   {
     region: "LARA",
     districts: [
-      {
-        district: "ANDRES ELOY BLANCO",
-        groups: ["GUERREROS DE YACAMBU"],
-      },
-      {
-        district: "CATEDRAL",
-        groups: [
-          "GENERAL JACINTO LARA",
-          "LA SALLE",
-          "NUEVA SEGOVIA",
-          "SIMON BOLIVAR",
-        ],
-      },
-      {
-        district: "CREPUSCULAR",
-        groups: [
-          "CARLOS LAURER",
-          "HERMANO JUAN",
-          "MONSEÑOR ROMERO",
-        ],
-      },
-      {
-        district: "PALAVECINO",
-        groups: [
-          "LISANDRO ALVARADO",
-          "TEREPAIMA",
-        ],
-      },
+      { district: "ANDRES ELOY BLANCO", groups: ["GUERREROS DE YACAMBU"] },
+      { district: "CATEDRAL", groups: ["GENERAL JACINTO LARA", "LA SALLE", "NUEVA SEGOVIA", "SIMON BOLIVAR"] },
+      { district: "CREPUSCULAR", groups: ["CARLOS LAURER", "HERMANO JUAN", "MONSEÑOR ROMERO"] },
+      { district: "PALAVECINO", groups: ["LISANDRO ALVARADO", "TEREPAIMA"] },
     ],
   },
   {
     region: "MERIDA",
     districts: [
-      {
-        district: "CARI",
-        groups: [
-          "GUAKES",
-          "JOSE FELIX RIBAS",
-          "YUKOS",
-        ],
-      },
-      {
-        district: "LIBERTADOR",
-        groups: [
-          "LIBERTADOR",
-          "ORION LXXII",
-          "SANTIAGO DE LOS CABALLEROS",
-          "ZUHE",
-        ],
-      },
-      {
-        district: "NO APLICA",
-        groups: ["ELITE"],
-      },
+      { district: "CARI", groups: ["GUAKES", "JOSE FELIX RIBAS", "YUKOS"] },
+      { district: "LIBERTADOR", groups: ["LIBERTADOR", "ORION LXXII", "SANTIAGO DE LOS CABALLEROS", "ZUHE"] },
+      { district: "NO APLICA", groups: ["ELITE"] },
     ],
   },
   {
     region: "METROPOLITANA",
     districts: [
-      {
-        district: "BARUTA",
-        groups: [
-          "AUTANA",
-          "DIPAHO",
-          "KURENAN",
-          "SANTA ROSALIA DE PALERMO",
-          "SEONEE",
-        ],
-      },
-      {
-        district: "CHACAO",
-        groups: [
-          "DON BOSCO",
-          "SANTO TOMAS DE AQUINO",
-        ],
-      },
-      {
-        district: "SUCRE NORTE",
-        groups: [
-          "CLARET",
-          "DOMINGO SAVIO",
-          "MACONDO",
-          "SAN CAYETANO",
-        ],
-      },
-      {
-        district: "SUCRE SUR",
-        groups: [
-          "AMAZONIA",
-          "MAFEKING 100",
-          "PLEYADES 7",
-          "SIGUANOI",
-        ],
-      },
+      { district: "BARUTA", groups: ["AUTANA", "DIPAHO", "KURENAN", "SANTA ROSALIA DE PALERMO", "SEONEE"] },
+      { district: "CHACAO", groups: ["DON BOSCO", "SANTO TOMAS DE AQUINO"] },
+      { district: "SUCRE NORTE", groups: ["CLARET", "DOMINGO SAVIO", "MACONDO", "SAN CAYETANO"] },
+      { district: "SUCRE SUR", groups: ["AMAZONIA", "MAFEKING 100", "PLEYADES 7", "SIGUANOI"] },
     ],
   },
   {
     region: "MIRANDA",
     districts: [
-      {
-        district: "ALTOS MIRANDINOS",
-        groups: [
-          "CAYAURIMA",
-          "DON BOSCO",
-          "LOS NUEVOS TEQUES",
-          "MIRANDA",
-          "PARAMACONI",
-        ],
-      },
-      {
-        district: "GUARENAS GUATIRE",
-        groups: [
-          "AGUATIRI",
-          "ALIANZA",
-          "GAMMA",
-          "MAFEKING100",
-          "ORION 84",
-          "SIRIO 23",
-        ],
-      },
-      {
-        district: "VALLES DEL TUY",
-        groups: [
-          "CACIQUE CUE",
-          "CHARALLAVE",
-          "RAMON OCANDO PEREZ",
-        ],
-      },
+      { district: "ALTOS MIRANDINOS", groups: ["CAYAURIMA", "DON BOSCO", "LOS NUEVOS TEQUES", "MIRANDA", "PARAMACONI"] },
+      { district: "GUARENAS GUATIRE", groups: ["AGUATIRI", "ALIANZA", "GAMMA", "MAFEKING100", "ORION 84", "SIRIO 23"] },
+      { district: "VALLES DEL TUY", groups: ["CACIQUE CUE", "CHARALLAVE", "RAMON OCANDO PEREZ"] },
     ],
   },
   {
     region: "TACHIRA",
     districts: [
-      {
-        district: "RIO TORBES",
-        groups: [
-          "BADEN POWELL G.S DON BOSCO",
-          "LAS VEGAS DE TARIBA",
-          "SAN FRANCISCO DE ASIS",
-        ],
-      },
-      {
-        district: "SAN CRISTOBAL ESTE",
-        groups: [
-          "ALCALDIA DE SAN CRISTOBAL",
-          "ASOGATA",
-          "CAPROU",
-          "FRANKLIN EDUARDO VILLAMIZAR VELAZCO",
-          "FUNTHA SIND",
-          "POOLE DE DORSET",
-        ],
-      },
-      {
-        district: "SAN CRISTOBAL OESTE",
-        groups: [
-          "BADEN POWELL XVIII",
-          "CIPRIANO CASTRO",
-          "GISA",
-          "ROBERTO RAMIREZ G.",
-        ],
-      },
+      { district: "RIO TORBES", groups: ["BADEN POWELL G.S DON BOSCO", "LAS VEGAS DE TARIBA", "SAN FRANCISCO DE ASIS"] },
+      { district: "SAN CRISTOBAL ESTE", groups: ["ALCALDIA DE SAN CRISTOBAL", "ASOGATA", "CAPROU", "FRANKLIN EDUARDO VILLAMIZAR VELAZCO", "FUNTHA SIND", "POOLE DE DORSET"] },
+      { district: "SAN CRISTOBAL OESTE", groups: ["BADEN POWELL XVIII", "CIPRIANO CASTRO", "GISA", "ROBERTO RAMIREZ G."] },
     ],
   },
   {
     region: "ZULIA",
     districts: [
-      {
-        district: "COQUIVACOA",
-        groups: [
-          "BRAVOS DE PAEZ",
-          "INDEPENDENCIA",
-          "LA TRINIDAD",
-          "LUCILA PALACIOS",
-          "PAOLA PRINCE",
-        ],
-      },
-      {
-        district: "FRANCISCO POLANCO - PERIJA",
-        groups: ["MARANATHA"],
-      },
-      {
-        district: "PEDRO HENRIQUEZ AMADO",
-        groups: [
-          "SAN JORGE",
-          "SAN SEBASTIAN",
-        ],
-      },
-      {
-        district: "SAMUEL MARTINEZ",
-        groups: [
-          "CIUDADELA FARIA",
-          "L.U.Z",
-          "LA VICTORIA",
-          "LOS OLIVOS",
-          "RAFAEL URDANETA",
-        ],
-      },
-      {
-        district: "SAN FRANCISCO",
-        groups: [
-          "ADRIEL ENRIQUE",
-          "BADEN POWELL",
-          "MANAURE",
-          "MARA",
-          "MARISCAL SUCRE",
-          "VENEZUELA",
-        ],
-      },
-      {
-        district: "ZULIA ORIENTAL",
-        groups: [
-          "COPAIBA",
-          "OMEGA",
-          "SANTA RITA",
-        ],
-      },
+      { district: "COQUIVACOA", groups: ["BRAVOS DE PAEZ", "INDEPENDENCIA", "LA TRINIDAD", "LUCILA PALACIOS", "PAOLA PRINCE"] },
+      { district: "FRANCISCO POLANCO - PERIJA", groups: ["MARANATHA"] },
+      { district: "PEDRO HENRIQUEZ AMADO", groups: ["SAN JORGE", "SAN SEBASTIAN"] },
+      { district: "SAMUEL MARTINEZ", groups: ["CIUDADELA FARIA", "L.U.Z", "LA VICTORIA", "LOS OLIVOS", "RAFAEL URDANETA"] },
+      { district: "SAN FRANCISCO", groups: ["ADRIEL ENRIQUE", "BADEN POWELL", "MANAURE", "MARA", "MARISCAL SUCRE", "VENEZUELA"] },
+      { district: "ZULIA ORIENTAL", groups: ["COPAIBA", "OMEGA", "SANTA RITA"] },
     ],
   },
 ];
 
-const ramas = [ "Comunidad (Caminantes)", "Clan (Rovers)" ];
+const ramas = ["Comunidad (Caminantes)", "Clan (Rovers)"];
 
 function InputField({
   label,
@@ -526,7 +184,8 @@ function SelectField({ label, options, value, onChange, placeholder = "Seleccion
       </label>
       <div style={{ position: "relative" }}>
         <select
-          value={value ?? ""}
+          value={value}
+          defaultValue={value === undefined ? "" : undefined}
           onChange={(e) => onChange?.(e.currentTarget.value)}
           disabled={disabled}
           style={{
@@ -570,9 +229,15 @@ function SectionDivider({ title, icon }: { title: string; icon: React.ReactNode 
 export function Inscripcion() {
   const [submitted, setSubmitted] = useState(false);
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
+  
+  // Variables de estado para los selectores
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [ramaScout, setRamaScout] = useState("");
+  const [ramaActual, setRamaActual] = useState("");
+  const [metodoPago, setMetodoPago] = useState("");
+
   const [birthDate, setBirthDate] = useState("");
   const [age, setAge] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -709,7 +374,6 @@ export function Inscripcion() {
               style={{
                 borderRadius: 999,
                 border: `1.5px solid ${participantType === option.value ? ENJ_MAGENTA : "rgba(0,11,111,0.18)"}`,
-                /* ERROR CORREGIDO AQUÍ: Se completó la lógica del operador ternario */
                 background: participantType === option.value ? ENJ_MAGENTA : "#fff",
                 color: participantType === option.value ? "#fff" : ENJ_NAVY,
                 padding: "12px 28px",
@@ -794,7 +458,13 @@ export function Inscripcion() {
               disabled={!selectedDistrict}
               placeholder={selectedDistrict ? "Seleccionar grupo..." : "Selecciona distrito primero"}
             />
-            <SelectField label="Rama Scout" options={ramas} />
+            
+            <SelectField 
+              label="Rama Scout" 
+              options={ramas} 
+              value={ramaScout}
+              onChange={setRamaScout}
+            />
 
             <SectionDivider title="Datos de Contacto" icon={<Mail size={16} color={ENJ_NAVY} />} />
 
@@ -809,21 +479,22 @@ export function Inscripcion() {
             {participantType === "joven" ? (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <SelectField label="Rama Actual" options={ramas} />
-                  <InputField label="Líder de Rama" placeholder="Prof. Carlos Rodríguez" />
+                  <SelectField 
+                    label="Rama Actual" 
+                    options={ramas} 
+                    value={ramaActual}
+                    onChange={setRamaActual}
+                  />
+                  <InputField label="Adulto de Unidad" placeholder="Prof. Carlos Rodríguez" />
                 </div>
-                <InputField label="Año de Grupo" placeholder="2026" />
+                <InputField label="Año de Registro" placeholder="2026" />
                 <InputField label="Talla de Uniforme" placeholder="M / L / XL" />
               </>
             ) : (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Ocupación / Profesión" placeholder="Abogado" />
-                  <InputField label="Rol en Scouts" placeholder="Dirigente / Adulto en el Movimiento" />
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Años de experiencia scout" placeholder="Ej. 5" type="number" />
-                  <InputField label="Teléfono de emergencia" placeholder="+58 412 000 0000" type="tel" />
+                  <InputField label="Cargo o Rol que Ocupan" />
+                  <InputField label="Area a la que pertenecen" />
                 </div>
               </>
             )}
@@ -841,11 +512,16 @@ export function Inscripcion() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <SelectField label="Método de Pago" options={["Zelle", "Pago Móvil", "Transferencia Bancaria", "PayPal"]} />
+              <SelectField 
+                label="Método de Pago" 
+                options={["Pago Móvil", "Transferencia Bancaria"]} 
+                value={metodoPago}
+                onChange={setMetodoPago}
+              />
               <InputField label="Referencia / Confirmación" placeholder="REF-2026-XXXXX" icon={<Hash size={16} />} />
             </div>
 
-            <InputField label="Monto Pagado (USD)" placeholder="25.00" type="number" icon={<CreditCard size={16} />} />
+            <InputField label="Monto Pagado (USD)" placeholder="0" type="number" icon={<CreditCard size={16} />} />
 
             <SectionDivider title="Documentos Requeridos" icon={<GoogleDriveIcon size={16} />} />
 
@@ -863,7 +539,7 @@ export function Inscripcion() {
                   sublabel="PDF, JPG o PNG · Máx. 5MB"
                   accept=".pdf,.jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
-                  onFileSelect={(file: File) => setComprobantePago(file)}
+                  onFileSelect={(file) => setComprobantePago(file)}
                 />
                 {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
               </div>
@@ -876,7 +552,7 @@ export function Inscripcion() {
                   sublabel="JPG o PNG · Fondo blanco · Máx. 2MB"
                   accept=".jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
-                  onFileSelect={(file: File) => setFotoParticipante(file)}
+                  onFileSelect={(file) => setFotoParticipante(file)}
                 />
                 {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name}</p>}
               </div>
@@ -889,7 +565,7 @@ export function Inscripcion() {
                   sublabel="PNG o JPG · Máx. 5MB"
                   accept=".jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
-                  onFileSelect={(file: File) => setScreenshotMedica(file)}
+                 onFileSelect={(file) => setScreenshotMedica(file)}
                 />
                 {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
               </div>
@@ -921,58 +597,41 @@ export function Inscripcion() {
                 <strong>1. Participación:</strong> Cada participante es el "protagonista" de su aprendizaje. Se espera una asistencia del 100% a las Mesas Técnicas y Plenarias. Durante las actividades virtuales, se debe utilizar un lenguaje formal y respetuoso. El uso de cámaras es obligatorio. Está prohibido compartir enlaces de acceso. Se debe mantener el respeto en Paneles de Expertos y Masterclasses hacia los facilitadores y especialistas.<br/><br/>
                 <strong>2. Instalaciones:</strong> Al llegar a San Juan de los Morros, cada participante debe formalizar su registro. Queda prohibido cualquier daño a la infraestructura. Cada participante es responsable de mantener su área libre de desperdicios. Se prohíbe correr, gritar o realizar dinámicas en los pasillos de las habitaciones en cualquier horario. Se prohíbe dejar regletas o cargadores conectados sin supervisión.<br/><br/>
                 <strong>3. Bienestar y Seguridad:</strong> Se aplicará de forma estricta la Política de Salvo del Peligro (Safe from Harm). Cualquier sospecha de acoso, abuso o maltrato debe ser reportada de inmediato al equipo de bienestar. Las relaciones inadecuadas o la falta de consentimiento son motivo de expulsión inmediata. No se permiten conductas que estigmatizan trastornos.<br/><br/>
-                <strong>4. Comunicaciones y Privacidad:</strong> Solo se permite generar contenido que cuide la marca scout. La información compartida en el "Confesionario Abierto" es estrictamente privada. Todo participante debe portar su Ficha Médica actualizada y original; sin este documento, no se permitirá el ingreso. Las publicaciones en redes personales deben alinearse con los valores scouts. El uso de dispositivos en plenarias y talleres se limita a fines indicados.<br/><br/>
-                <strong>5. Prohibiciones:</strong> Prohibido el alcohol, tabaco/vapeadores y drogas. Cualquier acto de agresión física o verbal resultará en la descalificación (expulsión).<br/><br/>
-                <strong>6. Gestión de Riesgo y Horarios:</strong> La pañoleta y la credencial son obligatorios. El programa inicia a las 07:00 AM y finaliza a las 11:00 PM. A partir de las 11:00 PM se restringe la circulación y el ruido en las áreas de pernocta.<br/><br/>
-                <strong>7. Alimentación y Aseo:</strong> Solo se atenderán dietas especiales reportadas previamente. Se debe limitar el tiempo de ducha. Queda prohibido lavar ropa en los lavamanos o duchas del hotel.<br/><br/>
-                <strong>8. Perímetro Seguro y Salidas:</strong> El ENJ es un evento de régimen cerrado. Nadie puede salir del Hotel Aguas Termales sin autorización. No se permiten visitas externas. En actividades externas, nadie se desplaza solo; se debe ir en parejas o tríos y dar aviso al Staff. Se aplicará la ética de "No Deje Rastro". Todo medicamento no registrado en la ficha médica será retirado por seguridad.
+                <strong>4. Comunicaciones y Privacidad:</strong> Solo se permite generar contenido que cuide la marca scout. La información compartida en el "Confesionario Abierto" es estrictamente privada. Todo participante debe portar su Ficha Médica actualizada y original; sin este documento, no se permitirá el ingreso al evento.
               </div>
-            </div>
 
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingTop: 4 }}>
-              <input
-                type="checkbox"
-                id="terms"
-                required
-                checked={acceptTerms}
-                onChange={(e) => setAcceptTerms(e.target.checked)}
-                style={{ marginTop: 2, width: 16, height: 16, accentColor: ENJ_NAVY, flexShrink: 0, cursor: "pointer" }}
-              />
-              <label htmlFor="terms" style={{ fontSize: 13, color: "rgba(0,11,111,0.65)", lineHeight: 1.6, cursor: "pointer", fontWeight: 400 }}>
-                Acepto los{" "}
-                <span style={{ color: ENJ_MAGENTA, fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}>
-                  términos y condiciones
-                </span>{" "}
-                del ENJ 2026 y confirmo que he leído y me comprometo a cumplir el Acuerdo de Convivencia.
+              <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, cursor: "pointer", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>
+                <input 
+                  type="checkbox" 
+                  checked={acceptTerms} 
+                  onChange={(e) => setAcceptTerms(e.target.checked)} 
+                  style={{ cursor: "pointer" }} 
+                />
+                He leído y acepto los términos del Acuerdo de Convivencia
               </label>
             </div>
 
             <button
               type="submit"
               style={{
-                width: "100%",
-                padding: "15px 24px",
-                borderRadius: 12,
-                border: "none",
-                background: `linear-gradient(135deg, ${ENJ_MAGENTA} 0%, #B5006A 100%)`,
+                background: ENJ_NAVY,
                 color: "#fff",
-                fontSize: 16,
+                border: "none",
+                borderRadius: 12,
+                padding: "14px 20px",
+                fontFamily: "Inter, sans-serif",
+                fontSize: 15,
                 fontWeight: 700,
                 cursor: "pointer",
-                letterSpacing: "0.01em",
-                boxShadow: "0 4px 20px rgba(215,0,126,0.35)",
-                transition: "transform 0.15s, box-shadow 0.15s",
-                marginTop: 4,
+                marginTop: 10,
+                transition: "opacity 0.2s"
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(215,0,126,0.45)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(215,0,126,0.35)"; }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              Enviar Inscripción →
+              Enviar Registro de Inscripción
             </button>
 
-            <p style={{ textAlign: "center", fontSize: 12, color: "rgba(0,11,111,0.4)", margin: 0 }}>
-              Tu información está protegida · Scouts de Venezuela © 2026
-            </p>
           </form>
         </div>
       </div>
