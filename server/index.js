@@ -36,6 +36,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim(); // Limpieza preventiva al registrar
 
     // Verificar si el usuario ya existe en Supabase
     const { data: existingUser, error: searchError } = await supabase
@@ -54,7 +55,7 @@ app.post('/api/auth/register', async (req, res) => {
     
     // Generar un ID único seguro
     const userId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newUser = { id: userId, email: cleanEmail, password, name: name || '' };
+    const newUser = { id: userId, email: cleanEmail, password: cleanPassword, name: name || '' };
     
     // Insertar en la tabla 'users'
     const { error: insertError } = await supabase.from('users').insert([newUser]);
@@ -71,7 +72,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// 2. RUTA DE INICIO DE SESIÓN (LOGIN)
+// 2. RUTA DE INICIO DE SESIÓN (LOGIN) - CORREGIDA
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -84,14 +85,16 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'Error de configuración: Faltan las credenciales de Supabase en Vercel.' });
     }
 
+    // APLICAMOS TRIM PARA QUITAR ESPACIOS INVISIBLES DEL FORMULARIO
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim(); 
 
-    // Validar credenciales directamente en la tabla
+    // Validar credenciales directamente en la tabla usando los valores limpios
     const { data: user, error: loginError } = await supabase
       .from('users')
       .select('*')
       .eq('email', cleanEmail)
-      .eq('password', password)
+      .eq('password', cleanPassword)
       .maybeSingle();
     
     if (loginError) {
