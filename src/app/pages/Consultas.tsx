@@ -9,7 +9,7 @@ const ENJ_MAGENTA = "#50039D";
 const areasPrograma = [
   {
     id: "waigunga",
-    title: "Acuerdos de Waigunga",
+    title: "Acuerdos de Waingunga",
     desc: "Sube las resoluciones, acuerdos metodológicos y documentos oficiales emanados de Waigunga.",
     icon: <Scroll size={22} color={ENJ_NAVY} />,
     color: "#2D9CDB", // Azul informativo
@@ -30,7 +30,7 @@ const areasPrograma = [
   },
   {
     id: "jar",
-    title: "El JAR",
+    title: "Juego Amplio Regional (JAR)",
     desc: "Informes de participación, propuestas y minutas de las Jornadas de Actualización o Reencuentro.",
     icon: <CheckCircle size={22} color={ENJ_NAVY} />,
     color: "#F2994A", // Naranja JAR

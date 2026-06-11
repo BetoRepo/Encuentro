@@ -10,7 +10,6 @@ const ENJ_MAGENTA = "#D7007E";
 
 type ScoutDistrict = {
   district: string;
-  groups: string[];
 };
 
 type ScoutRegion = {
@@ -22,103 +21,103 @@ const scoutRegions: ScoutRegion[] = [
   {
     region: "ARAGUA",
     districts: [
-      { district: "Guarico", groups: ["INDEPENDENCIA"] },
-      { district: "HENRI PITTIER", groups: ["ARAGUANEY", "CIUDAD JARDIN", "HUMBOLDT", "JOSE SMITH", "LIBERTADOR"] },
-      { district: "JOSE FELIX RIBAS", groups: ["GUSTAVO JOSE VOLLMER H."] },
-      { district: "MANUEL ATANASIO GIRARDOT", groups: ["GRAN MARISCAL DE AYACUCHO", "LA SAGRADA FAMILIA"] },
-      { district: "SANTIAGO MARIÑO", groups: ["GENERAL SANTIAGO MARIÑO", "INDEPENDENCIA", "ORION"] },
-      { district: "SUCRE ZAMORA", groups: ["AGUSTÍN CODAZZI", "FRANCISCO DE MIRANDA"] },
+      { district: "Guarico" },
+      { district: "HENRI PITTIER" },
+      { district: "JOSE FELIX RIBAS" },
+      { district: "MANUEL ATANASIO GIRARDOT" },
+      { district: "SANTIAGO MARIÑO" },
+      { district: "SUCRE ZAMORA" },
     ],
   },
   {
     region: "ATENDIDOS POR LA OSN",
     districts: [
-      { district: "BOLIVAR", groups: ["KENYA", "SAN FRANCISCO DE ASIS", "SOROCAIMA"] },
-      { district: "COJEDES", groups: ["GENAZARET"] },
-      { district: "FALCON", groups: ["FRANCISCO DE MIRANDA", "NAZARET", "POSEIDON"] },
-      { district: "GUARAPICHE", groups: ["CECILIO ACOSTA", "MORICHE", "TIPURO", "VILLA DE MORICHAL"] },
-      { district: "PORTUGUESA", groups: ["BADEN POWELL", "CENTAURO DE LOS LLANOS", "GUANAGUANARE", "TAMANACO"] },
-      { district: "PUERTO LA CRUZ", groups: ["ANDRES ELOY BLANCO", "ARAUCA", "CIVO", "DON BOSCO VII", "MARIA AUXILIADORA", "PADRE JOSE MARIA VELAZ"] },
-      { district: "TRUJILLO", groups: ["SANTA TERESITA"] },
-      { district: "YARACUY", groups: ["BOGDAN PLEGUNOV TOMM", "ELIGIO VARGAS OCHOA", "PIONEROS DE YARACUY", "ROLAND ERASMUS PHILIPPS"] },
+      { district: "BOLIVAR" },
+      { district: "COJEDES" },
+      { district: "FALCON" },
+      { district: "GUARAPICHE" },
+      { district: "PORTUGUESA" },
+      { district: "PUERTO LA CRUZ" },
+      { district: "TRUJILLO" },
+      { district: "YARACUY" },
     ],
   },
   {
     region: "CARABOBO",
     districts: [
-      { district: "GUACARA", groups: ["GEA", "PADRE JORGE DEVOS", "SAN AGUSTIN"] },
-      { district: "SAN ESTEBAN", groups: ["EXPLORADORES DE BROWNSEA", "HEROES DE BADEN POWELL", "INAGUANAGOA", "LIBERTADOR", "NUESTRA SEÑORA DE BEGOÑA", "RELAMPAGO DEL CATATUMBO", "SAN DIEGO DE ALCALA", "VALENCIA DEL REY"] },
-      { district: "VALENCIA NORTE", groups: ["ACUARIUS", "BATALLA DE CARABOBO", "CASUPO", "DON BOSCO", "JUPITER", "LA SALLE GUAPARO"] },
-      { district: "VALENCIA SUR", groups: ["MONSEÑOR AROCHA", "RAFAEL URDANETA"] },
+      { district: "GUACARA" },
+      { district: "SAN ESTEBAN" },
+      { district: "VALENCIA NORTE" },
+      { district: "VALENCIA SUR" },
     ],
   },
   {
     region: "DISTRITO CAPITAL",
     districts: [
-      { district: "AVILA", groups: ["ARISTIDES ROJAS", "BICENTENARIO", "DON BOSCO 21", "HENRI PITTIER", "LA SALLE LA COLINA", "NEPTUNO"] },
-      { district: "CARICUAO", groups: ["AGUSTINO", "CLAUDIO FELICIANO", "SAN AGUSTIN", "SAN BENITO 20", "SAN BENITO XIV", "TOMAS SANABRIA"] },
-      { district: "JOSE ANTONIO PAEZ", groups: ["ANDROMEDA", "CARACAS RIMOR", "DON BOSCO", "SIMON BOLIVAR"] },
-      { district: "LOS PROCERES", groups: ["FRANCISCO DE MIRANDA", "RORAIMA"] },
-      { district: "MARISCAL SUCRE", groups: ["ALDEBARAN", "COMETA", "RENACER", "SAN JOSE DE CALASANZ 38", "SAN JOSE DE CALASANZ 40"] },
-      { district: "SANTIAGO DE LEON", groups: ["LA SALLE TIENDA HONDA", "LIBERTADOR", "MADRE RAFOLS", "SAN BENITO 18"] },
+      { district: "AVILA" },
+      { district: "CARICUAO" },
+      { district: "JOSE ANTONIO PAEZ" },
+      { district: "LOS PROCERES" },
+      { district: "MARISCAL SUCRE" },
+      { district: "SANTIAGO DE LEON" },
     ],
   },
   {
     region: "LARA",
     districts: [
-      { district: "ANDRES ELOY BLANCO", groups: ["GUERREROS DE YACAMBU"] },
-      { district: "CATEDRAL", groups: ["GENERAL JACINTO LARA", "LA SALLE", "NUEVA SEGOVIA", "SIMON BOLIVAR"] },
-      { district: "CREPUSCULAR", groups: ["CARLOS LAURER", "HERMANO JUAN", "MONSEÑOR ROMERO"] },
-      { district: "PALAVECINO", groups: ["LISANDRO ALVARADO", "TEREPAIMA"] },
+      { district: "ANDRES ELOY BLANCO" },
+      { district: "CATEDRAL" },
+      { district: "CREPUSCULAR" },
+      { district: "PALAVECINO" },
     ],
   },
   {
     region: "MERIDA",
     districts: [
-      { district: "CARI", groups: ["GUAKES", "JOSE FELIX RIBAS", "YUKOS"] },
-      { district: "LIBERTADOR", groups: ["LIBERTADOR", "ORION LXXII", "SANTIAGO DE LOS CABALLEROS", "ZUHE"] },
-      { district: "NO APLICA", groups: ["ELITE"] },
+      { district: "CARI" },
+      { district: "LIBERTADOR" },
+      { district: "NO APLICA" },
     ],
   },
   {
     region: "METROPOLITANA",
     districts: [
-      { district: "BARUTA", groups: ["AUTANA", "DIPAHO", "KURENAN", "SANTA ROSALIA DE PALERMO", "SEONEE"] },
-      { district: "CHACAO", groups: ["DON BOSCO", "SANTO TOMAS DE AQUINO"] },
-      { district: "SUCRE NORTE", groups: ["CLARET", "DOMINGO SAVIO", "MACONDO", "SAN CAYETANO"] },
-      { district: "SUCRE SUR", groups: ["AMAZONIA", "MAFEKING 100", "PLEYADES 7", "SIGUANOI"] },
+      { district: "BARUTA" },
+      { district: "CHACAO" },
+      { district: "SUCRE NORTE" },
+      { district: "SUCRE SUR" },
     ],
   },
   {
     region: "MIRANDA",
     districts: [
-      { district: "ALTOS MIRANDINOS", groups: ["CAYAURIMA", "DON BOSCO", "LOS NUEVOS TEQUES", "MIRANDA", "PARAMACONI"] },
-      { district: "GUARENAS GUATIRE", groups: ["AGUATIRI", "ALIANZA", "GAMMA", "MAFEKING100", "ORION 84", "SIRIO 23"] },
-      { district: "VALLES DEL TUY", groups: ["CACIQUE CUE", "CHARALLAVE", "RAMON OCANDO PEREZ"] },
+      { district: "ALTOS MIRANDINOS" },
+      { district: "GUARENAS GUATIRE" },
+      { district: "VALLES DEL TUY" },
     ],
   },
   {
     region: "TACHIRA",
     districts: [
-      { district: "RIO TORBES", groups: ["BADEN POWELL G.S DON BOSCO", "LAS VEGAS DE TARIBA", "SAN FRANCISCO DE ASIS"] },
-      { district: "SAN CRISTOBAL ESTE", groups: ["ALCALDIA DE SAN CRISTOBAL", "ASOGATA", "CAPROU", "FRANKLIN EDUARDO VILLAMIZAR VELAZCO", "FUNTHA SIND", "POOLE DE DORSET"] },
-      { district: "SAN CRISTOBAL OESTE", groups: ["BADEN POWELL XVIII", "CIPRIANO CASTRO", "GISA", "ROBERTO RAMIREZ G."] },
+      { district: "RIO TORBES" },
+      { district: "SAN CRISTOBAL ESTE" },
+      { district: "SAN CRISTOBAL OESTE" },
     ],
   },
   {
     region: "ZULIA",
     districts: [
-      { district: "COQUIVACOA", groups: ["BRAVOS DE PAEZ", "INDEPENDENCIA", "LA TRINIDAD", "LUCILA PALACIOS", "PAOLA PRINCE"] },
-      { district: "FRANCISCO POLANCO - PERIJA", groups: ["MARANATHA"] },
-      { district: "PEDRO HENRIQUEZ AMADO", groups: ["SAN JORGE", "SAN SEBASTIAN"] },
-      { district: "SAMUEL MARTINEZ", groups: ["CIUDADELA FARIA", "L.U.Z", "LA VICTORIA", "LOS OLIVOS", "RAFAEL URDANETA"] },
-      { district: "SAN FRANCISCO", groups: ["ADRIEL ENRIQUE", "BADEN POWELL", "MANAURE", "MARA", "MARISCAL SUCRE", "VENEZUELA"] },
-      { district: "ZULIA ORIENTAL", groups: ["COPAIBA", "OMEGA", "SANTA RITA"] },
+      { district: "COQUIVACOA" },
+      { district: "FRANCISCO POLANCO - PERIJA" },
+      { district: "PEDRO HENRIQUEZ AMADO" },
+      { district: "SAMUEL MARTINEZ" },
+      { district: "SAN FRANCISCO" },
+      { district: "ZULIA ORIENTAL" },
     ],
   },
 ];
 
-const ramas = ["Comunidad (Caminantes)", "Clan (Rovers)"];
+const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
 
 function InputField({
   label,
@@ -230,10 +229,8 @@ export function Inscripcion() {
   const [submitted, setSubmitted] = useState(false);
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
   
-  // Variables de estado para los selectores
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState("");
   const [ramaScout, setRamaScout] = useState("");
   const [ramaActual, setRamaActual] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
@@ -242,9 +239,9 @@ export function Inscripcion() {
   const [age, setAge] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  const [comprobantePago, setComprobantePago] = useState<File | null>(null);
-  const [fotoParticipante, setFotoParticipante] = useState<File | null>(null);
-  const [screenshotMedica, setScreenshotMedica] = useState<File | null>(null);
+  const [comprobantePago, setComprobantePago] = useState<any | null>(null);
+  const [fotoParticipante, setFotoParticipante] = useState<any | null>(null);
+  const [screenshotMedica, setScreenshotMedica] = useState<any | null>(null);
 
   const [acceptTerms, setAcceptTerms] = useState(false);
 
@@ -424,7 +421,6 @@ export function Inscripcion() {
                 onChange={(value) => {
                   setSelectedRegion(value);
                   setSelectedDistrict("");
-                  setSelectedGroup("");
                 }}
               />
               <SelectField
@@ -435,29 +431,11 @@ export function Inscripcion() {
                     : []
                 }
                 value={selectedDistrict}
-                onChange={(value) => {
-                  setSelectedDistrict(value);
-                  setSelectedGroup("");
-                }}
+                onChange={setSelectedDistrict}
                 disabled={!selectedRegion}
                 placeholder={selectedRegion ? "Seleccionar distrito..." : "Selecciona región primero"}
               />
             </div>
-            <SelectField
-              label="Grupo Scout"
-              options={
-                selectedDistrict && selectedRegion
-                  ? scoutRegions
-                      .find((region) => region.region === selectedRegion)
-                      ?.districts.find((district) => district.district === selectedDistrict)
-                      ?.groups ?? []
-                  : []
-              }
-              value={selectedGroup}
-              onChange={setSelectedGroup}
-              disabled={!selectedDistrict}
-              placeholder={selectedDistrict ? "Seleccionar grupo..." : "Selecciona distrito primero"}
-            />
             
             <SelectField 
               label="Rama Scout" 
@@ -493,8 +471,8 @@ export function Inscripcion() {
             ) : (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Cargo o Rol que Ocupan" />
-                  <InputField label="Area a la que pertenecen" />
+                  <InputField label="Cargo o Rol que Ocupan" placeholder="Ej. Dirigente" />
+                  <InputField label="Area a la que pertenecen" placeholder="Ej. Tropa" />
                 </div>
               </>
             )}
@@ -565,7 +543,7 @@ export function Inscripcion() {
                   sublabel="PNG o JPG · Máx. 5MB"
                   accept=".jpg,.jpeg,.png"
                   icon={<GoogleDriveIcon size={24} />}
-                 onFileSelect={(file) => setScreenshotMedica(file)}
+                  onFileSelect={(file) => setScreenshotMedica(file)}
                 />
                 {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
               </div>
