@@ -26,8 +26,19 @@ export function Root() {
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     const checkAuth = async () => {
+      // 🟢 BYPASS AUTOMÁTICO EN ENTORNO LOCAL
+      if (import.meta.env.DEV) {
+        setUser({ 
+          email: "enj@scouts.org.ve", 
+          name: "Beto (Local Staff)" 
+        });
+        setLoading(false);
+        return; // Detiene la ejecución aquí para no tocar el backend
+      }
+
+      // 🔒 CÓDIGO ORIGINAL SE EJECUTARÁ EXCLUSIVAMENTE EN VERCEL
       const token = localStorage.getItem('token');
       if (!token) {
         setLoading(false);
@@ -43,6 +54,7 @@ export function Root() {
       }
       setLoading(false);
     };
+    
     checkAuth();
   }, []);
 
