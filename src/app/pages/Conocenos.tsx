@@ -84,8 +84,8 @@ export function Conocenos() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ background: "#F0F2FA", padding: "24px 16px 60px" }}>
-      <div style={{ maxWidth: 2048, margin: "0 auto" }}>
+    <div style={{ background: "#F0F2FA", padding: "24px 16px 60px", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: 2048, margin: "0 auto", boxSizing: "border-box" }}>
         <button
           onClick={() => navigate("/")}
           style={{
@@ -105,7 +105,7 @@ export function Conocenos() {
           ← Volver al inicio
         </button>
 
-        <div style={{ background: "#fff", borderRadius: 24, padding: "clamp(16px, 4vw, 48px)", boxShadow: "0 24px 60px rgba(0,11,111,0.08)", overflow: "hidden" }}>
+        <div style={{ background: "#fff", borderRadius: 24, padding: "clamp(16px, 4vw, 48px)", boxShadow: "0 24px 60px rgba(0,11,111,0.08)", overflow: "hidden", boxSizing: "border-box" }}>
           <div style={{ display: "grid", gap: 24 }}>
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: ENJ_MAGENTA }}>
@@ -125,10 +125,10 @@ export function Conocenos() {
                 Un organigrama interactivo que muestra la estructura del staff central y las áreas que dependen del asesor nacional.
               </p>
 
-              {/* 🟢 CONTENEDOR DEL ORGANIGRAMA RESPONSIVO */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "10px 0", width: "100%" }}>
+              {/* Contenedor del Organigrama */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "10px 0", width: "100%", boxSizing: "border-box" }}>
                 
-                {/* Tarjeta del Asesor Nacional */}
+                {/* Líder (Asesor Nacional) */}
                 <div style={{ width: "100%", maxWidth: 260, borderRadius: 28, background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.12)", padding: "24px", display: "grid", gap: 16, textAlign: "center", boxSizing: "border-box" }}>
                   <div style={{ width: 140, height: 140, margin: "0 auto", borderRadius: 32, overflow: "hidden", background: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {orgChart.leader.photo ? (
@@ -160,24 +160,36 @@ export function Conocenos() {
                   </div>
                 </div>
 
-                {/* Línea divisoria */}
+                {/* Línea Conectora */}
                 <div style={{ width: "60%", maxWidth: 760, height: 2, background: "rgba(0,11,111,0.12)" }} />
 
-                {/* 🛠️ CAMBIO CLAVE: Contenedor de ramas en Flexbox responsivo */}
+                {/* Ramas (Coordinaciones y Equipos) */}
                 <div style={{ 
                   display: "flex", 
                   flexDirection: "row", 
                   flexWrap: "wrap", 
                   justifyContent: "center", 
                   gap: 24, 
-                  width: "100%" 
+                  width: "100%",
+                  boxSizing: "border-box"
                 }}>
                   {orgChart.branches.map((branch) => (
-                    <div key={branch.manager.name} style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", width: "100%", maxWidth: 260, boxSizing: "border-box" }}>
-                      
-                      {/* Tarjeta de Coordinador */}
+                    <div 
+                      key={branch.manager.name} 
+                      style={{ 
+                        display: "flex", 
+                        flexDirection: "column", 
+                        gap: 12, 
+                        alignItems: "center", 
+                        width: "100%", 
+                        flex: "1 1 260px", 
+                        maxWidth: 260, 
+                        boxSizing: "border-box" 
+                      }}
+                    >
+                      {/* Tarjeta Manager */}
                       <div style={{ width: "100%", borderRadius: 22, background: "#fff", border: "1px solid rgba(0,11,111,0.12)", padding: 16, boxShadow: "0 14px 30px rgba(0,11,111,0.06)", boxSizing: "border-box" }}>
-                        <div style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: 220, overflow: "hidden", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 18, marginBottom: 14 }}>
+                        <div style={{ width: "100%", aspectRatio: "1 / 1", overflow: "hidden", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 18, marginBottom: 14 }}>
                           {branch.manager.photo ? (
                             <img
                               src={branch.manager.photo}
@@ -203,12 +215,11 @@ export function Conocenos() {
                         <h4 style={{ margin: "8px 0 0", fontSize: 17, fontWeight: 900, color: ENJ_NAVY }}>{branch.manager.name}</h4>
                       </div>
 
-                      {/* Tarjeta de Staff Juvenil */}
+                      {/* Tarjeta Assistant */}
                       <div style={{ width: "100%", borderRadius: 16, background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", padding: 12, textAlign: "center", boxSizing: "border-box" }}>
                         <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "rgba(0,11,111,0.72)", textTransform: "uppercase", letterSpacing: "0.12em" }}>{branch.assistant.role}</p>
                         <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: ENJ_NAVY }}>{branch.assistant.name}</p>
                       </div>
-
                     </div>
                   ))}
                 </div>
@@ -216,15 +227,39 @@ export function Conocenos() {
               </div>
             </div>
 
-            {/* Sección: Coordinadores de Área */}
+            {/* Coordinadores de Área */}
             <div style={{ marginTop: 20 }}>
               <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: ENJ_NAVY }}>Coordinadores de área</h2>
               <p style={{ margin: "0 0 18px", fontSize: 14, color: "rgba(0,11,111,0.68)", lineHeight: 1.6 }}>
-                Cada área cuenta con un coordinador y un tema principal que guía su trabajo durante el encuentro.
+                Cada área cuenta con un coordinator y un tema principal que guía su trabajo durante el encuentro.
               </p>
-              <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 18 }}>
+              <div style={{ 
+                display: "flex", 
+                flexDirection: "row", 
+                flexWrap: "wrap", 
+                justifyContent: "center", 
+                gap: 18,
+                width: "100%",
+                boxSizing: "border-box"
+              }}>
                 {coordinators.map((coordinator) => (
-                  <div key={coordinator.area} style={{ background: "#F8FAFF", borderRadius: 24, border: "1px solid rgba(0,11,111,0.08)", padding: 20, width: "100%", maxWidth: 260, minHeight: 280, display: "flex", flexDirection: "column", justifyContent: "space-between", boxSizing: "border-box" }}>
+                  <div 
+                    key={coordinator.area} 
+                    style={{ 
+                      background: "#F8FAFF", 
+                      borderRadius: 24, 
+                      border: "1px solid rgba(0,11,111,0.08)", 
+                      padding: 20, 
+                      width: "100%", 
+                      flex: "1 1 260px",
+                      maxWidth: 260, 
+                      minHeight: 280, 
+                      display: "flex", 
+                      flexDirection: "column", 
+                      justifyContent: "space-between", 
+                      boxSizing: "border-box" 
+                    }}
+                  >
                     <div>
                       <div style={{ width: "100%", aspectRatio: "1.2 / 1", borderRadius: 18, background: "#EBF1FF", display: "flex", alignItems: "center", justifyContent: "center", color: ENJ_NAVY, fontSize: 46, fontWeight: 900, marginBottom: 14 }}>
                         {initialsFor(coordinator.name)}
@@ -238,7 +273,7 @@ export function Conocenos() {
               </div>
             </div>
 
-            {/* Sección: Monitores */}
+            {/* Monitores de Equipos */}
             <div style={{ marginTop: 20 }}>
               <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: ENJ_NAVY }}>Monitores de equipos</h2>
               <p style={{ margin: "0 0 14px", fontSize: 14, color: "rgba(0,11,111,0.68)", lineHeight: 1.6 }}>
@@ -249,8 +284,8 @@ export function Conocenos() {
               </div>
             </div>
 
-            {/* Botones inferiores */}
-            <div style={{ display: "flex", gap: 12, marginTop: 10, width: "100%" }}>
+            {/* Acciones de Navegación */}
+            <div style={{ display: "flex", gap: 12, marginTop: 10, width: "100%", boxSizing: "border-box" }}>
               <button
                 onClick={() => navigate("/inscripcion")}
                 style={{

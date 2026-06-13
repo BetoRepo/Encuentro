@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
-import { MapPin, Calendar, Users, ChevronRight, Clock, Tent, Flame, Star } from "lucide-react";
+import { MapPin, Calendar, Users, ChevronRight, Clock } from "lucide-react";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -25,7 +25,6 @@ interface BloquePrograma {
   desc: string;
 }
 
-// Componente SVG Nativo para el logo de la barra de navegación superior (Navbar)
 export function ScoutsLogo({ size = 44 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -44,15 +43,12 @@ export function Home() {
   const navigate = useNavigate();
   const infoRef = useRef<HTMLDivElement>(null);
 
-  // Fecha del evento para la cuenta regresiva (11 de Septiembre de 2026)
   const targetDate = new Date("2026-09-11T08:00:00").getTime();
 
-  // Función para hacer scroll suave hasta la sección informativa
   const scrollToInfo = () => {
     infoRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Datos de los Ejes Temáticos
   const bloques: BloquePrograma[] = [
     {
       title: "Desafío Generación Z",
@@ -81,7 +77,6 @@ export function Home() {
     }
   ];
 
-  // Programa de Actividades Virtuales
   const agendaVirtual: AgendaDay[] = [
     {
       day: "Martes",
@@ -122,7 +117,6 @@ export function Home() {
     }
   ];
 
-  // Cronograma Presencial
   const agendaPresencial: AgendaDay[] = [
     {
       day: "Viernes",
@@ -161,16 +155,17 @@ export function Home() {
   ];
 
   return (
-    <div style={{ background: "#F5F7FB", minHeight: "100vh" }}>
+    <div style={{ background: "#F5F7FB", minHeight: "100vh", boxSizing: "border-box" }}>
       {/* SECCIÓN HERO PRINCIPAL */}
       <header 
         style={{ 
           background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #00063D 100%)`, 
           color: "white", 
-          padding: "90px 24px 70px", 
+          padding: "90px 16px 70px", 
           textAlign: "center",
           position: "relative",
-          overflow: "hidden"
+          overflow: "hidden",
+          boxSizing: "border-box"
         }}
       >
         <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 2 }}>
@@ -184,32 +179,11 @@ export function Home() {
             </span>
           </div>
 
-          {/* DISEÑO TIPOGRÁFICO BASADO EN TEXTO (Inspirado en la imagen 2) */}
           <div style={{ margin: "0 auto 28px", padding: "0 10px" }}>
-            <h1 
-              style={{ 
-                fontFamily: "'Inter', 'Montserrat', sans-serif",
-                fontSize: "clamp(34px, 5.5vw, 52px)", 
-                fontWeight: 800, 
-                lineHeight: 1.1, 
-                letterSpacing: "-0.03em",
-                color: "#FFFFFF",
-                margin: 0
-              }}
-            >
+            <h1 style={{ fontFamily: "'Inter', 'Montserrat', sans-serif", fontSize: "clamp(34px, 5.5vw, 52px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em", color: "#FFFFFF", margin: 0 }}>
               Encuentro Nacional
             </h1>
-            <h1 
-              style={{ 
-                fontFamily: "'Inter', 'Montserrat', sans-serif",
-                fontSize: "clamp(36px, 6vw, 56px)", 
-                fontWeight: 800, 
-                lineHeight: 1.1, 
-                letterSpacing: "-0.02em",
-                color: ENJ_YELLOW,
-                margin: "6px 0 0 0"
-              }}
-            >
+            <h1 style={{ fontFamily: "'Inter', 'Montserrat', sans-serif", fontSize: "clamp(36px, 6vw, 56px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.02em", color: ENJ_YELLOW, margin: "6px 0 0 0" }}>
               de Jóvenes
             </h1>
           </div>
@@ -218,7 +192,7 @@ export function Home() {
             El evento más importante del escultismo venezolano. Tres días de aventura, liderazgo y hermandad scout.
           </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16, marginBottom: 44 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Calendar size={16} color={ENJ_YELLOW} />
               <span>11 Sep - 13 Sep</span>
@@ -233,7 +207,6 @@ export function Home() {
             </div>
           </div>
 
-          {/* Cuenta Regresiva */}
           <div style={{ marginBottom: 44 }}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>
               Cuenta regresiva al evento
@@ -241,7 +214,6 @@ export function Home() {
             <Countdown targetDate={targetDate} />
           </div>
 
-          {/* TRES BOTONES DE ACCIÓN (Con Scroll suave en "Ver información") */}
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
             <button 
               onClick={() => navigate("/inscripcion")}
@@ -257,7 +229,7 @@ export function Home() {
             </button>
             <button 
               onClick={scrollToInfo}
-              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "background 0.2s" }}
+              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
               Ver información
             </button>
@@ -266,33 +238,18 @@ export function Home() {
       </header>
 
       {/* Contenido Principal */}
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 24px" }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 16px", boxSizing: "border-box" }}>
         
-       <div ref={infoRef} style={{ textAlign: "center", marginBottom: 70, paddingTop: "20px" }}>
-  <h2 
-    style={{ 
-      color: "#000B6F", 
-      fontSize: "clamp(28px, 4.5vw, 36px)", 
-      fontWeight: 800, 
-      margin: "0 0 16px" 
-    }}
-  >
-    ¿Qué es el ENJ?
-  </h2>
-  <p 
-    style={{ 
-      color: "#556080", 
-      fontSize: "22px", 
-      maxWidth: "750px", 
-      margin: "0 auto", 
-      lineHeight: "1.7" 
-    }}
-  >
-    El Encuentro Nacional de Jóvenes 2026 es el espacio oficial de participación, empoderamiento y bienestar integral diseñado por y para la juventud de la Asociación de Scouts de Venezuela.
-
-Este evento no es solo un campamento o una reunión más; es una plataforma estratégica donde los jóvenes de todo el país se conectan para alzar su voz, compartir su cultura y desarrollar propuestas reales que impacten directamente en el rumbo de nuestra institución.
-  </p>
-</div>
+        <div ref={infoRef} style={{ textAlign: "center", marginBottom: 70, paddingTop: "20px", boxSizing: "border-box" }}>
+          <h2 style={{ color: "#000B6F", fontSize: "clamp(28px, 4.5vw, 36px)", fontWeight: 800, margin: "0 0 16px" }}>
+            ¿Qué es el ENJ?
+          </h2>
+          <p style={{ color: "#556080", fontSize: "18px", maxWidth: "750px", margin: "0 auto", lineHeight: "1.7" }}>
+            El Encuentro Nacional de Jóvenes 2026 es el espacio oficial de participación, empoderamiento y bienestar integral diseñado por y para la juventud de la Asociación de Scouts de Venezuela.
+            <br /><br />
+            Este evento no es solo un campamento o una reunión más; es una plataforma estratégica donde los jóvenes de todo el país se conectan para alzar su voz, compartir su cultura y desarrollar propuestas reales que impacten directamente en el rumbo de nuestra institución.
+          </p>
+        </div>
 
         {/* Ejes Temáticos */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
@@ -300,9 +257,9 @@ Este evento no es solo un campamento o una reunión más; es una plataforma estr
           <p style={{ color: "#666", fontSize: 15 }}>Descubre los grandes bloques de actividades preparados para ti</p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginBottom: 80 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, marginBottom: 80 }}>
           {bloques.map((b, idx) => (
-            <div key={idx} style={{ background: "white", padding: 28, borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8" }}>
+            <div key={idx} style={{ background: "white", padding: 24, borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", boxSizing: "border-box" }}>
               <span style={{ color: ENJ_MAGENTA, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>{b.tagline}</span>
               <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 700, margin: "6px 0 12px" }}>{b.title}</h3>
               <p style={{ color: "#555", fontSize: 14, lineHeight: 1.6, margin: 0 }}>{b.desc}</p>
@@ -310,7 +267,7 @@ Este evento no es solo un campamento o una reunión más; es una plataforma estr
           ))}
         </div>
 
-        {/* PROGRAMA DE ACTIVIDADES VIRTUALES */}
+        {/* PROGRAMA DE ACTIVIDADES VIRTUALES CORREGIDO */}
         <div style={{ marginBottom: 80 }}>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Programa de Actividades Virtuales</h2>
@@ -319,19 +276,21 @@ Este evento no es solo un campamento o una reunión más; es una plataforma estr
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {agendaVirtual.map((day, dIdx) => (
-              <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap" }}>
-                <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "32px", width: "100%", maxWidth: "200px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+              <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
+                {/* Bloque Izquierdo Responsivo */}
+                <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", mdWidth: "180px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="agenda-badge">
                   <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
                   <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.9, fontWeight: 600 }}>{day.date}</p>
                 </div>
-                <div style={{ padding: "32px", flex: 1, display: "flex", flexDirection: "column", gap: 18 }}>
+                {/* Bloque Eventos Responsivo */}
+                <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
                   {day.events.map((ev, eIdx) => (
-                    <div key={eIdx} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 600, minWidth: "110px", paddingTop: "2px" }}>
-                        <Clock size={14} style={{ color: day.color }} />
-                        <span>{ev.time}</span>
+                    <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
+                        <Clock size={14} style={{ color: day.color, flexShrink: 0 }} />
+                        <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
                       </div>
-                      <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 15, fontWeight: 600 }}>{ev.title}</p>
+                      <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
                     </div>
                   ))}
                 </div>
@@ -340,7 +299,7 @@ Este evento no es solo un campamento o una reunión más; es una plataforma estr
           </div>
         </div>
 
-        {/* Cronograma Presencial */}
+        {/* CRONOGRAMA PRESENCIAL CORREGIDO */}
         <div>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma General</h2>
@@ -349,19 +308,21 @@ Este evento no es solo un campamento o una reunión más; es una plataforma estr
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {agendaPresencial.map((day, dIdx) => (
-              <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap" }}>
-                <div style={{ background: day.color, color: day.color === ENJ_YELLOW ? ENJ_NAVY : "white", padding: "32px", width: "100%", maxWidth: "200px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+              <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
+                {/* Bloque Izquierdo Responsivo */}
+                <div style={{ background: day.color, color: day.color === ENJ_YELLOW ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }}>
                   <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
                   <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.8, fontWeight: 600 }}>{day.date}</p>
                 </div>
-                <div style={{ padding: "32px", flex: 1, display: "flex", flexDirection: "column", gap: 18 }}>
+                {/* Bloque Eventos Responsivo */}
+                <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
                   {day.events.map((ev, eIdx) => (
-                    <div key={eIdx} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 600, minWidth: "110px", paddingTop: "2px" }}>
-                        <Clock size={14} style={{ color: ENJ_MAGENTA }} />
-                        <span>{ev.time}</span>
+                    <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
+                        <Clock size={14} style={{ color: ENJ_MAGENTA, flexShrink: 0 }} />
+                        <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
                       </div>
-                      <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 15, fontWeight: 600 }}>{ev.title}</p>
+                      <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
                     </div>
                   ))}
                 </div>
@@ -370,6 +331,21 @@ Este evento no es solo un campamento o una reunión más; es una plataforma estr
           </div>
         </div>
       </main>
+
+      {/* Estilos CSS dinámicos inyectados para corregir el ancho en PC sin romper el móvil */}
+      <style>{`
+        @media (min-width: 768px) {
+          .agenda-badge {
+            max-width: 180px !important;
+          }
+          header {
+            padding: 90px 24px 70px !important;
+          }
+          main {
+            padding: 60px 24px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
