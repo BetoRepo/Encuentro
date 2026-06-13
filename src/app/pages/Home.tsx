@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import { MapPin, Calendar, Users, Tent, Flame, Star, ChevronRight, Clock } from "lucide-react";
 
-// 1. IMPORTACIÓN DE IMÁGENES
-import logoEnj from "../assets/logo-enj.svg";       
+// 1. IMPORTACIÓN DE IMÁGENES CORREGIDAS
+import logoEnj from "../assets/logo-enj.png";       
 import logoScout from "../assets/logo-scout.png";   
 
 const ENJ_NAVY = "#000B6F";
@@ -150,7 +150,6 @@ const highlights = [
   { icon: <Star size={22} color={ENJ_NAVY} />, title: "Talleres y Retos", desc: "Actividades de liderazgo, orientación y trabajo en equipo" },
 ];
 
-// 📝 TEXTOS EXACTOS DE LA CAPTURA DE WHATSAPP (IMAGE_19AFDE.PNG)
 const bloquesPrograma: BloquePrograma[] = [
   { 
     title: "Desafío Generación Z", 
@@ -350,7 +349,7 @@ export function Home() {
               ¿Qué es el ENJ?
             </h2>
             <p style={{ margin: "0 auto", color: "rgba(0,11,111,0.55)", fontSize: 16, maxWidth: 560, lineHeight: 1.7 }}>
-              El Encuentro Nacional de Jóvenes reúne a scouts de todo Venezuela en una experiencia única de aventura, fraternidad y crecimiento personal.
+              El Encuentro Nacional de Jóvenes reúne a scouts de todo Venezuela en una experience única de aventura, fraternidad y crecimiento personal.
             </p>
           </div>
 
@@ -509,7 +508,7 @@ export function Home() {
             </div>
           </div>
 
-          {/* ── SECCIÓN ORIGINAL: Bloques Temáticos Simplificados (CON LOS TEXTOS ACTUALIZADOS) ── */}
+          {/* Bloques Temáticos del Programa */}
           <div style={{ marginTop: 56 }}>
             <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 800, color: ENJ_NAVY }}>Bloques Temáticos del Programa</h3>
             <p style={{ margin: "0 0 24px", color: "rgba(0,11,111,0.55)", fontSize: 14, lineHeight: 1.5 }}>
