@@ -23,56 +23,16 @@ type Monitor = {
 };
 
 const monitors: Monitor[] = [
-  {
-    team: "Equipo Bolibomba",
-    name: "Eymer Cañizales",
-    photo: imagePhoto("bolibomba.svg"),
-  },
-  {
-    team: "Equipo Samba",
-    name: "Sabrina Noguera",
-    photo: imagePhoto("samba.svg"),
-  },
-  {
-    team: "Equipo Chao",
-    name: "Miguel Ciavato",
-    photo: imagePhoto("chao.svg"),
-  },
-  {
-    team: "Equipo Pirulín",
-    name: "Julio Gómez",
-    photo: imagePhoto("pirulin.svg"),
-  },
-  {
-    team: "Equipo Cricrí",
-    name: "Alejandro Jiménez",
-    photo: imagePhoto("cricri.svg"),
-  },
-  {
-    team: "Equipo Savoy",
-    name: "Hungría Molina",
-    photo: imagePhoto("savoy.svg"),
-  },
-  {
-    team: "Equipo Reinita",
-    name: "Laurys Rivero",
-    photo: imagePhoto("reinita.svg"),
-  },
-  {
-    team: "Equipo Cocosete",
-    name: "Andrés Figuera",
-    photo: imagePhoto("cocosete.svg"),
-  },
-  {
-    team: "Equipo Tiptop",
-    name: "Juan Molina",
-    photo: imagePhoto("tiptop.svg"),
-  },
-  {
-    team: "Equipo Toronto",
-    name: "Stefani Bueno",
-    photo: imagePhoto("toronto.svg"),
-  },
+  { team: "Equipo Bolibomba", name: "Eymer Cañizales", photo: imagePhoto("bolibomba.svg") },
+  { team: "Equipo Samba", name: "Sabrina Noguera", photo: imagePhoto("samba.svg") },
+  { team: "Equipo Chao", name: "Miguel Ciavato", photo: imagePhoto("chao.svg") },
+  { team: "Equipo Pirulín", name: "Julio Gómez", photo: imagePhoto("pirulin.svg") },
+  { team: "Equipo Cricrí", name: "Alejandro Jiménez", photo: imagePhoto("cricri.svg") },
+  { team: "Equipo Savoy", name: "Hungría Molina", photo: imagePhoto("savoy.svg") },
+  { team: "Equipo Reinita", name: "Laurys Rivero", photo: imagePhoto("reinita.svg") },
+  { team: "Equipo Cocosete", name: "Andrés Figuera", photo: imagePhoto("cocosete.svg") },
+  { team: "Equipo Tiptop", name: "Juan Molina", photo: imagePhoto("tiptop.svg") },
+  { team: "Equipo Toronto", name: "Stefani Bueno", photo: imagePhoto("toronto.svg") },
 ];
 
 type Coordinator = {
@@ -83,36 +43,11 @@ type Coordinator = {
 };
 
 const coordinators: Coordinator[] = [
-  {
-    area: "Aldea Global",
-    title: "Coordinador de Aldea Global",
-    name: "Sebastián Conde",
-    theme: "Desafío Generación Z",
-  },
-  {
-    area: "Ciudadanía Activa",
-    title: "Coordinador de Ciudadanía Activa",
-    name: "Emilys Barrios",
-    theme: "La Red en Vivo",
-  },
-  {
-    area: "Ruta Viva",
-    title: "Coordinador de Ruta Viva",
-    name: "César Quintero",
-    theme: "Turisteando por Guárico",
-  },
-  {
-    area: "Bienestar y Autocuidado",
-    title: "Coordinador de Bienestar y Autocuidado",
-    name: "Andrés Marín",
-    theme: "Vitamina",
-  },
-  {
-    area: "Espacios de Encuentro",
-    title: "Coordinador de Espacios de Encuentro",
-    name: "Irene Monsalve",
-    theme: "La Churuata del Encuentro",
-  },
+  { area: "Aldea Global", title: "Coordinador de Aldea Global", name: "Sebastián Conde", theme: "Desafío Generación Z" },
+  { area: "Ciudadanía Activa", title: "Coordinador de Ciudadanía Activa", name: "Emilys Barrios", theme: "La Red en Vivo" },
+  { area: "Ruta Viva", title: "Coordinador de Ruta Viva", name: "César Quintero", theme: "Turisteando por Guárico" },
+  { area: "Bienestar y Autocuidado", title: "Coordinador de Bienestar y Autocuidado", name: "Andrés Marín", theme: "Vitamina" },
+  { area: "Espacios de Encuentro", title: "Coordinador de Espacios de Encuentro", name: "Irene Monsalve", theme: "La Churuata del Encuentro" },
 ];
 
 const orgChart = {
@@ -123,59 +58,24 @@ const orgChart = {
   },
   branches: [
     {
-      manager: {
-        name: "Michelle Lozada",
-        role: "Coordinadora de Programa de Jóvenes",
-        photo: staffPhoto("michelle-lozada.jpg"),
-      },
-      assistant: {
-        name: "Valentina Tenías",
-        role: "Staff Juvenil",
-      },
+      manager: { name: "Michelle Lozada", role: "Coordinadora de Programa de Jóvenes", photo: staffPhoto("michelle-lozada.jpg") },
+      assistant: { name: "Valentina Tenías", role: "Staff Juvenil" },
     },
     {
-      manager: {
-        name: "Mariana Alvarado",
-        role: "Coordinadora de Gestión de Riesgo",
-        photo: staffPhoto("mariana-alvarado.jpg"),
-      },
-      assistant: {
-        name: "Giuseelly Rodríguez",
-        role: "Staff Juvenil",
-      },
+      manager: { name: "Mariana Alvarado", role: "Coordinadora de Gestión de Riesgo", photo: staffPhoto("mariana-alvarado.jpg") },
+      assistant: { name: "Giuseelly Rodríguez", role: "Staff Juvenil" },
     },
     {
-      manager: {
-        name: "Anna Colmenares",
-        role: "Coordinadora de Administración",
-        photo: staffPhoto("anna-colmenares.jpg"),
-      },
-      assistant: {
-        name: "Freddy Pineda",
-        role: "Staff Juvenil",
-      },
+      manager: { name: "Anna Colmenares", role: "Coordinadora de Administración", photo: staffPhoto("anna-colmenares.jpg") },
+      assistant: { name: "Freddy Pineda", role: "Staff Juvenil" },
     },
     {
-      manager: {
-        name: "Isabel Bazán",
-        role: "Coordinadora de Comunicaciones",
-        photo: staffPhoto("isabel-bazan.jpg"),
-      },
-      assistant: {
-        name: "Victoria Sánchez",
-        role: "Staff Juvenil",
-      },
+      manager: { name: "Isabel Bazán", role: "Coordinadora de Comunicaciones", photo: staffPhoto("isabel-bazan.jpg") },
+      assistant: { name: "Victoria Sánchez", role: "Staff Juvenil" },
     },
     {
-      manager: {
-        name: "Sandra Peraza",
-        role: "Coordinadora de Adultes en el Movimiento",
-        photo: staffPhoto("sandra-peraza.jpg"),
-      },
-      assistant: {
-        name: "Apoyo Operativo en Campo",
-        role: "Equipo de Campo",
-      },
+      manager: { name: "Sandra Peraza", role: "Coordinadora de Adultes en el Movimiento", photo: staffPhoto("sandra-peraza.jpg") },
+      assistant: { name: "Apoyo Operativo en Campo", role: "Equipo de Campo" },
     },
   ],
 };
@@ -184,7 +84,7 @@ export function Conocenos() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ background: "#F0F2FA", padding: "48px 24px 80px" }}>
+    <div style={{ background: "#F0F2FA", padding: "24px 16px 60px" }}>
       <div style={{ maxWidth: 2048, margin: "0 auto" }}>
         <button
           onClick={() => navigate("/")}
@@ -199,35 +99,38 @@ export function Conocenos() {
             fontSize: 14,
             fontWeight: 600,
             padding: 0,
-            marginBottom: 28,
+            marginBottom: 20,
           }}
         >
           ← Volver al inicio
         </button>
 
-        <div style={{ background: "#fff", borderRadius: 24, padding: "clamp(28px, 4vw, 48px)", boxShadow: "0 24px 60px rgba(0,11,111,0.08)" }}>
+        <div style={{ background: "#fff", borderRadius: 24, padding: "clamp(16px, 4vw, 48px)", boxShadow: "0 24px 60px rgba(0,11,111,0.08)", overflow: "hidden" }}>
           <div style={{ display: "grid", gap: 24 }}>
             <div>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: ENJ_MAGENTA }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: ENJ_MAGENTA }}>
                 Conócenos · Staff Central
               </p>
-              <h1 style={{ margin: "16px 0 18px", fontSize: "clamp(34px, 4vw, 50px)", fontWeight: 900, color: ENJ_NAVY, letterSpacing: "-0.03em" }}>
+              <h1 style={{ margin: "12px 0 16px", fontSize: "clamp(26px, 4vw, 50px)", fontWeight: 900, color: ENJ_NAVY, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
                 El equipo que hace posible el Encuentro Nacional de Jóvenes.
               </h1>
-              <p style={{ margin: 0, fontSize: 17, lineHeight: 1.85, color: "rgba(0,11,111,0.75)" }}>
+              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "rgba(0,11,111,0.75)" }}>
                 Conoce al staff central y descubre cómo se organiza el trabajo tras bambalinas para ofrecer una experiencia segura, divertida y transformadora.
               </p>
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <h2 style={{ margin: "0 0 14px", fontSize: 22, fontWeight: 800, color: ENJ_NAVY }}>Organigrama del equipo</h2>
-              <p style={{ margin: "0 0 18px", fontSize: 15, color: "rgba(0,11,111,0.68)", lineHeight: 1.75 }}>
-                Un organigrama en cascada que muestra la jerarquía del staff central y las áreas que dependen del asesor nacional.
+              <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: ENJ_NAVY }}>Organigrama del equipo</h2>
+              <p style={{ margin: "0 0 18px", fontSize: 14, color: "rgba(0,11,111,0.68)", lineHeight: 1.6 }}>
+                Un organigrama interactivo que muestra la estructura del staff central y las áreas que dependen del asesor nacional.
               </p>
 
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 30, padding: "20px 0" }}>
-                <div style={{ width: 240, borderRadius: 28, background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.12)", padding: "24px", display: "grid", gap: 16, textAlign: "center" }}>
-                  <div style={{ width: 160, height: 160, margin: "0 auto", borderRadius: 32, overflow: "hidden", background: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {/* 🟢 CONTENEDOR DEL ORGANIGRAMA RESPONSIVO */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "10px 0", width: "100%" }}>
+                
+                {/* Tarjeta del Asesor Nacional */}
+                <div style={{ width: "100%", maxWidth: 260, borderRadius: 28, background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.12)", padding: "24px", display: "grid", gap: 16, textAlign: "center", boxSizing: "border-box" }}>
+                  <div style={{ width: 140, height: 140, margin: "0 auto", borderRadius: 32, overflow: "hidden", background: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {orgChart.leader.photo ? (
                       <img
                         src={orgChart.leader.photo}
@@ -239,32 +142,42 @@ export function Conocenos() {
                           img.setAttribute("data-original-src", original);
                           if (original.match(/\.(jpg|png|webp)$/i)) {
                             const svgPath = original.replace(/\.[^/.]+$/, ".svg");
-                            if (img.src !== svgPath) {
-                              img.src = svgPath;
-                              return;
-                            }
+                            if (img.src !== svgPath) { img.src = svgPath; return; }
                           }
                           const svgFallback = original.replace(/\.(jpg|png|webp)$/i, ".svg");
-                          if (img.src !== svgFallback) {
-                            img.src = svgFallback;
-                          }
+                          if (img.src !== svgFallback) img.src = svgFallback;
                         }}
                       />
                     ) : (
-                      <span style={{ fontSize: 40, fontWeight: 900, color: ENJ_NAVY }}>{initialsFor(orgChart.leader.name)}</span>
+                      <span style={{ fontSize: 36, fontWeight: 900, color: ENJ_NAVY }}>{initialsFor(orgChart.leader.name)}</span>
                     )}
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: ENJ_MAGENTA, textTransform: "uppercase", letterSpacing: "0.15em" }}>
-                    {orgChart.leader.role}
-                  </p>
-                  <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: ENJ_NAVY }}>{orgChart.leader.name}</h3>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: ENJ_MAGENTA, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+                      {orgChart.leader.role}
+                    </p>
+                    <h3 style={{ margin: "6px 0 0", fontSize: 19, fontWeight: 900, color: ENJ_NAVY }}>{orgChart.leader.name}</h3>
+                  </div>
                 </div>
-                <div style={{ width: "80%", maxWidth: 760, height: 2, background: "rgba(0,11,111,0.12)" }} />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, width: "100%" }}>
+
+                {/* Línea divisoria */}
+                <div style={{ width: "60%", maxWidth: 760, height: 2, background: "rgba(0,11,111,0.12)" }} />
+
+                {/* 🛠️ CAMBIO CLAVE: Contenedor de ramas en Flexbox responsivo */}
+                <div style={{ 
+                  display: "flex", 
+                  flexDirection: "row", 
+                  flexWrap: "wrap", 
+                  justifyContent: "center", 
+                  gap: 24, 
+                  width: "100%" 
+                }}>
                   {orgChart.branches.map((branch) => (
-                    <div key={branch.manager.name} style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
-                      <div style={{ width: "100%", maxWidth: 260, borderRadius: 22, background: "#fff", border: "1px solid rgba(0,11,111,0.12)", padding: 18, boxShadow: "0 14px 30px rgba(0,11,111,0.06)" }}>
-                        <div style={{ width: "100%", minHeight: 240, overflow: "hidden", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 22, marginBottom: 16 }}>
+                    <div key={branch.manager.name} style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", width: "100%", maxWidth: 260, boxSizing: "border-box" }}>
+                      
+                      {/* Tarjeta de Coordinador */}
+                      <div style={{ width: "100%", borderRadius: 22, background: "#fff", border: "1px solid rgba(0,11,111,0.12)", padding: 16, boxShadow: "0 14px 30px rgba(0,11,111,0.06)", boxSizing: "border-box" }}>
+                        <div style={{ width: "100%", aspectRatio: "1 / 1", maxHeight: 220, overflow: "hidden", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 18, marginBottom: 14 }}>
                           {branch.manager.photo ? (
                             <img
                               src={branch.manager.photo}
@@ -276,73 +189,77 @@ export function Conocenos() {
                                 img.setAttribute("data-original-src", original);
                                 if (original.match(/\.(jpg|png|webp)$/i)) {
                                   const svgPath = original.replace(/\.[^/.]+$/, ".svg");
-                                  if (img.src !== svgPath) {
-                                    img.src = svgPath;
-                                    return;
-                                  }
+                                  if (img.src !== svgPath) { img.src = svgPath; return; }
                                 }
                                 const svgFallback = original.replace(/\.(jpg|png|webp)$/i, ".svg");
                                 if (img.src !== svgFallback) img.src = svgFallback;
                               }}
                             />
                           ) : (
-                            <span style={{ fontSize: 40, fontWeight: 900, color: ENJ_NAVY }}>{initialsFor(branch.manager.name)}</span>
+                            <span style={{ fontSize: 36, fontWeight: 900, color: ENJ_NAVY }}>{initialsFor(branch.manager.name)}</span>
                           )}
                         </div>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: ENJ_MAGENTA }}>{branch.manager.role}</p>
-                        <h4 style={{ margin: "10px 0 0", fontSize: 18, fontWeight: 900, color: ENJ_NAVY }}>{branch.manager.name}</h4>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: ENJ_MAGENTA, lineHeight: 1.3 }}>{branch.manager.role}</p>
+                        <h4 style={{ margin: "8px 0 0", fontSize: 17, fontWeight: 900, color: ENJ_NAVY }}>{branch.manager.name}</h4>
                       </div>
-                      <div style={{ width: "100%", maxWidth: 220, borderRadius: 20, background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", padding: 16, textAlign: "center" }}>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.72)", textTransform: "uppercase", letterSpacing: "0.12em" }}>{branch.assistant.role}</p>
-                        <p style={{ margin: "10px 0 0", fontSize: 15, fontWeight: 700, color: ENJ_NAVY }}>{branch.assistant.name}</p>
+
+                      {/* Tarjeta de Staff Juvenil */}
+                      <div style={{ width: "100%", borderRadius: 16, background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", padding: 12, textAlign: "center", boxSizing: "border-box" }}>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "rgba(0,11,111,0.72)", textTransform: "uppercase", letterSpacing: "0.12em" }}>{branch.assistant.role}</p>
+                        <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 700, color: ENJ_NAVY }}>{branch.assistant.name}</p>
                       </div>
+
                     </div>
                   ))}
                 </div>
+
               </div>
             </div>
 
-            <div style={{ marginTop: 28 }}>
-              <h2 style={{ margin: "0 0 14px", fontSize: 22, fontWeight: 800, color: ENJ_NAVY }}>Coordinadores de área</h2>
-              <p style={{ margin: "0 0 18px", fontSize: 15, color: "rgba(0,11,111,0.68)", lineHeight: 1.75 }}>
+            {/* Sección: Coordinadores de Área */}
+            <div style={{ marginTop: 20 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: ENJ_NAVY }}>Coordinadores de área</h2>
+              <p style={{ margin: "0 0 18px", fontSize: 14, color: "rgba(0,11,111,0.68)", lineHeight: 1.6 }}>
                 Cada área cuenta con un coordinador y un tema principal que guía su trabajo durante el encuentro.
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18, marginTop: 12 }}>
+              <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 18 }}>
                 {coordinators.map((coordinator) => (
-                  <div key={coordinator.area} style={{ background: "#F8FAFF", borderRadius: 28, border: "1px solid rgba(0,11,111,0.08)", padding: 22, minHeight: 300, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div key={coordinator.area} style={{ background: "#F8FAFF", borderRadius: 24, border: "1px solid rgba(0,11,111,0.08)", padding: 20, width: "100%", maxWidth: 260, minHeight: 280, display: "flex", flexDirection: "column", justifyContent: "space-between", boxSizing: "border-box" }}>
                     <div>
-                      <div style={{ width: "100%", height: 220, borderRadius: 24, overflow: "hidden", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", color: ENJ_NAVY, fontSize: 58, fontWeight: 900, marginBottom: 18 }}>
+                      <div style={{ width: "100%", aspectRatio: "1.2 / 1", borderRadius: 18, background: "#EBF1FF", display: "flex", alignItems: "center", justifyContent: "center", color: ENJ_NAVY, fontSize: 46, fontWeight: 900, marginBottom: 14 }}>
                         {initialsFor(coordinator.name)}
                       </div>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: ENJ_MAGENTA, textTransform: "uppercase", letterSpacing: "0.12em" }}>{coordinator.title}</p>
-                      <h4 style={{ margin: "8px 0 0", fontSize: 20, fontWeight: 900, color: ENJ_NAVY }}>{coordinator.name}</h4>
+                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: ENJ_MAGENTA, textTransform: "uppercase", letterSpacing: "0.12em", lineHeight: 1.3 }}>{coordinator.title}</p>
+                      <h4 style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 900, color: ENJ_NAVY }}>{coordinator.name}</h4>
                     </div>
-                    <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(0,11,111,0.72)" }}>{coordinator.theme}</p>
+                    <p style={{ margin: "12px 0 0", fontSize: 13, lineHeight: 1.5, color: "rgba(0,11,111,0.72)", fontStyle: "italic" }}>{coordinator.theme}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ marginTop: 28 }}>
-              <h2 style={{ margin: "0 0 14px", fontSize: 22, fontWeight: 800, color: ENJ_NAVY }}>Monitores de equipos</h2>
-              <p style={{ margin: "0 0 18px", fontSize: 15, color: "rgba(0,11,111,0.68)", lineHeight: 1.75 }}>
+            {/* Sección: Monitores */}
+            <div style={{ marginTop: 20 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: ENJ_NAVY }}>Monitores de equipos</h2>
+              <p style={{ margin: "0 0 14px", fontSize: 14, color: "rgba(0,11,111,0.68)", lineHeight: 1.6 }}>
                 Los monitores de cada equipo estarán presentes en el evento para apoyar la operación y coordinar con el staff.
               </p>
-
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 12, width: "100%", overflow: "hidden" }}>
                 <MonitorsCarousel monitors={monitors} inline={true} />
               </div>
             </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
+            {/* Botones inferiores */}
+            <div style={{ display: "flex", gap: 12, marginTop: 10, width: "100%" }}>
               <button
                 onClick={() => navigate("/inscripcion")}
                 style={{
+                  flex: 1,
                   background: ENJ_MAGENTA,
                   color: "#fff",
                   border: "none",
                   borderRadius: 14,
-                  padding: "14px 22px",
+                  padding: "14px",
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: "pointer",
@@ -353,11 +270,12 @@ export function Conocenos() {
               <button
                 onClick={() => navigate("/")}
                 style={{
+                  flex: 1,
                   background: "transparent",
                   color: ENJ_NAVY,
                   border: `1.5px solid ${ENJ_NAVY}`,
                   borderRadius: 14,
-                  padding: "14px 22px",
+                  padding: "14px",
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: "pointer",

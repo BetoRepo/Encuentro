@@ -438,7 +438,7 @@ export function Inscripcion() {
             </div>
             
             <SelectField 
-              label="Rama Scout" 
+              label="Unidad Scout" 
               options={ramas} 
               value={ramaScout}
               onChange={setRamaScout}
@@ -458,7 +458,7 @@ export function Inscripcion() {
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <SelectField 
-                    label="Rama Actual" 
+                    label="Unidad Actual" 
                     options={ramas} 
                     value={ramaActual}
                     onChange={setRamaActual}
