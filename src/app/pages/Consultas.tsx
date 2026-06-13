@@ -16,14 +16,14 @@ const areasPrograma = [
   },
   {
     id: "comunidad",
-    title: "Congresos de Comunidad",
+    title: "Congresos de Comunidad Caminantes",
     desc: "Resultados, propuestas y relatorías de las asambleas y congresos de la sección Caminantes.",
     icon: <Users size={22} color={ENJ_NAVY} />,
     color: "#BB6BD9", // Morado comunidad
   },
   {
     id: "clan",
-    title: "Congresos de Clan",
+    title: "Congresos de Comunidad Rover",
     desc: "Documentos, acuerdos de gestión y actas de los Congresos Nacionales o Regionales de Rovers.",
     icon: <FileText size={22} color={ENJ_NAVY} />,
     color: ENJ_MAGENTA, // Magenta institucional
@@ -78,10 +78,10 @@ export function Consultas() {
             </span>
           </div>
           <h1 style={{ margin: "0 0 10px", fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 900, color: ENJ_NAVY, letterSpacing: "-0.02em" }}>
-            Consultas y documentación
+            Reporte de consultas juveniles
           </h1>
           <p style={{ margin: "0 auto", color: "rgba(0,11,111,0.55)", fontSize: 16, maxWidth: 580, lineHeight: 1.7 }}>
-            Envía tus dudas y carga información relevante desde este panel. Nuestro equipo te responderá con los detalles necesarios para tu inscripción y participación.
+            ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
           </p>
         </div>
 

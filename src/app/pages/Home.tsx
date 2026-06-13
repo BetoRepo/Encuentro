@@ -2,25 +2,58 @@ import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import { MapPin, Calendar, Users, Tent, Flame, Star, ChevronRight, Clock } from "lucide-react";
 
+// 1. IMPORTACIÓN DE IMÁGENES
+import logoEnj from "../assets/logo-enj.svg";       
+import logoScout from "../assets/logo-scout.png";   
+
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#50039D";
 
-function ScoutsLogo({ size = 44 }: { size?: number }) {
+interface EventItem {
+  time: string;
+  title: string;
+}
+
+interface AgendaDay {
+  day: string;
+  date: string;
+  color: string;
+  events: EventItem[];
+}
+
+interface BloquePrograma {
+  title: string;
+  tagline: string;
+  desc: string;
+}
+
+export function ScoutsLogo({ size = 44 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="22" fill={ENJ_YELLOW} />
-      <path d="M22 8C22 8 14 15 14 22C14 26.4 17.6 30 22 30C26.4 30 30 26.4 30 22C30 15 22 8 22 8Z" fill={ENJ_NAVY} />
-      <circle cx="22" cy="22" r="4" fill={ENJ_YELLOW} />
-      <path d="M22 30V36" stroke={ENJ_NAVY} strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M18 34H26" stroke={ENJ_NAVY} strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M14 22H10" stroke={ENJ_NAVY} strokeWidth="2" strokeLinecap="round" />
-      <path d="M34 22H30" stroke={ENJ_NAVY} strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <img 
+      src={logoScout} 
+      alt="Logo Scouts" 
+      style={{ width: size, height: size, objectFit: "contain" }} 
+    />
   );
 }
 
-const agenda = [
+export function EnjNavbarLogo({ height = 40 }: { height?: number }) {
+  return (
+    <img 
+      src={logoEnj} 
+      alt="ENJ 2026" 
+      style={{ 
+        height: height, 
+        width: "auto", 
+        objectFit: "contain",
+        filter: "drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.15))"
+      }} 
+    />
+  );
+}
+
+const agenda: AgendaDay[] = [
   {
     day: "Martes 01",
     date: "01 Sep",
@@ -117,6 +150,35 @@ const highlights = [
   { icon: <Star size={22} color={ENJ_NAVY} />, title: "Talleres y Retos", desc: "Actividades de liderazgo, orientación y trabajo en equipo" },
 ];
 
+// 📝 TEXTOS EXACTOS DE LA CAPTURA DE WHATSAPP (IMAGE_19AFDE.PNG)
+const bloquesPrograma: BloquePrograma[] = [
+  { 
+    title: "Desafío Generación Z", 
+    tagline: "Aldea Global",
+    desc: "El mercado laboral evoluciona rápidamente y queremos que estés preparado para liderarlo. En este espacio te conectamos de forma directa con empresas líderes y ferias de empleo estratégicas. A través de nuestros talleres prácticos, desarrollarás las hard skills (habilidades técnicas) más demandadas hoy en día, asegurando que tu transición al mundo profesional sea un éxito rotundo." 
+  },
+  { 
+    title: "La Red en Vivo", 
+    tagline: "Ciudadanía Activa",
+    desc: "Tu voz y tus ideas tienen el poder de transformar el Movimiento Scout. Desde la Red de Jóvenes (RDJ) se impulsan espacios formales de participación ciudadana donde podrás formar parte de procesos electorales, liderar mesas de trabajo y debatir propuestas para la elaboración del manifiesto de San Juan de los Morros. El lugar ideal para construir redes de contacto (networking) y ejercer un liderazgo." 
+  },
+  { 
+    title: "Puebleando por Guárico", 
+    tagline: "Ruta Viva",
+    desc: "Descubre el potencial del Estado Guárico a través de una experiencia de campo única. Coordinamos una ruta turística integral, diseñada bajo un modelo de aprendizaje vivencial y de servicio comunitario. Nos encargamos de toda la planificación y logística de traslado para que vivas una aventura segura, conectes con la identidad local y sumes experiencias valiosas a tu crecimiento personal." 
+  },
+  { 
+    title: "Vitamina", 
+    tagline: "Bienestar y Autocuidado",
+    desc: "El éxito profesional y académico comienza con tu bienestar personal. Vitamina es un espacio formativo guiado por expertos de la salud para abordar de manera objetiva temas fundamentales en tu etapa de vida: nutrición balanceada, gestión de la salud mental y derechos sexuales y reproductivos. Te brindamos herramientas científicas y prácticas para tomar decisiones informadas y responsables." 
+  },
+  { 
+    title: "La Churuata del Encuentro", 
+    tagline: "Espacios de Encuentro",
+    desc: "Todo ecosistema de alto rendimiento necesita un espacio para la desconexión y el balance. En La Churuata diseñamos dinámicas de integración, actividades recreativas de tiempo libre y el uso óptimo de instalaciones pensadas para el esparcimiento saludable. Un punto de encuentro ideal para despejar la mente, compartir ideas y fortalecer los lazos de comunidad en un ambiente distendido." 
+  },
+];
+
 export function Home() {
   const navigate = useNavigate();
   const virtualDays = ["Martes 01", "Jueves 03", "Lunes 07", "Miércoles 09"];
@@ -135,49 +197,38 @@ export function Home() {
           padding: "72px 24px 96px",
         }}
       >
-        {/* decorative blobs */}
         <div style={{ position: "absolute", top: -100, right: -100, width: 400, height: 400, borderRadius: "50%", background: "rgba(247,191,22,0.06)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: -80, left: -80, width: 300, height: 300, borderRadius: "50%", background: "rgba(215,0,126,0.08)", pointerEvents: "none" }} />
 
         <div style={{ maxWidth: 820, margin: "0 auto", position: "relative", zIndex: 1, textAlign: "center" }}>
-          {/* logo */}
-          {/* (logos removed) */}
-
-          {/* org label */}
           <p style={{ margin: "0 0 16px", fontSize: 12, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase", letterSpacing: "0.18em" }}>
             Scouts de Venezuela · Movimiento Scout Mundial
           </p>
 
-          {/* badge */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
             <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 18px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.12em" }}>
               Inscripciones Abiertas · 2026
             </span>
           </div>
 
-          {/* title */}
-          <h1
-            style={{
-              margin: "0 0 14px",
-              color: "#FFFFFF",
-              fontSize: "clamp(38px, 7vw, 72px)",
-              fontWeight: 900,
-              lineHeight: 1.05,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            Encuentro Nacional
-            <br />
-            <span style={{ color: ENJ_YELLOW }}>de Jóvenes</span>
-          </h1>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+            <img 
+              src={logoEnj} 
+              alt="Encuentro Nacional de Jóvenes Logo" 
+              style={{
+                width: "100%",
+                maxWidth: "460px",
+                height: "auto",
+                objectFit: "contain",
+                filter: "drop-shadow(0px 8px 24px rgba(0, 0, 0, 0.25))" 
+              }}
+            />
+          </div>
 
           <p style={{ margin: "0 auto 28px", color: "rgba(255,255,255,0.82)", fontSize: 17, maxWidth: 520, lineHeight: 1.65 }}>
             El evento más importante del escultismo venezolano. Tres días de aventura, liderazgo y hermandad scout.
           </p>
 
-          {/* hero uses HERO_IMAGE as background (editable via constants above) */}
-
-          {/* meta pills */}
           <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", marginBottom: 52 }}>
             {[
               { icon: <Calendar size={14} color="#fff" />, text: `${agenda[0].date} - ${agenda[agenda.length - 1].date}` },
@@ -206,7 +257,6 @@ export function Home() {
             ))}
           </div>
 
-          {/* COUNTDOWN */}
           <div style={{ marginBottom: 48 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255, 255, 255, 0.75)", textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 20 }}>
               Cuenta regresiva al evento
@@ -214,7 +264,6 @@ export function Home() {
             <Countdown />
           </div>
 
-          {/* CTA */}
           <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
             <button
               onClick={() => navigate("/inscripcion")}
@@ -406,46 +455,17 @@ export function Home() {
             </p>
           </div>
 
-          {/* Virtual activities */}
+          {/* Actividades Virtuales */}
           {virtualAgenda.length > 0 && (
             <div style={{ marginBottom: 28 }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: ENJ_NAVY }}>Programa de Actividades Virtuales</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 12 }}>
                 {virtualAgenda.map(({ day, date, color, events }) => (
-                  <div
-                    key={day}
-                    style={{
-                      background: "#fff",
-                      borderRadius: 16,
-                      overflow: "hidden",
-                      boxShadow: "0 2px 16px rgba(0,11,111,0.07)",
-                      border: "1px solid rgba(0,11,111,0.06)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        background: color,
-                        padding: "18px 22px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
+                  <div key={day} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 16px rgba(0,11,111,0.07)", border: "1px solid rgba(0,11,111,0.06)" }}>
+                    <div style={{ background: color, padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{day}</h3>
-                      <span
-                        style={{
-                          background: "rgba(255,255,255,0.2)",
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: "4px 10px",
-                          borderRadius: 100,
-                        }}
-                      >
-                        {date}
-                      </span>
+                      <span style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 100 }}>{date}</span>
                     </div>
-
                     <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
                       {events.map(({ time, title }) => (
                         <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -463,45 +483,16 @@ export function Home() {
             </div>
           )}
 
-          {/* Presencial / Programa general */}
+          {/* Actividades Presenciales */}
           <div style={{ marginTop: 8 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: ENJ_NAVY }}>Programa General (Presencial)</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 20 }}>
               {presencialAgenda.map(({ day, date, color, events }) => (
-                <div
-                  key={day}
-                  style={{
-                    background: "#fff",
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    boxShadow: "0 2px 16px rgba(0,11,111,0.07)",
-                    border: "1px solid rgba(0,11,111,0.06)",
-                  }}
-                >
-                  <div
-                    style={{
-                      background: color,
-                      padding: "18px 22px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
+                <div key={day} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 16px rgba(0,11,111,0.07)", border: "1px solid rgba(0,11,111,0.06)" }}>
+                  <div style={{ background: color, padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{day}</h3>
-                    <span
-                      style={{
-                        background: "rgba(255,255,255,0.2)",
-                        color: "#fff",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        padding: "4px 10px",
-                        borderRadius: 100,
-                      }}
-                    >
-                      {date}
-                    </span>
+                    <span style={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 100 }}>{date}</span>
                   </div>
-
                   <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
                     {events.map(({ time, title }) => (
                       <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -517,6 +508,49 @@ export function Home() {
               ))}
             </div>
           </div>
+
+          {/* ── SECCIÓN ORIGINAL: Bloques Temáticos Simplificados (CON LOS TEXTOS ACTUALIZADOS) ── */}
+          <div style={{ marginTop: 56 }}>
+            <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 800, color: ENJ_NAVY }}>Bloques Temáticos del Programa</h3>
+            <p style={{ margin: "0 0 24px", color: "rgba(0,11,111,0.55)", fontSize: 14, lineHeight: 1.5 }}>
+              Conoce las grandes áreas programáticas diseñadas para el desarrollo integral de los participantes en este encuentro.
+            </p>
+            
+            <div 
+              style={{ 
+                display: "grid", 
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
+                gap: 16 
+              }}
+            >
+              {bloquesPrograma.map(({ title, tagline, desc }) => (
+                <div
+                  key={title}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    padding: "24px",
+                    boxShadow: "0 2px 12px rgba(0,11,111,0.04)",
+                    border: "1px solid rgba(0,11,111,0.08)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "flex-start"
+                  }}
+                >
+                  <span style={{ color: ENJ_MAGENTA, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                    {tagline}
+                  </span>
+                  <h4 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 800, color: ENJ_NAVY, lineHeight: 1.3 }}>
+                    {title}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.6)", lineHeight: 1.6 }}>
+                    {desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </section>
 
