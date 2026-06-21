@@ -14,7 +14,7 @@ const ENJ_MAGENTA = "#D7007E";
 // ✅ URL DE PRODUCCIÓN Y LLAVE DE ACCESO
 const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
 // 👇 PEGA AQUÍ TU "anon key" DE SUPABASE PARA QUE NO TE DE ERROR EL SERVIDOR 👇
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "Pega_Aqui_Tu_Anon_Key"; 
 
 type ScoutDistrict = { district: string };
 type ScoutRegion = { region: string; districts: ScoutDistrict[] };
@@ -125,12 +125,12 @@ export function Inscripcion() {
   const [cargoAdulto, setCargoAdulto] = useState("");
   const [areaAdulto, setAreaAdulto] = useState("");
 
-  // 5. PAGO INICIAL (Y COMPARTIDOS PARA CUOTAS ADICIONALES)
+  // 5. PAGO INICIAL
   const [fechaPago, setFechaPago] = useState("");
   const [referenciaPago, setReferenciaPago] = useState("");
   const [montoBs, setMontoBs] = useState("");
   const [tasa, setTasa] = useState("");
-  const [numCuota, setNumCuota] = useState("Segunda Cuota"); // Por defecto para la vista de cuotas
+  const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
   // ARCHIVOS
   const [fotoParticipante, setFotoParticipante] = useState<File | null>(null);
@@ -140,12 +140,10 @@ export function Inscripcion() {
 
   // CONTROL INTERNO
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [dbParticipantId, setDbParticipantId] = useState<string | null>(null);
   const [userDriveFolderId, setUserDriveFolderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Aquí validas al usuario logueado en Supabase
     setCurrentUserId("ID_USUARIO_LOGUEADO_TEMPORAL");
   }, [navigate]);
 
@@ -169,7 +167,7 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      // A. Crear Carpeta en Drive con Headers Correctos
+      // A. Crear Carpeta en Drive assegurando método POST explícito
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -177,26 +175,31 @@ export function Inscripcion() {
 
       const driveResponse = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }, // SOLUCIÓN AL ERROR DE PERMISOS
+        headers: { 
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+        },
         body: folderForm,
       });
       
       const driveData = await driveResponse.json();
-      if (!driveData.folderId) throw new Error("No se pudo estructurar el directorio digital en Drive.");
+      if (!driveData || !driveData.folderId) throw new Error("No se pudo estructurar el directorio digital en Drive.");
 
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // B. Subir archivos asíncronamente
-      const uploadFile = (file: File, name: string) => {
+      // B. Subir archivos asíncronamente con POST explícito
+      const uploadFile = async (file: File, name: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
         fileForm.append("file", file);
         fileForm.append("custom_name", name);
+        
         return fetch(SUPABASE_FUNCTION_URL, { 
           method: "POST", 
-          headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+          headers: { 
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+          },
           body: fileForm 
         });
       };
@@ -205,11 +208,7 @@ export function Inscripcion() {
       if (screenshotMedica) await uploadFile(screenshotMedica, `Ficha_Medica_${cedula}`);
       await uploadFile(comprobantePago, `Comprobante_Inicial_${cedula}`);
 
-      // C. Guardar en Base de Datos de Supabase (Simulado)
-      // await supabase.from('participantes').insert([...])
-      // await supabase.from('pagos').insert([...])
-
-      setViewMode("exito"); // Si se inscribe y paga la inicial, ya completó esta fase.
+      setViewMode("exito");
     } catch (err: any) {
       alert(`Error en el servidor: ${err.message || err}`);
     } finally {
@@ -226,17 +225,19 @@ export function Inscripcion() {
     try {
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
-      fileForm.append("folder_id", userDriveFolderId); // Debe existir en BD previamente
+      fileForm.append("folder_id", userDriveFolderId); 
       fileForm.append("file", comprobantePago);
       fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
 
-      await fetch(SUPABASE_FUNCTION_URL, {
+      const res = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+        headers: { 
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+        },
         body: fileForm,
       });
 
-      // Insertar a tabla de pagos en BD...
+      if (!res.ok) throw new Error("Error en el canal de subida al servidor.");
 
       setViewMode("exito");
     } catch (err: any) {
@@ -271,7 +272,7 @@ export function Inscripcion() {
     <div style={{ background: "#F0F2FA", padding: "48px 24px 80px" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
 
-        <button onClick={() => viewMode === "cuotas" ? setViewMode("inscripcion") : navigate("/")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.6)", fontSize: 14, fontWeight: 600, padding: 0, marginBottom: 32 }}>
+        <button type="button" onClick={() => viewMode === "cuotas" ? setViewMode("inscripcion") : navigate("/")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.6)", fontSize: 14, fontWeight: 600, padding: 0, marginBottom: 32 }}>
           <ArrowLeft size={16} />
           {viewMode === "cuotas" ? "Regresar al formulario principal" : "Volver al inicio"}
         </button>
@@ -331,7 +332,6 @@ export function Inscripcion() {
                 {/* 3. FICHA MÉDICA BÁSICA */}
                 <SectionDivider title="Ficha Médica Básica" icon={<HeartPulse size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {/* ✅ AQUÍ ESTÁ EL TIPO DE SANGRE CORREGIDO ✅ */}
                   <SelectField label="Tipo de Sangre" options={tiposSangre} value={tipoSangre} onChange={setTipoSangre} />
                   <InputField label="Alergias Conocidas" placeholder="Ninguna, o especifique..." required={false} value={alergias} onChange={setAlergias} />
                   <InputField label="Enfermedades o Condiciones" placeholder="Asma, diabetes, etc..." required={false} value={enfermedades} onChange={setEnfermedades} />
