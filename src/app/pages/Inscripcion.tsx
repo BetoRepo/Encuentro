@@ -167,7 +167,7 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      // A. Crear Carpeta en Drive assegurando método POST explícito
+      // A. Crear Carpeta en Drive asegurando método POST explícito
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -181,8 +181,22 @@ export function Inscripcion() {
         body: folderForm,
       });
       
+      // ✅ Si la respuesta HTTP viene con error de backend, capturamos su descripción exacta textualmente
+      if (!driveResponse.ok) {
+        const errorText = await driveResponse.text();
+        throw new Error(`Respuesta del servidor (${driveResponse.status}): ${errorText}`);
+      }
+
       const driveData = await driveResponse.json();
-      if (!driveData || !driveData.folderId) throw new Error("No se pudo estructurar el directorio digital en Drive.");
+      
+      // ✅ Si vino un JSON pero reporta fallas internas de Google Drive, las mostramos directo en pantalla
+      if (driveData && driveData.error) {
+        throw new Error(`Error devuelto por la función de Drive: ${driveData.error}`);
+      }
+
+      if (!driveData || !driveData.folderId) {
+        throw new Error(`El servidor respondió correctamente pero no generó un ID de carpeta válido. Datos: ${JSON.stringify(driveData)}`);
+      }
 
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
@@ -195,13 +209,19 @@ export function Inscripcion() {
         fileForm.append("file", file);
         fileForm.append("custom_name", name);
         
-        return fetch(SUPABASE_FUNCTION_URL, { 
+        const res = await fetch(SUPABASE_FUNCTION_URL, { 
           method: "POST", 
           headers: { 
             "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
           },
           body: fileForm 
         });
+
+        if (!res.ok) {
+          const textErr = await res.text();
+          throw new Error(`Error subiendo el archivo "${name}": ${textErr}`);
+        }
+        return res;
       };
 
       if (fotoParticipante) await uploadFile(fotoParticipante, `Foto_Perfil_${cedula}`);
@@ -210,6 +230,7 @@ export function Inscripcion() {
 
       setViewMode("exito");
     } catch (err: any) {
+      // ✅ Imprime detalladamente el mensaje real en la alerta
       alert(`Error en el servidor: ${err.message || err}`);
     } finally {
       setLoading(false);
@@ -237,7 +258,10 @@ export function Inscripcion() {
         body: fileForm,
       });
 
-      if (!res.ok) throw new Error("Error en el canal de subida al servidor.");
+      if (!res.ok) {
+        const textErr = await res.text();
+        throw new Error(`Error en el canal de subida al servidor: ${textErr}`);
+      }
 
       setViewMode("exito");
     } catch (err: any) {
