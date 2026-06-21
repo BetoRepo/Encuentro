@@ -343,7 +343,6 @@ export function Inscripcion() {
 
             <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
               <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                
                 <SectionDivider title={`Datos Personales (${participantType === 'joven' ? 'Joven' : 'Adulto'})`} icon={<User size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Nombre(s)" placeholder="Ej. María" value={nombre} onChange={setNombre} />
@@ -354,7 +353,6 @@ export function Inscripcion() {
                   <InputField label="Fecha de Nacimiento" placeholder="dd/mm/aaaa" type="date" value={birthDate} onChange={(value: string) => { setBirthDate(value); setAge(calculateAge(value)); }} />
                 </div>
                 {age !== null && <p style={{ margin: "0", fontSize: 13, color: "rgba(0,11,111,0.65)", fontWeight: 600 }}>Edad calculada: {age} años</p>}
-                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Talla de Uniforme" placeholder="Ej. M, L, XL" value={tallaUniforme} onChange={setTallaUniforme} />
                   <InputField label="Dirección de Habitación" placeholder="Av / Calle / Zona" icon={<MapPin size={16} />} value={direccion} onChange={setDireccion} />
@@ -384,7 +382,6 @@ export function Inscripcion() {
                   <InputField label="Grupo Scout" placeholder="Ej. Mafeking 14" icon={<Building size={16} />} value={grupoScout} onChange={setGrupoScout} />
                   <SelectField label="Unidad Scout" options={ramas} value={ramaScout} onChange={setRamaScout} />
                 </div>
-                
                 {participantType === "joven" ? (
                   <InputField label="Adulto de Unidad" placeholder="Nombre del dirigente responsable" value={adultoUnidad} onChange={setAdultoUnidad} />
                 ) : (
@@ -396,7 +393,6 @@ export function Inscripcion() {
 
                 <SectionDivider title="Cuota Inicial (Inscripción)" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
                 <BankDetailsCard />
-                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                   <InputField label="Nro. Referencia (Últimos 6 dígitos)" placeholder="123456" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
@@ -460,7 +456,7 @@ export function Inscripcion() {
 
               <div>
                 <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante de Pago *</p>
-                <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=\".pdf,.jpg,.jpeg,.png\" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
+                <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=".pdf,.jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
                 {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name || "Archivo cargado"}</p>}
               </div>
 
