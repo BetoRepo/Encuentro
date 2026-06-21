@@ -1,8 +1,3 @@
-Aquí tienes el código completo, adecuado y completamente estructurado de Inscripcion.tsx.
-
-He corregido el error de diseño extrayendo la función uploadFile al cuerpo del componente para que esté al mismo nivel que los manejadores de los formularios (handleInscriptionSubmit y handleCuotasSubmit), y le he añadido los await críticos junto al reenvío correcto del binario con file.name para que no se pierdan los archivos en las peticiones concurrentes:
-
-TypeScript
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
