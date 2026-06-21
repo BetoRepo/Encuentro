@@ -4,16 +4,11 @@ import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
 
-// ⚠️ DESCOMENTA esta línea para importar tu cliente de Supabase real si lo usas:
-// import { supabase } from "../supabaseClient";
-
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
-// ✅ URL DE PRODUCCIÓN Y LLAVE DE ACCESO
 const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
-// 👇 PEGA AQUÍ TU "anon key" DE SUPABASE PARA QUE NO TE DE ERROR EL SERVIDOR 👇
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio";
 
 type ScoutDistrict = { district: string };
@@ -93,10 +88,10 @@ function BankDetailsCard() {
 export function Inscripcion() {
   const navigate = useNavigate();
 
-  const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito">("inscripcion");
+  const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "error_pantalla">("inscripcion");
+  const [errorMessageStr, setErrorMessageStr] = useState("");
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
 
-  // 1. DATOS PERSONALES
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [cedula, setCedula] = useState("");
@@ -105,18 +100,15 @@ export function Inscripcion() {
   const [tallaUniforme, setTallaUniforme] = useState("");
   const [direccion, setDireccion] = useState("");
 
-  // 2. CONTACTO
   const [correo, setCorreo] = useState("");
   const [telefono, setTelefono] = useState("");
 
-  // 3. FICHA MEDICA BASICA
   const [tipoSangre, setTipoSangre] = useState("");
   const [alergias, setAlergias] = useState("");
   const [enfermedades, setEnfermedades] = useState("");
   const [medicamentos, setMedicamentos] = useState("");
   const [contactoEmergencia, setContactoEmergencia] = useState("");
 
-  // 4. CREDENCIALES SCOUTS
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
@@ -125,20 +117,17 @@ export function Inscripcion() {
   const [cargoAdulto, setCargoAdulto] = useState("");
   const [areaAdulto, setAreaAdulto] = useState("");
 
-  // 5. PAGO INICIAL
   const [fechaPago, setFechaPago] = useState("");
   const [referenciaPago, setReferenciaPago] = useState("");
   const [montoBs, setMontoBs] = useState("");
   const [tasa, setTasa] = useState("");
   const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
-  // ARCHIVOS
-  const [fotoParticipante, setFotoParticipante] = useState<File | null>(null);
-  const [screenshotMedica, setScreenshotMedica] = useState<File | null>(null);
-  const [comprobantePago, setComprobantePago] = useState<File | null>(null);
+  const [fotoParticipante, setFotoParticipante] = useState<any>(null);
+  const [screenshotMedica, setScreenshotMedica] = useState<any>(null);
+  const [comprobantePago, setComprobantePago] = useState<any>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
-  // CONTROL INTERNO
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userDriveFolderId, setUserDriveFolderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -158,39 +147,27 @@ export function Inscripcion() {
     return years >= 0 ? years : null;
   }
 
-  // ✅ FUNCIÓN GLOBAL DE SUBIDA ADAPTADA (Con await real para evitar archivos vacíos)
-  const uploadFile = async (file: File, name: string, targetFolderId: string) => {
-    const fileForm = new FormData();
-    fileForm.append("action", "upload_file");
-    fileForm.append("folder_id", targetFolderId);
-    fileForm.append("file", file, file.name); // Se envía el binario nativo con su nombre original
-    fileForm.append("custom_name", name);
-    
-    const res = await fetch(SUPABASE_FUNCTION_URL, { 
-      method: "POST", 
-      headers: { 
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-      },
-      body: fileForm 
-    });
-
-    if (!res.ok) {
-      const textErr = await res.text();
-      throw new Error(`Error subiendo el archivo (${name}): ${textErr}`);
-    }
-    return res;
+  // Helper para desenvolver el archivo nativo de JavaScript
+  const extractNativeFile = (fileValue: any): File | null => {
+    if (!fileValue) return null;
+    if (fileValue instanceof File) return fileValue;
+    if (fileValue.file instanceof File) return fileValue.file;
+    if (fileValue.target?.files?.[0]) return fileValue.target.files[0];
+    return null;
   };
 
-  // ACCIÓN 1: PROCESAR REGISTRO INICIAL (Incluye el 1er pago)
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!acceptTerms) return alert("Debe leer y aceptar el acuerdo de convivencia.");
-    if (!comprobantePago) return alert("Debe adjuntar el comprobante de la cuota inicial.");
+    
+    const cleanPago = extractNativeFile(comprobantePago);
+    if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial de forma válida.");
     if (!currentUserId) return alert("No se detectó una sesión activa. Por favor, reingresa.");
+    
     setLoading(true);
 
     try {
-      // A. Crear Carpeta en Drive assegurando método POST explícito
+      // A. Crear Carpeta en Drive
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -204,7 +181,10 @@ export function Inscripcion() {
         body: folderForm,
       });
       
-      if (!driveResponse.ok) throw new Error("Error en el servidor al crear la carpeta en Drive.");
+      if (!driveResponse.ok) {
+        const errorMsgText = await driveResponse.text();
+        throw new Error(`Error en el servidor al crear la carpeta en Drive: [${driveResponse.status}] ${errorMsgText}`);
+      }
 
       const driveData = await driveResponse.json();
       if (!driveData || !driveData.folderId) throw new Error("No se pudo estructurar el directorio digital en Drive.");
@@ -212,40 +192,99 @@ export function Inscripcion() {
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // B. Subir archivos secuencialmente con await explícito
-      if (fotoParticipante) {
-        await uploadFile(fotoParticipante, `Foto_Perfil_${cedula}`, generatedFolderId);
-      }
-      if (screenshotMedica) {
-        await uploadFile(screenshotMedica, `Ficha_Medica_${cedula}`, generatedFolderId);
-      }
-      
-      // Comprobante inicial obligatorio
-      await uploadFile(comprobantePago, `Comprobante_Inicial_${cedula}`, generatedFolderId);
+      // B. Subida secuencial e inequívoca de archivos binarios nativos
+      const uploadFile = async (nativeFile: File, name: string) => {
+        const fileForm = new FormData();
+        fileForm.append("action", "upload_file");
+        fileForm.append("folder_id", generatedFolderId);
+        // Enviamos el File pasándole explícitamente su nombre para asegurar compatibilidad con Deno
+        fileForm.append("file", nativeFile, nativeFile.name);
+        fileForm.append("custom_name", name);
+        
+        const uploadRes = await fetch(SUPABASE_FUNCTION_URL, { 
+          method: "POST", 
+          headers: { 
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: fileForm 
+        });
+
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          throw new Error(`Error en el servidor: Respuesta del servidor (${uploadRes.status}): ${errText}`);
+        }
+      };
+
+      const cleanFoto = extractNativeFile(fotoParticipante);
+      const cleanMedica = extractNativeFile(screenshotMedica);
+
+      if (cleanFoto) await uploadFile(cleanFoto, `Foto_Perfil_${cedula}`);
+      if (cleanMedica) await uploadFile(cleanMedica, `Ficha_Medica_${cedula}`);
+      await uploadFile(cleanPago, `Comprobante_Inicial_${cedula}`);
 
       setViewMode("exito");
     } catch (err: any) {
-      alert(`Error en el servidor: ${err.message || err}`);
+      setErrorMessageStr(err.message || String(err));
+      setViewMode("error_pantalla");
     } finally {
       setLoading(false);
     }
   }
 
-  // ACCIÓN 2: ENVIAR COMPROBANTES DE CUOTAS ADICIONALES
   async function handleCuotasSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!comprobantePago) return alert("Por favor, adjunta el comprobante de esta cuota.");
-    if (!userDriveFolderId) return alert("Falta el identificador de la carpeta de destino en Drive.");
+    const cleanPago = extractNativeFile(comprobantePago);
+    if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
     setLoading(true);
 
     try {
-      await uploadFile(comprobantePago, `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`, userDriveFolderId);
+      const fileForm = new FormData();
+      fileForm.append("action", "upload_file");
+      fileForm.append("folder_id", userDriveFolderId); 
+      fileForm.append("file", cleanPago, cleanPago.name);
+      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
+
+      const res = await fetch(SUPABASE_FUNCTION_URL, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: fileForm,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Error en el canal de subida al servidor: ${errText}`);
+      }
+
       setViewMode("exito");
     } catch (err: any) {
-      alert(`Error procesando el pago: ${err.message || err}`);
+      setErrorMessageStr(err.message || String(err));
+      setViewMode("error_pantalla");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (viewMode === "error_pantalla") {
+    return (
+      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
+        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
+          <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(215,0,126,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
+            <span style={{ fontSize: 32, color: ENJ_MAGENTA, fontWeight: "bold" }}>⚠️</span>
+          </div>
+          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>encuentro-psi.vercel.app dice</h2>
+          <div style={{ background: "#FDF2F4", border: `1px solid ${ENJ_MAGENTA}`, borderRadius: 10, padding: 16, margin: "16px 0 24px", textAlign: "left" }}>
+            <p style={{ margin: 0, color: "#9F1239", fontSize: 14, fontFamily: "monospace", wordBreak: "break-word" }}>
+              {errorMessageStr}
+            </p>
+          </div>
+          <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", borderRadius: 10, border: "none", background: ENJ_NAVY, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Aceptar / Reintentar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (viewMode === "exito") {
@@ -287,7 +326,6 @@ export function Inscripcion() {
           </h1>
         </div>
 
-        {/* MODO A: FORMULARIO COMPLETO + CUOTA INICIAL */}
         {viewMode === "inscripcion" && (
           <>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 30, flexWrap: "wrap" }}>
@@ -306,7 +344,6 @@ export function Inscripcion() {
             <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
               <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 
-                {/* 1. DATOS PERSONALES */}
                 <SectionDivider title={`Datos Personales (${participantType === 'joven' ? 'Joven' : 'Adulto'})`} icon={<User size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Nombre(s)" placeholder="Ej. María" value={nombre} onChange={setNombre} />
@@ -323,14 +360,12 @@ export function Inscripcion() {
                   <InputField label="Dirección de Habitación" placeholder="Av / Calle / Zona" icon={<MapPin size={16} />} value={direccion} onChange={setDireccion} />
                 </div>
 
-                {/* 2. CONTACTO */}
                 <SectionDivider title="Datos de Contacto" icon={<Phone size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Correo Electrónico" placeholder="usuario@email.com" type="email" icon={<Mail size={16} />} value={correo} onChange={setCorreo} />
                   <InputField label="Teléfono (WhatsApp)" placeholder="+58 412 000 0000" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} />
                 </div>
 
-                {/* 3. FICHA MÉDICA BÁSICA */}
                 <SectionDivider title="Ficha Médica Básica" icon={<HeartPulse size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <SelectField label="Tipo de Sangre" options={tiposSangre} value={tipoSangre} onChange={setTipoSangre} />
@@ -340,7 +375,6 @@ export function Inscripcion() {
                 </div>
                 <InputField label="Contacto de Emergencia" placeholder="Nombre completo y número de teléfono" required={true} value={contactoEmergencia} onChange={setContactoEmergencia} />
 
-                {/* 4. CREDENCIALES SCOUTS */}
                 <SectionDivider title="Credenciales Scouts" icon={<Shield size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <SelectField label="Región Scout" options={scoutRegions.map(r => r.region)} value={selectedRegion} onChange={(val: string) => { setSelectedRegion(val); setSelectedDistrict(""); }} />
@@ -360,7 +394,6 @@ export function Inscripcion() {
                   </div>
                 )}
 
-                {/* 5. PAGO INICIAL */}
                 <SectionDivider title="Cuota Inicial (Inscripción)" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
                 <BankDetailsCard />
                 
@@ -371,25 +404,24 @@ export function Inscripcion() {
                   <InputField label="Tasa de cambio aplicada" placeholder="0.00" type="number" value={tasa} onChange={setTasa} />
                 </div>
 
-                {/* ARCHIVOS DIGITALES */}
                 <SectionDivider title="Expediente Digital" icon={<GoogleDriveIcon size={16} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Foto del Participante *</p>
                     <FileDropzone label="Subir foto" sublabel="Fondo blanco" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setFotoParticipante} />
-                    {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name}</p>}
+                    {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name || "Archivo cargado"}</p>}
                   </div>
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante Cuota Inicial *</p>
                     <FileDropzone label="Subir pago" sublabel="PDF o Imágen" accept=".jpg,.jpeg,.png,.pdf" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
-                    {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
+                    {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name || "Archivo cargado"}</p>}
                   </div>
                 </div>
 
                 <div>
                   <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Ficha Médica Impeesa (Opcional si llenaste lo anterior)</p>
                   <FileDropzone label="Screenshot Ficha" sublabel="Imágen" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setScreenshotMedica} />
-                  {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
+                  {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name || "Archivo cargado"}</p>}
                 </div>
 
                 <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, cursor: "pointer", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>
@@ -405,7 +437,6 @@ export function Inscripcion() {
           </>
         )}
 
-        {/* MODO B: CONTROL Y LIQUIDACIÓN DE CUOTAS */}
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -429,8 +460,8 @@ export function Inscripcion() {
 
               <div>
                 <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante de Pago *</p>
-                <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=".pdf,.jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
-                {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
+                <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=\".pdf,.jpg,.jpeg,.png\" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
+                {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name || "Archivo cargado"}</p>}
               </div>
 
               <button type="submit" disabled={loading} style={{ background: ENJ_MAGENTA, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
