@@ -158,6 +158,29 @@ export function Inscripcion() {
     return years >= 0 ? years : null;
   }
 
+  // ✅ FUNCIÓN DE SUBIDA GLOBAL CORREGIDA (Secuencial, robusta y con await real)
+  const uploadFile = async (file: File, name: string, targetFolderId: string) => {
+    const fileForm = new FormData();
+    fileForm.append("action", "upload_file");
+    fileForm.append("folder_id", targetFolderId);
+    fileForm.append("file", file, file.name); // Pasamos el binario con su nombre original
+    fileForm.append("custom_name", name);
+    
+    const res = await fetch(SUPABASE_FUNCTION_URL, { 
+      method: "POST", 
+      headers: { 
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: fileForm 
+    });
+
+    if (!res.ok) {
+      const textErr = await res.text();
+      throw new Error(`Fallo al subir el archivo digital (${name}): ${textErr}`);
+    }
+    return res;
+  };
+
   // ACCIÓN 1: PROCESAR REGISTRO INICIAL (Incluye el 1er pago)
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,7 +190,7 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      // A. Crear Carpeta en Drive asegurando método POST explícito
+      // A. Crear Carpeta en Drive assegurando método POST explícito
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -181,51 +204,24 @@ export function Inscripcion() {
         body: folderForm,
       });
       
-      if (!driveResponse.ok) {
-        const errorText = await driveResponse.text();
-        throw new Error(`Respuesta del servidor (${driveResponse.status}): ${errorText}`);
-      }
+      if (!driveResponse.ok) throw new Error("Error en el servidor al crear la carpeta en Drive.");
 
       const driveData = await driveResponse.json();
-      
-      if (driveData && driveData.error) {
-        throw new Error(`Error devuelto por la función de Drive: ${driveData.error}`);
-      }
-
-      if (!driveData || !driveData.folderId) {
-        throw new Error(`El servidor respondió correctamente pero no generó un ID de carpeta válido.`);
-      }
+      if (!driveData || !driveData.folderId) throw new Error("No se pudo estructurar el directorio digital en Drive.");
 
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // B. Subir archivos asíncronamente con POST explícito
-      const uploadFile = async (file: File, name: string) => {
-        const fileForm = new FormData();
-        fileForm.append("action", "upload_file");
-        fileForm.append("folder_id", generatedFolderId);
-        // ✅ Pasamos file.name como 3er parámetro obligatorio para preservar los metadatos binarios
-        fileForm.append("file", file, file.name); 
-        fileForm.append("custom_name", name);
-        
-        const res = await fetch(SUPABASE_FUNCTION_URL, { 
-          method: "POST", 
-          headers: { 
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-          },
-          body: fileForm 
-        });
-
-        if (!res.ok) {
-          const textErr = await res.text();
-          throw new Error(`Error subiendo el archivo "${name}": ${textErr}`);
-        }
-        return res;
-      };
-
-      if (fotoParticipante) await uploadFile(fotoParticipante, `Foto_Perfil_${cedula}`);
-      if (screenshotMedica) await uploadFile(screenshotMedica, `Ficha_Medica_${cedula}`);
-      await uploadFile(comprobantePago, `Comprobante_Inicial_${cedula}`);
+      // B. Subir archivos de manera SECUENCIAL utilizando el hook global reactivo
+      if (fotoParticipante) {
+        await uploadFile(fotoParticipante, `Foto_Perfil_${cedula}`, generatedFolderId);
+      }
+      if (screenshotMedica) {
+        await uploadFile(screenshotMedica, `Ficha_Medica_${cedula}`, generatedFolderId);
+      }
+      
+      // Comprobante inicial obligatorio
+      await uploadFile(comprobantePago, `Comprobante_Inicial_${cedula}`, generatedFolderId);
 
       setViewMode("exito");
     } catch (err: any) {
@@ -239,28 +235,11 @@ export function Inscripcion() {
   async function handleCuotasSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!comprobantePago) return alert("Por favor, adjunta el comprobante de esta cuota.");
+    if (!userDriveFolderId) return alert("No se detectó la referencia a tu expediente digital.");
     setLoading(true);
 
     try {
-      const fileForm = new FormData();
-      fileForm.append("action", "upload_file");
-      fileForm.append("folder_id", userDriveFolderId); 
-      fileForm.append("file", comprobantePago, comprobantePago.name);
-      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
-
-      const res = await fetch(SUPABASE_FUNCTION_URL, {
-        method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-        },
-        body: fileForm,
-      });
-
-      if (!res.ok) {
-        const textErr = await res.text();
-        throw new Error(`Error en el canal de subida al servidor: ${textErr}`);
-      }
-
+      await uploadFile(comprobantePago, `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`, userDriveFolderId);
       setViewMode("exito");
     } catch (err: any) {
       alert(`Error procesando el pago: ${err.message || err}`);
@@ -397,13 +376,11 @@ export function Inscripcion() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Foto del Participante *</p>
-                    {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
                     <FileDropzone label="Subir foto" sublabel="Fondo blanco" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setFotoParticipante} />
                     {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name}</p>}
                   </div>
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante Cuota Inicial *</p>
-                    {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
                     <FileDropzone label="Subir pago" sublabel="PDF o Imágen" accept=".jpg,.jpeg,.png,.pdf" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
                     {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
                   </div>
@@ -411,7 +388,6 @@ export function Inscripcion() {
 
                 <div>
                   <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Ficha Médica Impeesa (Opcional si llenaste lo anterior)</p>
-                  {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
                   <FileDropzone label="Screenshot Ficha" sublabel="Imágen" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setScreenshotMedica} />
                   {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
                 </div>
@@ -453,7 +429,6 @@ export function Inscripcion() {
 
               <div>
                 <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante de Pago *</p>
-                {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
                 <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=".pdf,.jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
                 {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
               </div>
