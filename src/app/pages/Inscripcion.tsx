@@ -193,7 +193,7 @@ export function Inscripcion() {
       }
 
       if (!driveData || !driveData.folderId) {
-        throw new Error(`El servidor respondió correctamente pero no generó un ID de carpeta válido. Datos: ${JSON.stringify(driveData)}`);
+        throw new Error(`El servidor respondió correctamente pero no generó un ID de carpeta válido.`);
       }
 
       const generatedFolderId = driveData.folderId;
@@ -204,7 +204,7 @@ export function Inscripcion() {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
-        // ✅ SOLUCIÓN: Pasamos file.name explícitamente como 3er argumento para que el Servidor detecte los bytes correctamente.
+        // ✅ Pasamos file.name como 3er parámetro obligatorio para preservar los metadatos binarios
         fileForm.append("file", file, file.name); 
         fileForm.append("custom_name", name);
         
@@ -245,7 +245,6 @@ export function Inscripcion() {
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", userDriveFolderId); 
-      // ✅ SOLUCIÓN: Pasamos file.name explícitamente aquí también.
       fileForm.append("file", comprobantePago, comprobantePago.name);
       fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
 
@@ -270,7 +269,6 @@ export function Inscripcion() {
     }
   }
 
-  // (El resto de la interfaz visual e idéntica se mantiene intacto debajo...)
   if (viewMode === "exito") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
@@ -399,19 +397,22 @@ export function Inscripcion() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Foto del Participante *</p>
-                    <FileDropzone label="Subir foto" sublabel="Fondo blanco" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onChange={setFotoParticipante} />
+                    {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
+                    <FileDropzone label="Subir foto" sublabel="Fondo blanco" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setFotoParticipante} />
                     {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name}</p>}
                   </div>
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante Cuota Inicial *</p>
-                    <FileDropzone label="Subir pago" sublabel="PDF o Imágen" accept=".jpg,.jpeg,.png,.pdf" icon={<GoogleDriveIcon size={24} />} onChange={setComprobantePago} />
+                    {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
+                    <FileDropzone label="Subir pago" sublabel="PDF o Imágen" accept=".jpg,.jpeg,.png,.pdf" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
                     {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
                   </div>
                 </div>
 
                 <div>
                   <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Ficha Médica Impeesa (Opcional si llenaste lo anterior)</p>
-                  <FileDropzone label="Screenshot Ficha" sublabel="Imágen" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onChange={setScreenshotMedica} />
+                  {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
+                  <FileDropzone label="Screenshot Ficha" sublabel="Imágen" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setScreenshotMedica} />
                   {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
                 </div>
 
@@ -452,7 +453,8 @@ export function Inscripcion() {
 
               <div>
                 <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante de Pago *</p>
-                <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=".pdf,.jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onChange={setComprobantePago} />
+                {/* 👇 SE RESTAURÓ onFileSelect AQUÍ 👇 */}
+                <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=".pdf,.jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
                 {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
               </div>
 
