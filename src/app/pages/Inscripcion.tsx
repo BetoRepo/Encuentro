@@ -181,7 +181,6 @@ export function Inscripcion() {
         body: folderForm,
       });
       
-      // ✅ Si la respuesta HTTP viene con error de backend, capturamos su descripción exacta textualmente
       if (!driveResponse.ok) {
         const errorText = await driveResponse.text();
         throw new Error(`Respuesta del servidor (${driveResponse.status}): ${errorText}`);
@@ -189,7 +188,6 @@ export function Inscripcion() {
 
       const driveData = await driveResponse.json();
       
-      // ✅ Si vino un JSON pero reporta fallas internas de Google Drive, las mostramos directo en pantalla
       if (driveData && driveData.error) {
         throw new Error(`Error devuelto por la función de Drive: ${driveData.error}`);
       }
@@ -206,7 +204,8 @@ export function Inscripcion() {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
-        fileForm.append("file", file);
+        // ✅ SOLUCIÓN: Pasamos file.name explícitamente como 3er argumento para que el Servidor detecte los bytes correctamente.
+        fileForm.append("file", file, file.name); 
         fileForm.append("custom_name", name);
         
         const res = await fetch(SUPABASE_FUNCTION_URL, { 
@@ -230,7 +229,6 @@ export function Inscripcion() {
 
       setViewMode("exito");
     } catch (err: any) {
-      // ✅ Imprime detalladamente el mensaje real en la alerta
       alert(`Error en el servidor: ${err.message || err}`);
     } finally {
       setLoading(false);
@@ -247,7 +245,8 @@ export function Inscripcion() {
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", userDriveFolderId); 
-      fileForm.append("file", comprobantePago);
+      // ✅ SOLUCIÓN: Pasamos file.name explícitamente aquí también.
+      fileForm.append("file", comprobantePago, comprobantePago.name);
       fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
 
       const res = await fetch(SUPABASE_FUNCTION_URL, {
@@ -271,6 +270,7 @@ export function Inscripcion() {
     }
   }
 
+  // (El resto de la interfaz visual e idéntica se mantiene intacto debajo...)
   if (viewMode === "exito") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
