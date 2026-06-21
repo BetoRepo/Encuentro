@@ -331,7 +331,8 @@ export function Inscripcion() {
                 {/* 3. FICHA MÉDICA BÁSICA */}
                 <SectionDivider title="Ficha Médica Básica" icon={<HeartPulse size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <SelectField label="Tipo de Sangre" options={tipoSangre} value={tipoSangre} onChange={setTipoSangre} />
+                  {/* ✅ AQUÍ ESTÁ EL TIPO DE SANGRE CORREGIDO ✅ */}
+                  <SelectField label="Tipo de Sangre" options={tiposSangre} value={tipoSangre} onChange={setTipoSangre} />
                   <InputField label="Alergias Conocidas" placeholder="Ninguna, o especifique..." required={false} value={alergias} onChange={setAlergias} />
                   <InputField label="Enfermedades o Condiciones" placeholder="Asma, diabetes, etc..." required={false} value={enfermedades} onChange={setEnfermedades} />
                   <InputField label="Medicamentos actuales" placeholder="Dosis y frecuencia..." required={false} value={medicamentos} onChange={setMedicamentos} />
