@@ -7,9 +7,10 @@ interface FileDropzoneProps {
   accept?: string;
   icon?: React.ReactNode;
   name?: string;
+  onChange?: (file: File | null) => void; // ✅ Agregamos esto para comunicar el archivo al padre
 }
 
-export function FileDropzone({ label, sublabel, accept = "*", icon, name }: FileDropzoneProps) {
+export function FileDropzone({ label, sublabel, accept = "*", icon, name, onChange }: FileDropzoneProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,18 +19,25 @@ export function FileDropzone({ label, sublabel, accept = "*", icon, name }: File
     e.preventDefault();
     setDragging(false);
     const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
+    if (f) {
+      setFile(f);
+      onChange?.(f); // ✅ Avisa al formulario del archivo arrastrado
+    }
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) setFile(f);
+    if (f) {
+      setFile(f);
+      onChange?.(f); // ✅ Avisa al formulario del archivo seleccionado
+    }
   }
 
   function removeFile(e: React.MouseEvent) {
     e.stopPropagation();
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
+    onChange?.(null); // ✅ Avisa al formulario que se limpió el archivo
   }
 
   return (
