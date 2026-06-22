@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
+
+// ⚠️ IMPORTANTE: Descomentamos el cliente de Supabase para poder guardar en la BD
+import { supabase } from "../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -152,7 +155,42 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      // 1. Crear Carpeta en Drive
+      // 1. PRIMERO: GUARDAR LOS DATOS Y EL PRIMER PAGO EN LA BASE DE DATOS DE SUPABASE
+      // Guardamos la información del participante
+      const { data: partData, error: partError } = await supabase
+        .from("participantes")
+        .insert([{
+          cedula: cedula.trim(),
+          nombre: nombre.trim(),
+          apellido: apellido.trim(),
+          fecha_nacimiento: birthDate,
+          correo: correo.trim(),
+          telefono: telefono.trim(),
+          region: selectedRegion,
+          distrito: selectedDistrict,
+          grupo_scout: grupoScout,
+          rama: ramaScout,
+          tipo_participante: participantType
+        }])
+        .select();
+
+      if (partError) throw new Error(`Error al registrar el participante en BD: ${partError.message}`);
+
+      // Guardamos el primer pago (Inscripción / Cuota Inicial) en la tabla pagos de la BD
+      const { error: pagoError } = await supabase
+        .from("pagos")
+        .insert([{
+          cedula_participante: cedula.trim(),
+          numero_cuota: "Cuota Inicial",
+          monto_bs: parseFloat(montoBs) || 0,
+          referencia: referenciaPago.trim(),
+          fecha_pago: fechaPago,
+          tasa_cambio: parseFloat(tasa) || 0
+        }]);
+
+      if (pagoError) throw new Error(`Error al guardar el pago en la BD: ${pagoError.message}`);
+
+      // 2. CREAR CARPETA EN GOOGLE DRIVE
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -170,12 +208,11 @@ export function Inscripcion() {
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // Función unificada de subida
+      // Función unificada de subida a Drive
       const uploadFile = async (fileObj: Blob | File, filename: string, customDriveName: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
-        // Pasamos explícitamente el tercer parámetro para asegurar compatibilidad con Deno
         fileForm.append("file", fileObj, filename);
         fileForm.append("custom_name", customDriveName);
         
@@ -188,7 +225,7 @@ export function Inscripcion() {
         if (!uploadRes.ok) throw new Error(`Fallo al subir archivo al servidor: ${customDriveName}`);
       };
 
-      // 2. GENERAR CONTENIDO DEL ARCHIVO TXT COMO BLOB SEGURO
+      // 3. GENERAR CONTENIDO DEL ARCHIVO .TXT DE INSCRIPCIÓN Y SUBIRLO
       const dataContenido = `==================================================
 EXPEDIENTE DIGITAL DE INSCRIPCIÓN - ENJ 2026
 ==================================================
@@ -229,9 +266,10 @@ Tasa Cambio: ${tasa}
       
       const datosBlob = new Blob([dataContenido], { type: "text/plain;charset=utf-8" });
 
-      // 3. Subir todos los elementos correlativamente
+      // Subimos el TXT generado
       await uploadFile(datosBlob, "Datos_Inscripcion.txt", `Ficha_Datos_${cedula}.txt`);
 
+      // Subimos los adjuntos opcionales y obligatorios
       const cleanFoto = extractNativeFile(fotoParticipante);
       if (cleanFoto) await uploadFile(cleanFoto, cleanFoto.name, `Foto_Perfil_${cedula}`);
 
@@ -240,13 +278,14 @@ Tasa Cambio: ${tasa}
 
       await uploadFile(cleanPago, cleanPago.name, `Comprobante_Inicial_${cedula}`);
 
-      // 4. Limpieza preventiva y salto al paso de Cuotas
+      // 4. LIMPIEZA DE FORMULARIO DE PAGOS Y CAMBIO DE PANTALLA
       setComprobantePago(null);
       setFechaPago("");
       setReferenciaPago("");
       setMontoBs("");
       setTasa("");
       
+      // ✅ Todo salió bien: Cambiamos a la sección de cuotas de forma instantánea
       setViewMode("cuotas");
 
     } catch (err: any) {
@@ -261,11 +300,25 @@ Tasa Cambio: ${tasa}
     e.preventDefault();
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Adjunta un comprobante de pago válido.");
-    if (!userDriveFolderId) return alert("Error de flujo: Falta el identificador de la carpeta destino.");
     
     setLoading(true);
 
     try {
+      // 1. GUARDAR LA NUEVA CUOTA EN LA BASE DE DATOS DE SUPABASE
+      const { error: pagoExtraError } = await supabase
+        .from("pagos")
+        .insert([{
+          cedula_participante: cedula.trim(),
+          numero_cuota: numCuota,
+          monto_bs: parseFloat(montoBs) || 0,
+          referencia: referenciaPago.trim(),
+          fecha_pago: fechaPago,
+          tasa_cambio: parseFloat(tasa) || 0
+        }]);
+
+      if (pagoExtraError) throw new Error(`Error guardando cuota en BD: ${pagoExtraError.message}`);
+
+      // 2. SUBIR EL COMPROBANTE DE LA CUOTA A LA CARPETA EXISTENTE EN DRIVE
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", userDriveFolderId); 
@@ -278,7 +331,7 @@ Tasa Cambio: ${tasa}
         body: fileForm,
       });
 
-      if (!res.ok) throw new Error("Fallo al subir el archivo de la cuota.");
+      if (!res.ok) throw new Error("Fallo al subir el archivo de la cuota extra a Drive.");
 
       setViewMode("exito");
     } catch (err: any) {
@@ -289,11 +342,13 @@ Tasa Cambio: ${tasa}
     }
   }
 
+  // --- RENDERS DE LAS VISTAS DEL FLUJO ---
+
   if (viewMode === "error_pantalla") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
         <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 22, color: ENJ_NAVY }}>⚠️ Error en el Proceso</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 22, color: ENJ_NAVY }}>⚠️ Error Detectado</h2>
           <p style={{ color: "#9F1239", fontSize: 14, whiteSpace: "pre-wrap" }}>{errorMessageStr}</p>
           <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", background: ENJ_NAVY, color: "#fff", borderRadius: 10, border: "none", cursor: "pointer", marginTop: 20 }}>
             Regresar e Intentar Nuevamente
@@ -309,7 +364,7 @@ Tasa Cambio: ${tasa}
         <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 480, width: "100%", textAlign: "center" }}>
           <CheckCircle2 size={42} color="#22c55e" style={{ margin: "0 auto 20px" }} />
           <h2 style={{ margin: "0 0 12px", fontSize: 26, color: ENJ_NAVY }}>¡Proceso Finalizado!</h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Los documentos e historial de pagos han sido almacenados de forma segura.</p>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Los documentos, archivo de datos e historial de pagos han sido sincronizados.</p>
           <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, cursor: "pointer" }}>
             Volver al Inicio
           </button>
@@ -332,6 +387,7 @@ Tasa Cambio: ${tasa}
           )}
         </div>
 
+        {/* PARTE 1: FORMULARIO DE INSCRIPCIÓN */}
         {viewMode === "inscripcion" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: 40, boxShadow: "0 4px 40px rgba(0,0,0,0.05)" }}>
             <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -350,14 +406,16 @@ Tasa Cambio: ${tasa}
                 <SelectField label="Distrito" options={selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : []} value={selectedDistrict} onChange={setSelectedDistrict} disabled={!selectedRegion} />
               </div>
 
-              <SectionDivider title="Pago Inicial" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
+              <SectionDivider title="Pago Inicial (Inscripción)" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <InputField label="Monto" type="number" value={montoBs} onChange={setMontoBs} />
-                <InputField label="Referencia" value={referenciaPago} onChange={setReferenciaPago} />
+                <InputField label="Monto en Bs" type="number" value={montoBs} onChange={setMontoBs} />
+                <InputField label="Referencia Bancaria" value={referenciaPago} onChange={setReferenciaPago} />
+                <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
+                <InputField label="Tasa de Cambio" type="number" value={tasa} onChange={setTasa} />
               </div>
 
               <SectionDivider title="Archivos Expediente" icon={<GoogleDriveIcon size={16} />} />
-              <FileDropzone label="Foto" accept=".jpg,.png" onFileSelect={setFotoParticipante} />
+              <FileDropzone label="Foto del Participante" accept=".jpg,.png" onFileSelect={setFotoParticipante} />
               <FileDropzone label="Comprobante Pago Inicial *" accept=".jpg,.png,.pdf" onFileSelect={setComprobantePago} />
 
               <label style={{ display: "flex", gap: 10, cursor: "pointer", fontSize: 13 }}>
@@ -365,12 +423,13 @@ Tasa Cambio: ${tasa}
               </label>
 
               <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 }}>
-                {loading ? "Generando expediente digital..." : "Enviar Inscripción y Archivos"}
+                {loading ? "Sincronizando Base de Datos y Drive..." : "Enviar Inscripción y Crear Expediente"}
               </button>
             </form>
           </div>
         )}
 
+        {/* PARTE 2: REGISTRO DE CUOTAS ADICIONALES (Aparece y desaparece la inscripción) */}
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: 40, boxShadow: "0 4px 40px rgba(0,0,0,0.05)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -378,15 +437,17 @@ Tasa Cambio: ${tasa}
               <SelectField label="Cuota a reportar" options={["Segunda Cuota", "Tercera Cuota / Saldo Final"]} value={numCuota} onChange={setNumCuota} />
               
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <InputField label="Monto" type="number" value={montoBs} onChange={setMontoBs} />
-                <InputField label="Referencia" value={referenciaPago} onChange={setReferenciaPago} />
+                <InputField label="Monto en Bs" type="number" value={montoBs} onChange={setMontoBs} />
+                <InputField label="Referencia Bancaria" value={referenciaPago} onChange={setReferenciaPago} />
+                <InputField label="Fecha de Pago" type="date" value={fechaPago} onChange={setFechaPago} />
+                <InputField label="Tasa de Cambio aplicada" type="number" value={tasa} onChange={setTasa} />
               </div>
 
               <FileDropzone label="Comprobante Cuota *" accept=".pdf,.jpg,.png" onFileSelect={setComprobantePago} />
 
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="submit" disabled={loading} style={{ flex: 1, background: ENJ_MAGENTA, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 }}>
-                  {loading ? "Subiendo Comprobante..." : "Registrar Cuota Extra"}
+                  {loading ? "Guardando pago en Base de Datos..." : "Registrar Cuota Extra"}
                 </button>
                 <button type="button" onClick={() => setViewMode("exito")} style={{ background: "#eee", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", color: ENJ_NAVY, fontWeight: 600 }}>
                   Finalizar Flujo Completo
