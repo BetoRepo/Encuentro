@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
-import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
+import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building, FileText } from "lucide-react";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
+// ✅ URL DE PRODUCCIÓN Y LLAVE DE ACCESO
 const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio"; 
 
 type ScoutDistrict = { district: string };
 type ScoutRegion = { region: string; districts: ScoutDistrict[] };
@@ -30,28 +31,63 @@ const scoutRegions: ScoutRegion[] = [
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
 const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "No lo sé"];
 
-function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
+interface InputFieldProps {
+  label: string;
+  placeholder?: string;
+  type?: string;
+  icon?: React.ReactNode;
+  required?: boolean;
+  value: string | number;
+  onChange?: (val: string) => void;
+  disabled?: boolean;
+}
+
+interface SelectFieldProps {
+  label: string;
+  options: string[];
+  value: string;
+  onChange?: (val: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+}
+
+function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: InputFieldProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY, letterSpacing: "0.01em" }}>
+      <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>
         {label} {required && <span style={{ color: ENJ_MAGENTA, marginLeft: 3 }}>*</span>}
       </label>
       <div style={{ position: "relative" }}>
         {icon && <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)", display: "flex", pointerEvents: "none" }}>{icon}</div>}
-        <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} />
+        <input 
+          type={type} 
+          placeholder={placeholder} 
+          value={value} 
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.currentTarget.value)} 
+          disabled={disabled} 
+          required={required} 
+          style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} 
+        />
       </div>
     </div>
   );
 }
 
-function SelectField({ label, options, value, onChange, placeholder = "Seleccionar...", required = true, disabled = false }: any) {
+function SelectField({ label, options, value, onChange, placeholder = "Seleccionar...", required = true, disabled = false }: SelectFieldProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY, letterSpacing: "0.01em" }}>
+      <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>
         {label} {required && <span style={{ color: ENJ_MAGENTA, marginLeft: 3 }}>*</span>}
       </label>
       <div style={{ position: "relative" }}>
-        <select value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.35)" : "#0D0D2B", outline: "none", appearance: "none", cursor: disabled ? "not-allowed" : "pointer", boxSizing: "border-box" }}>
+        <select 
+          value={value} 
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange?.(e.currentTarget.value)} 
+          disabled={disabled} 
+          required={required} 
+          style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.35)" : "#0D0D2B", outline: "none", appearance: "none", cursor: disabled ? "not-allowed" : "pointer", boxSizing: "border-box" }}
+        >
           <option value="" disabled>{placeholder}</option>
           {options.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -88,10 +124,11 @@ function BankDetailsCard() {
 export function Inscripcion() {
   const navigate = useNavigate();
 
-  const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "error_pantalla">("inscripcion");
-  const [errorMessageStr, setErrorMessageStr] = useState("");
+  // Gestión del flujo: 'inscripcion' -> 'cuotas' -> 'exito'
+  const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito">("inscripcion");
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
 
+  // 1. DATOS PERSONALES
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [cedula, setCedula] = useState("");
@@ -100,15 +137,18 @@ export function Inscripcion() {
   const [tallaUniforme, setTallaUniforme] = useState("");
   const [direccion, setDireccion] = useState("");
 
+  // 2. CONTACTO
   const [correo, setCorreo] = useState("");
   const [telefono, setTelefono] = useState("");
 
+  // 3. FICHA MEDICA BASICA
   const [tipoSangre, setTipoSangre] = useState("");
   const [alergias, setAlergias] = useState("");
   const [enfermedades, setEnfermedades] = useState("");
   const [medicamentos, setMedicamentos] = useState("");
   const [contactoEmergencia, setContactoEmergencia] = useState("");
 
+  // 4. CREDENCIALES SCOUTS
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
@@ -117,26 +157,24 @@ export function Inscripcion() {
   const [cargoAdulto, setCargoAdulto] = useState("");
   const [areaAdulto, setAreaAdulto] = useState("");
 
+  // 5. PAGO
   const [fechaPago, setFechaPago] = useState("");
   const [referenciaPago, setReferenciaPago] = useState("");
   const [montoBs, setMontoBs] = useState("");
   const [tasa, setTasa] = useState("");
   const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
-  const [fotoParticipante, setFotoParticipante] = useState<any>(null);
-  const [screenshotMedica, setScreenshotMedica] = useState<any>(null);
-  const [comprobantePago, setComprobantePago] = useState<any>(null);
+  // ARCHIVOS
+  const [fotoParticipante, setFotoParticipante] = useState<File | null>(null);
+  const [screenshotMedica, setScreenshotMedica] = useState<File | null>(null);
+  const [comprobantePago, setComprobantePago] = useState<File | null>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // CONTROL INTERNO DE FLUJO Y DRIVE
   const [userDriveFolderId, setUserDriveFolderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setCurrentUserId("ID_USUARIO_LOGUEADO_TEMPORAL");
-  }, [navigate]);
-
-  function calculateAge(dateString: string) {
+  function calculateAge(dateString: string): number | null {
     const date = new Date(dateString);
     if (!dateString || Number.isNaN(date.getTime())) return null;
     const now = new Date();
@@ -147,27 +185,15 @@ export function Inscripcion() {
     return years >= 0 ? years : null;
   }
 
-  // Helper para desenvolver el archivo nativo de JavaScript
-  const extractNativeFile = (fileValue: any): File | null => {
-    if (!fileValue) return null;
-    if (fileValue instanceof File) return fileValue;
-    if (fileValue.file instanceof File) return fileValue.file;
-    if (fileValue.target?.files?.[0]) return fileValue.target.files[0];
-    return null;
-  };
-
+  // ACCIÓN 1: PROCESAR REGISTRO INICIAL, CREAR DOCUMENTO DE TEXTO Y SUBIR A DRIVE
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!acceptTerms) return alert("Debe leer y aceptar el acuerdo de convivencia.");
-    
-    const cleanPago = extractNativeFile(comprobantePago);
-    if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial de forma válida.");
-    if (!currentUserId) return alert("No se detectó una sesión activa. Por favor, reingresa.");
-    
+    if (!comprobantePago) return alert("Debe adjuntar el comprobante de la cuota inicial.");
     setLoading(true);
 
     try {
-      // A. Crear Carpeta en Drive
+      // A. Crear Carpeta en Google Drive utilizando los datos del formulario
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -175,116 +201,124 @@ export function Inscripcion() {
 
       const driveResponse = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-        },
+        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
         body: folderForm,
       });
       
-      if (!driveResponse.ok) {
-        const errorMsgText = await driveResponse.text();
-        throw new Error(`Error en el servidor al crear la carpeta en Drive: [${driveResponse.status}] ${errorMsgText}`);
-      }
-
       const driveData = await driveResponse.json();
       if (!driveData || !driveData.folderId) throw new Error("No se pudo estructurar el directorio digital en Drive.");
 
       const generatedFolderId = driveData.folderId;
-      setUserDriveFolderId(generatedFolderId);
+      setUserDriveFolderId(generatedFolderId); // Guardamos la referencia para el paso de las cuotas
 
-      // B. Subida secuencial e inequívoca de archivos binarios nativos
-      const uploadFile = async (nativeFile: File, name: string) => {
+      // B. Reutilizar la Edge Function para subir archivos
+      const uploadFile = async (file: File | Blob, name: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
-        // Enviamos el File pasándole explícitamente su nombre para asegurar compatibilidad con Deno
-        fileForm.append("file", nativeFile, nativeFile.name);
+        fileForm.append("file", file);
         fileForm.append("custom_name", name);
         
-        const uploadRes = await fetch(SUPABASE_FUNCTION_URL, { 
+        return fetch(SUPABASE_FUNCTION_URL, { 
           method: "POST", 
-          headers: { 
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-          },
+          headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
           body: fileForm 
         });
-
-        if (!uploadRes.ok) {
-          const errText = await uploadRes.text();
-          throw new Error(`Error en el servidor: Respuesta del servidor (${uploadRes.status}): ${errText}`);
-        }
       };
 
-      const cleanFoto = extractNativeFile(fotoParticipante);
-      const cleanMedica = extractNativeFile(screenshotMedica);
+      // C. GENERAR DOCUMENTO DE DATOS EN FORMATO TEXTO/LOG (Se guarda en Drive automáticamente)
+      const dataContenido = `==================================================
+        EXPEDIENTE DIGITAL DE INSCRIPCIÓN - ENJ 2026
+==================================================
+FECHA DE REGISTRO: ${new Date().toLocaleString()}
+TIPO PARTICIPANTE: ${participantType.toUpperCase()}
 
-      if (cleanFoto) await uploadFile(cleanFoto, `Foto_Perfil_${cedula}`);
-      if (cleanMedica) await uploadFile(cleanMedica, `Ficha_Medica_${cedula}`);
-      await uploadFile(cleanPago, `Comprobante_Inicial_${cedula}`);
+[DATOS PERSONALES]
+Nombre Completo: ${nombre} ${apellido}
+Cédula: ${cedula}
+Fecha de Nacimiento: ${birthDate}
+Edad Calculada: ${age ? age + " años" : "No provista"}
+Talla Uniforme: ${tallaUniforme}
+Dirección: ${direccion}
 
-      setViewMode("exito");
+[CONTACTO]
+Correo Electrónico: ${correo}
+Teléfono (WhatsApp): ${telefono}
+
+[FICHA MÉDICA BÁSICA]
+Tipo de Sangre: ${tipoSangre}
+Alergias: ${alergias || "Ninguna"}
+Enfermedades/Condiciones: ${enfermedades || "Ninguna"}
+Medicamentos: ${medicamentos || "Ninguno"}
+Contacto de Emergencia: ${contactoEmergencia}
+
+[CREDENCIALES SCOUTS]
+Región: ${selectedRegion}
+Distrito: ${selectedDistrict}
+Grupo Scout: ${grupoScout}
+Unidad / Rama: ${ramaScout}
+${participantType === "joven" ? `Adulto Responsable: ${adultoUnidad}` : `Cargo/Rol: ${cargoAdulto} | Área: ${areaAdulto}`}
+
+[INFORMACIÓN DEL PRIMER PAGO]
+Fecha Pago Inicial: ${fechaPago}
+Referencia Inicial: ${referenciaPago}
+Monto Transferido: ${montoBs} Bs
+Tasa Cambiaria Aplicada: ${tasa}
+==================================================`;
+
+      const datosBlob = new Blob([dataContenido], { type: "text/plain" });
+
+      // D. Ejecutar la subida paralela incluyendo el nuevo Documento de Datos generados
+      await uploadFile(datosBlob, `Ficha_Datos_Inscripcion_${cedula}.txt`);
+      if (fotoParticipante) await uploadFile(fotoParticipante, `Foto_Perfil_${cedula}`);
+      if (screenshotMedica) await uploadFile(screenshotMedica, `Ficha_Medica_${cedula}`);
+      await uploadFile(comprobantePago, `Comprobante_Inicial_${cedula}`);
+
+      // Limpiamos el comprobante inicial cargado para dejar espacio a la siguiente cuota
+      setComprobantePago(null);
+      setFechaPago("");
+      setReferenciaPago("");
+      setMontoBs("");
+      setTasa("");
+
+      // 🔄 CAMBIO DE FLUJO DE TRABAJO: Oculta inscripción y muestra cuotas automáticamente
+      setViewMode("cuotas");
+      alert("Inscripción exitosa. Los datos se han guardado en Google Drive. Ahora puedes proceder a registrar cuotas adicionales.");
     } catch (err: any) {
-      setErrorMessageStr(err.message || String(err));
-      setViewMode("error_pantalla");
+      alert(`Error en el servidor: ${err.message || err}`);
     } finally {
       setLoading(false);
     }
   }
 
+  // ACCIÓN 2: ENVIAR COMPROBANTES DE CUOTAS ADICIONALES A LA CARPETA YA CREADA
   async function handleCuotasSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const cleanPago = extractNativeFile(comprobantePago);
-    if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
+    if (!comprobantePago) return alert("Por favor, adjunta el comprobante de esta cuota.");
+    if (!userDriveFolderId) return alert("No hay una carpeta de inscripción activa detectada.");
     setLoading(true);
 
     try {
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", userDriveFolderId); 
-      fileForm.append("file", cleanPago, cleanPago.name);
-      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
+      fileForm.append("file", comprobantePago);
+      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_REF_${referenciaPago || "NUEVA"}_${cedula}`);
 
       const res = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-        },
+        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
         body: fileForm,
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Error en el canal de subida al servidor: ${errText}`);
-      }
+      if (!res.ok) throw new Error("Error en el canal de subida al servidor.");
 
       setViewMode("exito");
     } catch (err: any) {
-      setErrorMessageStr(err.message || String(err));
-      setViewMode("error_pantalla");
+      alert(`Error procesando el pago: ${err.message || err}`);
     } finally {
       setLoading(false);
     }
-  }
-
-  if (viewMode === "error_pantalla") {
-    return (
-      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
-        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
-          <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(215,0,126,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
-            <span style={{ fontSize: 32, color: ENJ_MAGENTA, fontWeight: "bold" }}>⚠️</span>
-          </div>
-          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>encuentro-psi.vercel.app dice</h2>
-          <div style={{ background: "#FDF2F4", border: `1px solid ${ENJ_MAGENTA}`, borderRadius: 10, padding: 16, margin: "16px 0 24px", textAlign: "left" }}>
-            <p style={{ margin: 0, color: "#9F1239", fontSize: 14, fontFamily: "monospace", wordBreak: "break-word" }}>
-              {errorMessageStr}
-            </p>
-          </div>
-          <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", borderRadius: 10, border: "none", background: ENJ_NAVY, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Aceptar / Reintentar
-          </button>
-        </div>
-      </div>
-    );
   }
 
   if (viewMode === "exito") {
@@ -294,12 +328,12 @@ export function Inscripcion() {
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(34,197,94,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
             <CheckCircle2 size={42} color="#22c55e" />
           </div>
-          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Proceso Exitoso!</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Todo Listo!</h2>
           <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>
-            Tus datos y comprobante han sido guardados de manera segura en tu expediente digital.
+            Las cuotas y el expediente del participante se encuentran actualizados en Google Drive.
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button type="button" onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               Ir al Inicio
             </button>
           </div>
@@ -324,8 +358,14 @@ export function Inscripcion() {
           <h1 style={{ margin: "16px 0 10px", fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 900, color: ENJ_NAVY, letterSpacing: "-0.02em" }}>
             {viewMode === "inscripcion" ? "Inscripción Oficial" : "Registro de Cuotas Adicionales"}
           </h1>
+          {viewMode === "cuotas" && (
+            <p style={{ color: ENJ_MAGENTA, fontWeight: 600, fontSize: 14 }}>
+              Expediente Activo: {nombre} {apellido} (CI: {cedula})
+            </p>
+          )}
         </div>
 
+        {/* MODO A: FORMULARIO COMPLETO + CUOTA INICIAL */}
         {viewMode === "inscripcion" && (
           <>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 30, flexWrap: "wrap" }}>
@@ -343,6 +383,7 @@ export function Inscripcion() {
 
             <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
               <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                
                 <SectionDivider title={`Datos Personales (${participantType === 'joven' ? 'Joven' : 'Adulto'})`} icon={<User size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Nombre(s)" placeholder="Ej. María" value={nombre} onChange={setNombre} />
@@ -353,6 +394,7 @@ export function Inscripcion() {
                   <InputField label="Fecha de Nacimiento" placeholder="dd/mm/aaaa" type="date" value={birthDate} onChange={(value: string) => { setBirthDate(value); setAge(calculateAge(value)); }} />
                 </div>
                 {age !== null && <p style={{ margin: "0", fontSize: 13, color: "rgba(0,11,111,0.65)", fontWeight: 600 }}>Edad calculada: {age} años</p>}
+                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Talla de Uniforme" placeholder="Ej. M, L, XL" value={tallaUniforme} onChange={setTallaUniforme} />
                   <InputField label="Dirección de Habitación" placeholder="Av / Calle / Zona" icon={<MapPin size={16} />} value={direccion} onChange={setDireccion} />
@@ -367,11 +409,11 @@ export function Inscripcion() {
                 <SectionDivider title="Ficha Médica Básica" icon={<HeartPulse size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <SelectField label="Tipo de Sangre" options={tiposSangre} value={tipoSangre} onChange={setTipoSangre} />
-                  <InputField label="Alergias Conocidas" placeholder="Ninguna, o especifique..." required={false} value={alergias} onChange={setAlergias} />
-                  <InputField label="Enfermedades o Condiciones" placeholder="Asma, diabetes, etc..." required={false} value={enfermedades} onChange={setEnfermedades} />
-                  <InputField label="Medicamentos actuales" placeholder="Dosis y frecuencia..." required={false} value={medicamentos} onChange={setMedicamentos} />
+                  <InputField label="Alergias Conocidas" placeholder="Ninguna..." required={false} value={alergias} onChange={setAlergias} />
+                  <InputField label="Enfermedades o Condiciones" placeholder="Ninguna..." required={false} value={enfermedades} onChange={setEnfermedades} />
+                  <InputField label="Medicamentos actuales" placeholder="Ninguno..." required={false} value={medicamentos} onChange={setMedicamentos} />
                 </div>
-                <InputField label="Contacto de Emergencia" placeholder="Nombre completo y número de teléfono" required={true} value={contactoEmergencia} onChange={setContactoEmergencia} />
+                <InputField label="Contacto de Emergencia" placeholder="Nombre completo y teléfono" required={true} value={contactoEmergencia} onChange={setContactoEmergencia} />
 
                 <SectionDivider title="Credenciales Scouts" icon={<Shield size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -382,57 +424,60 @@ export function Inscripcion() {
                   <InputField label="Grupo Scout" placeholder="Ej. Mafeking 14" icon={<Building size={16} />} value={grupoScout} onChange={setGrupoScout} />
                   <SelectField label="Unidad Scout" options={ramas} value={ramaScout} onChange={setRamaScout} />
                 </div>
+                
                 {participantType === "joven" ? (
                   <InputField label="Adulto de Unidad" placeholder="Nombre del dirigente responsable" value={adultoUnidad} onChange={setAdultoUnidad} />
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <InputField label="Cargo o Rol" placeholder="Ej. Dirigente, JdG" value={cargoAdulto} onChange={setCargoAdulto} />
-                    <InputField label="Área a la que pertenece" placeholder="Ej. Tropa" value={areaAdulto} onChange={setAreaAdulto} />
+                    <InputField label="Cargo o Rol" placeholder="Ej. Dirigente" value={cargoAdulto} onChange={setCargoAdulto} />
+                    <InputField label="Área" placeholder="Ej. Tropa" value={areaAdulto} onChange={setAreaAdulto} />
                   </div>
                 )}
 
                 <SectionDivider title="Cuota Inicial (Inscripción)" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
                 <BankDetailsCard />
+                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                   <InputField label="Nro. Referencia (Últimos 6 dígitos)" placeholder="123456" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
                   <InputField label="Monto transferido (Bs)" placeholder="0.00" type="number" value={montoBs} onChange={setMontoBs} />
-                  <InputField label="Tasa de cambio aplicada" placeholder="0.00" type="number" value={tasa} onChange={setTasa} />
+                  <InputField label="Tasa de cambio" placeholder="0.00" type="number" value={tasa} onChange={setTasa} />
                 </div>
 
                 <SectionDivider title="Expediente Digital" icon={<GoogleDriveIcon size={16} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Foto del Participante *</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Foto del Participante *</p>
                     <FileDropzone label="Subir foto" sublabel="Fondo blanco" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setFotoParticipante} />
-                    {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name || "Archivo cargado"}</p>}
+                    {fotoParticipante && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {fotoParticipante.name}</p>}
                   </div>
                   <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante Cuota Inicial *</p>
-                    <FileDropzone label="Subir pago" sublabel="PDF o Imágen" accept=".jpg,.jpeg,.png,.pdf" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
-                    {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name || "Archivo cargado"}</p>}
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Comprobante Cuota Inicial *</p>
+                    <FileDropzone label="Subir pago" sublabel="PDF o Imagen" accept=".jpg,.jpeg,.png,.pdf" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
+                    {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Ficha Médica Impeesa (Opcional si llenaste lo anterior)</p>
-                  <FileDropzone label="Screenshot Ficha" sublabel="Imágen" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setScreenshotMedica} />
-                  {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name || "Archivo cargado"}</p>}
+                  <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Ficha Médica Impeesa (Opcional)</p>
+                  <FileDropzone label="Screenshot Ficha" sublabel="Imagen" accept=".jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={screenshotMedica ? setScreenshotMedica : setScreenshotMedica} />
+                  {screenshotMedica && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {screenshotMedica.name}</p>}
                 </div>
 
                 <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, cursor: "pointer", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>
-                  <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
+                  <input type="checkbox" checked={acceptTerms} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAcceptTerms(e.target.checked)} />
                   He leído y acepto los términos del Acuerdo de Convivencia oficial del evento.
                 </label>
 
                 <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
-                  {loading ? "Procesando inscripción..." : "Finalizar Inscripción y Registrar Primer Pago"}
+                  {loading ? "Procesando e inyectando expediente..." : "Finalizar Inscripción y Crear Expediente"}
                 </button>
               </form>
             </div>
           </>
         )}
 
+        {/* MODO B: CONTROL Y LIQUIDACIÓN DE CUOTAS (Se activa solo inmediatamente después del paso A) */}
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -455,14 +500,19 @@ export function Inscripcion() {
               </div>
 
               <div>
-                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase" }}>Comprobante de Pago *</p>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Comprobante de Pago *</p>
                 <FileDropzone label="Subir comprobante" sublabel="PDF, JPG o PNG" accept=".pdf,.jpg,.jpeg,.png" icon={<GoogleDriveIcon size={24} />} onFileSelect={setComprobantePago} />
-                {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name || "Archivo cargado"}</p>}
+                {comprobantePago && <p style={{ fontSize: 12, color: "#22c55e", marginTop: 4 }}>✓ {comprobantePago.name}</p>}
               </div>
 
-              <button type="submit" disabled={loading} style={{ background: ENJ_MAGENTA, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
-                {loading ? "Subiendo Archivo a Drive..." : "Registrar Cuota y Subir Archivo"}
-              </button>
+              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+                <button type="submit" disabled={loading} style={{ flex: 1, background: ENJ_MAGENTA, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  {loading ? "Subiendo Cuota a Drive..." : "Registrar Cuota en Carpeta"}
+                </button>
+                <button type="button" onClick={() => setViewMode("exito")} style={{ background: "rgba(0,11,111,0.05)", color: ENJ_NAVY, border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                  Terminar sin más cuotas
+                </button>
+              </div>
             </form>
           </div>
         )}
