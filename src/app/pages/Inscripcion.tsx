@@ -77,24 +77,9 @@ function SectionDivider({ title, icon }: { title: string; icon: React.ReactNode 
   );
 }
 
-function BankDetailsCard() {
-  return (
-    <div style={{ background: "#F4F6FB", border: "1.5px dashed rgba(0,11,111,0.2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
-      <h4 style={{ margin: "0 0 10px", fontSize: 13, color: ENJ_NAVY, fontWeight: 700 }}>Datos para Transferencia Bancaria</h4>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13, color: "rgba(0,11,111,0.7)" }}>
-        <div><strong>Banco:</strong> Banesco</div>
-        <div><strong>RIF:</strong> J-12345678-9</div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Cuenta:</strong> 0134-0000-0000-0000-0000</div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Titular:</strong> Asociación de Scouts de Venezuela</div>
-      </div>
-    </div>
-  );
-}
-
 export function Inscripcion() {
   const navigate = useNavigate();
 
-  // Estados
   const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "error_pantalla">("inscripcion");
   const [errorMessageStr, setErrorMessageStr] = useState("");
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
@@ -149,7 +134,6 @@ export function Inscripcion() {
     return years >= 0 ? years : null;
   }
 
-  // Helper esencial para desenvolver archivos provenientes de FileDropzone[cite: 2]
   const extractNativeFile = (fileValue: any): File | null => {
     if (!fileValue) return null;
     if (fileValue instanceof File) return fileValue;
@@ -168,7 +152,7 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      // 1. Crear Carpeta
+      // 1. Crear Carpeta en Drive
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -180,21 +164,20 @@ export function Inscripcion() {
         body: folderForm,
       });
       
-      if (!driveResponse.ok) {
-        throw new Error("Error creando carpeta en el servidor.");
-      }
+      if (!driveResponse.ok) throw new Error("Error creando carpeta en el servidor de Google Drive.");
 
       const driveData = await driveResponse.json();
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // Función subida robusta
-      const uploadFile = async (nativeFile: File, name: string) => {
+      // Función unificada de subida
+      const uploadFile = async (fileObj: Blob | File, filename: string, customDriveName: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
-        fileForm.append("file", nativeFile, nativeFile.name); // El nombre es obligatorio para Deno[cite: 2]
-        fileForm.append("custom_name", name);
+        // Pasamos explícitamente el tercer parámetro para asegurar compatibilidad con Deno
+        fileForm.append("file", fileObj, filename);
+        fileForm.append("custom_name", customDriveName);
         
         const uploadRes = await fetch(SUPABASE_FUNCTION_URL, { 
           method: "POST", 
@@ -202,31 +185,68 @@ export function Inscripcion() {
           body: fileForm 
         });
 
-        if (!uploadRes.ok) throw new Error(`Fallo al subir: ${name}`);
+        if (!uploadRes.ok) throw new Error(`Fallo al subir archivo al servidor: ${customDriveName}`);
       };
 
-      // 2. Generar archivo de datos txt (como Objeto File Real)
-      const dataContenido = `EXPEDIENTE ENJ 2026\n===================\nNombre: ${nombre} ${apellido}\nCédula: ${cedula}\nEdad: ${age}\nSangre: ${tipoSangre}\nAlergias: ${alergias || "N/A"}\nRegión: ${selectedRegion}\nDistrito: ${selectedDistrict}\nGrupo: ${grupoScout}\nPago Inicial: ${montoBs} Bs | Ref: ${referenciaPago}`;
+      // 2. GENERAR CONTENIDO DEL ARCHIVO TXT COMO BLOB SEGURO
+      const dataContenido = `==================================================
+EXPEDIENTE DIGITAL DE INSCRIPCIÓN - ENJ 2026
+==================================================
+Fecha Registro: ${new Date().toLocaleString()}
+Participante: ${participantType.toUpperCase()}
+
+[DATOS PERSONALES]
+Nombre Completo: ${nombre} ${apellido}
+Cédula: ${cedula}
+Fecha Nacimiento: ${birthDate}
+Edad: ${age ? age + " años" : "N/A"}
+Talla: ${tallaUniforme}
+Dirección: ${direccion}
+
+[CONTACTO]
+Correo: ${correo}
+Teléfono: ${telefono}
+
+[MEDICINA BÁSICA]
+Tipo Sangre: ${tipoSangre}
+Alergias: ${alergias || "Ninguna"}
+Condiciones: ${enfermedades || "Ninguna"}
+Medicamentos: ${medicamentos || "Ninguno"}
+Contacto Emergencia: ${contactoEmergencia}
+
+[CREDITOS SCOUTS]
+Región: ${selectedRegion}
+Distrito: ${selectedDistrict}
+Grupo: ${grupoScout}
+Rama: ${ramaScout}
+${participantType === "joven" ? `Adulto Responsable: ${adultoUnidad}` : `Cargo: ${cargoAdulto} | Área: ${areaAdulto}`}
+
+[PAGO REGISTRADO INICIAL]
+Monto: ${montoBs} Bs
+Referencia: ${referenciaPago}
+Tasa Cambio: ${tasa}
+==================================================`;
       
-      const datosFile = new File([dataContenido], "Datos_Inscripcion.txt", { type: "text/plain" });
+      const datosBlob = new Blob([dataContenido], { type: "text/plain;charset=utf-8" });
 
-      // 3. Extraer y subir archivos
+      // 3. Subir todos los elementos correlativamente
+      await uploadFile(datosBlob, "Datos_Inscripcion.txt", `Ficha_Datos_${cedula}.txt`);
+
       const cleanFoto = extractNativeFile(fotoParticipante);
+      if (cleanFoto) await uploadFile(cleanFoto, cleanFoto.name, `Foto_Perfil_${cedula}`);
+
       const cleanMedica = extractNativeFile(screenshotMedica);
+      if (cleanMedica) await uploadFile(cleanMedica, cleanMedica.name, `Ficha_Medica_${cedula}`);
 
-      await uploadFile(datosFile, `Ficha_Datos_${cedula}.txt`);
-      if (cleanFoto) await uploadFile(cleanFoto, `Foto_Perfil_${cedula}`);
-      if (cleanMedica) await uploadFile(cleanMedica, `Ficha_Medica_${cedula}`);
-      await uploadFile(cleanPago, `Comprobante_Inicial_${cedula}`);
+      await uploadFile(cleanPago, cleanPago.name, `Comprobante_Inicial_${cedula}`);
 
-      // 4. Limpiar datos de pago para la nueva vista y cambiar la pantalla
+      // 4. Limpieza preventiva y salto al paso de Cuotas
       setComprobantePago(null);
       setFechaPago("");
       setReferenciaPago("");
       setMontoBs("");
       setTasa("");
       
-      // AL FIN, CAMBIAR A MODO CUOTAS
       setViewMode("cuotas");
 
     } catch (err: any) {
@@ -240,7 +260,8 @@ export function Inscripcion() {
   async function handleCuotasSubmit(e: React.FormEvent) {
     e.preventDefault();
     const cleanPago = extractNativeFile(comprobantePago);
-    if (!cleanPago) return alert("Adjunta un comprobante válido.");
+    if (!cleanPago) return alert("Adjunta un comprobante de pago válido.");
+    if (!userDriveFolderId) return alert("Error de flujo: Falta el identificador de la carpeta destino.");
     
     setLoading(true);
 
@@ -249,7 +270,7 @@ export function Inscripcion() {
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", userDriveFolderId); 
       fileForm.append("file", cleanPago, cleanPago.name);
-      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${cedula}`);
+      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_REF_${referenciaPago || "NUEVA"}_${cedula}`);
 
       const res = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
@@ -257,7 +278,7 @@ export function Inscripcion() {
         body: fileForm,
       });
 
-      if (!res.ok) throw new Error("Fallo al subir la cuota.");
+      if (!res.ok) throw new Error("Fallo al subir el archivo de la cuota.");
 
       setViewMode("exito");
     } catch (err: any) {
@@ -268,16 +289,14 @@ export function Inscripcion() {
     }
   }
 
-  // --- VISTAS ---
-
   if (viewMode === "error_pantalla") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
         <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 22, color: ENJ_NAVY }}>⚠️ Ocurrió un error</h2>
-          <p style={{ color: "#9F1239" }}>{errorMessageStr}</p>
+          <h2 style={{ margin: "0 0 12px", fontSize: 22, color: ENJ_NAVY }}>⚠️ Error en el Proceso</h2>
+          <p style={{ color: "#9F1239", fontSize: 14, whiteSpace: "pre-wrap" }}>{errorMessageStr}</p>
           <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", background: ENJ_NAVY, color: "#fff", borderRadius: 10, border: "none", cursor: "pointer", marginTop: 20 }}>
-            Reintentar
+            Regresar e Intentar Nuevamente
           </button>
         </div>
       </div>
@@ -289,10 +308,10 @@ export function Inscripcion() {
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
         <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 480, width: "100%", textAlign: "center" }}>
           <CheckCircle2 size={42} color="#22c55e" style={{ margin: "0 auto 20px" }} />
-          <h2 style={{ margin: "0 0 12px", fontSize: 26, color: ENJ_NAVY }}>¡Todo Listo!</h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Expediente actualizado correctamente.</p>
+          <h2 style={{ margin: "0 0 12px", fontSize: 26, color: ENJ_NAVY }}>¡Proceso Finalizado!</h2>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Los documentos e historial de pagos han sido almacenados de forma segura.</p>
           <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, cursor: "pointer" }}>
-            Volver al inicio
+            Volver al Inicio
           </button>
         </div>
       </div>
@@ -306,8 +325,11 @@ export function Inscripcion() {
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 16px", borderRadius: 100 }}>ENJ 2026</span>
           <h1 style={{ margin: "16px 0 10px", fontSize: 32, color: ENJ_NAVY }}>
-            {viewMode === "inscripcion" ? "Inscripción Oficial" : "Registro de Cuotas"}
+            {viewMode === "inscripcion" ? "Inscripción Oficial" : "Registro de Cuotas Siguientes"}
           </h1>
+          {viewMode === "cuotas" && (
+            <p style={{ color: ENJ_MAGENTA, fontWeight: 700 }}>Expediente Activo: {nombre} {apellido} (CI: {cedula})</p>
+          )}
         </div>
 
         {viewMode === "inscripcion" && (
@@ -334,16 +356,16 @@ export function Inscripcion() {
                 <InputField label="Referencia" value={referenciaPago} onChange={setReferenciaPago} />
               </div>
 
-              <SectionDivider title="Archivos" icon={<GoogleDriveIcon size={16} />} />
+              <SectionDivider title="Archivos Expediente" icon={<GoogleDriveIcon size={16} />} />
               <FileDropzone label="Foto" accept=".jpg,.png" onFileSelect={setFotoParticipante} />
               <FileDropzone label="Comprobante Pago Inicial *" accept=".jpg,.png,.pdf" onFileSelect={setComprobantePago} />
 
               <label style={{ display: "flex", gap: 10, cursor: "pointer", fontSize: 13 }}>
-                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} /> Acepto términos
+                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} /> Acepto términos y condiciones del evento
               </label>
 
-              <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer" }}>
-                {loading ? "Procesando y creando expediente..." : "Enviar Inscripción"}
+              <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 }}>
+                {loading ? "Generando expediente digital..." : "Enviar Inscripción y Archivos"}
               </button>
             </form>
           </div>
@@ -363,11 +385,11 @@ export function Inscripcion() {
               <FileDropzone label="Comprobante Cuota *" accept=".pdf,.jpg,.png" onFileSelect={setComprobantePago} />
 
               <div style={{ display: "flex", gap: 10 }}>
-                <button type="submit" disabled={loading} style={{ flex: 1, background: ENJ_MAGENTA, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer" }}>
-                  {loading ? "Subiendo..." : "Registrar Cuota"}
+                <button type="submit" disabled={loading} style={{ flex: 1, background: ENJ_MAGENTA, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 }}>
+                  {loading ? "Subiendo Comprobante..." : "Registrar Cuota Extra"}
                 </button>
-                <button type="button" onClick={() => setViewMode("exito")} style={{ background: "#eee", padding: 15, borderRadius: 10, border: "none", cursor: "pointer" }}>
-                  Terminar por ahora
+                <button type="button" onClick={() => setViewMode("exito")} style={{ background: "#eee", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", color: ENJ_NAVY, fontWeight: 600 }}>
+                  Finalizar Flujo Completo
                 </button>
               </div>
             </form>
