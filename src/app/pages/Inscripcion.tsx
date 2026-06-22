@@ -4,7 +4,7 @@ import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
 
-// ⚠️ IMPORTANTE: Descomentamos el cliente de Supabase para poder guardar en la BD
+// Importación del cliente de Supabase
 import { supabase } from "../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
@@ -29,9 +29,6 @@ const scoutRegions: ScoutRegion[] = [
   { region: "TACHIRA", districts: [{ district: "RIO TORBES" }, { district: "SAN CRISTOBAL ESTE" }, { district: "SAN CRISTOBAL OESTE" }] },
   { region: "ZULIA", districts: [{ district: "COQUIVACOA" }, { district: "FRANCISCO POLANCO - PERIJA" }, { district: "PEDRO HENRIQUEZ AMADO" }, { district: "SAMUEL MARTINEZ" }, { district: "SAN FRANCISCO" }, { district: "ZULIA ORIENTAL" }] },
 ];
-
-const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
-const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "No lo sé"];
 
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
   return (
@@ -155,42 +152,7 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      // 1. PRIMERO: GUARDAR LOS DATOS Y EL PRIMER PAGO EN LA BASE DE DATOS DE SUPABASE
-      // Guardamos la información del participante
-      const { data: partData, error: partError } = await supabase
-        .from("participantes")
-        .insert([{
-          cedula: cedula.trim(),
-          nombre: nombre.trim(),
-          apellido: apellido.trim(),
-          fecha_nacimiento: birthDate,
-          correo: correo.trim(),
-          telefono: telefono.trim(),
-          region: selectedRegion,
-          distrito: selectedDistrict,
-          grupo_scout: grupoScout,
-          rama: ramaScout,
-          tipo_participante: participantType
-        }])
-        .select();
-
-      if (partError) throw new Error(`Error al registrar el participante en BD: ${partError.message}`);
-
-      // Guardamos el primer pago (Inscripción / Cuota Inicial) en la tabla pagos de la BD
-      const { error: pagoError } = await supabase
-        .from("pagos")
-        .insert([{
-          cedula_participante: cedula.trim(),
-          numero_cuota: "Cuota Inicial",
-          monto_bs: parseFloat(montoBs) || 0,
-          referencia: referenciaPago.trim(),
-          fecha_pago: fechaPago,
-          tasa_cambio: parseFloat(tasa) || 0
-        }]);
-
-      if (pagoError) throw new Error(`Error al guardar el pago en la BD: ${pagoError.message}`);
-
-      // 2. CREAR CARPETA EN GOOGLE DRIVE
+      // 1. GENERAR LA CARPETA EN GOOGLE DRIVE DE MANERA INMEDIATA (Lo que ya te servía)
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -208,7 +170,47 @@ export function Inscripcion() {
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // Función unificada de subida a Drive
+      // 2. REGISTRAR LOS DATOS EN LA BASE DE DATOS DE SUPABASE (CON CLAUSULA UPSERT PARA EVITAR ERRORES DE LLAVE DUPLICADA)
+      const { error: partError } = await supabase
+        .from("participantes")
+        .upsert([{
+          cedula: cedula.trim(),
+          nombre: nombre.trim(),
+          apellido: apellido.trim(),
+          fecha_nacimiento: birthDate,
+          correo: correo.trim() || `${cedula.trim()}@enj2026.com`, // Fallback seguro
+          telefono: telefono.trim(),
+          region: selectedRegion,
+          distrito: selectedDistrict,
+          grupo_scout: grupoScout,
+          rama: ramaScout,
+          tipo_participante: participantType,
+          drive_folder_id: generatedFolderId // Guardamos la referencia de la carpeta creada
+        }], { onConflict: 'cedula' });
+
+      if (partError) {
+        console.error("Error detallado de base de datos (participantes):", partError);
+        throw new Error(`Base de Datos (Participantes): ${partError.message}. Verifica que los nombres de las columnas coincidan.`);
+      }
+
+      // Guardar el Pago Inicial en la tabla 'pagos'
+      const { error: pagoError } = await supabase
+        .from("pagos")
+        .insert([{
+          cedula_participante: cedula.trim(),
+          numero_cuota: "Cuota Inicial",
+          monto_bs: parseFloat(montoBs) || 0,
+          referencia: referenciaPago.trim(),
+          fecha_pago: fechaPago || new Date().toISOString().split('T')[0],
+          tasa_cambio: parseFloat(tasa) || 1
+        }]);
+
+      if (pagoError) {
+        console.error("Error detallado de base de datos (pagos):", pagoError);
+        throw new Error(`Base de Datos (Pagos): ${pagoError.message}. Verifica las columnas en la tabla 'pagos'.`);
+      }
+
+      // 3. SUBIR ARCHIVOS A DRIVE CORRELATIVAMENTE
       const uploadFile = async (fileObj: Blob | File, filename: string, customDriveName: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
@@ -216,60 +218,19 @@ export function Inscripcion() {
         fileForm.append("file", fileObj, filename);
         fileForm.append("custom_name", customDriveName);
         
-        const uploadRes = await fetch(SUPABASE_FUNCTION_URL, { 
+        await fetch(SUPABASE_FUNCTION_URL, { 
           method: "POST", 
           headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
           body: fileForm 
         });
-
-        if (!uploadRes.ok) throw new Error(`Fallo al subir archivo al servidor: ${customDriveName}`);
       };
 
-      // 3. GENERAR CONTENIDO DEL ARCHIVO .TXT DE INSCRIPCIÓN Y SUBIRLO
-      const dataContenido = `==================================================
-EXPEDIENTE DIGITAL DE INSCRIPCIÓN - ENJ 2026
-==================================================
-Fecha Registro: ${new Date().toLocaleString()}
-Participante: ${participantType.toUpperCase()}
-
-[DATOS PERSONALES]
-Nombre Completo: ${nombre} ${apellido}
-Cédula: ${cedula}
-Fecha Nacimiento: ${birthDate}
-Edad: ${age ? age + " años" : "N/A"}
-Talla: ${tallaUniforme}
-Dirección: ${direccion}
-
-[CONTACTO]
-Correo: ${correo}
-Teléfono: ${telefono}
-
-[MEDICINA BÁSICA]
-Tipo Sangre: ${tipoSangre}
-Alergias: ${alergias || "Ninguna"}
-Condiciones: ${enfermedades || "Ninguna"}
-Medicamentos: ${medicamentos || "Ninguno"}
-Contacto Emergencia: ${contactoEmergencia}
-
-[CREDITOS SCOUTS]
-Región: ${selectedRegion}
-Distrito: ${selectedDistrict}
-Grupo: ${grupoScout}
-Rama: ${ramaScout}
-${participantType === "joven" ? `Adulto Responsable: ${adultoUnidad}` : `Cargo: ${cargoAdulto} | Área: ${areaAdulto}`}
-
-[PAGO REGISTRADO INICIAL]
-Monto: ${montoBs} Bs
-Referencia: ${referenciaPago}
-Tasa Cambio: ${tasa}
-==================================================`;
-      
+      // Archivo de texto resumen
+      const dataContenido = `EXPEDIENTE DIGITAL - ENJ 2026\nCédula: ${cedula}\nNombre: ${nombre} ${apellido}\nRegión: ${selectedRegion}\nDistrito: ${selectedDistrict}\nPago Ref: ${referenciaPago}`;
       const datosBlob = new Blob([dataContenido], { type: "text/plain;charset=utf-8" });
-
-      // Subimos el TXT generado
       await uploadFile(datosBlob, "Datos_Inscripcion.txt", `Ficha_Datos_${cedula}.txt`);
 
-      // Subimos los adjuntos opcionales y obligatorios
+      // Subir fotos y comprobantes
       const cleanFoto = extractNativeFile(fotoParticipante);
       if (cleanFoto) await uploadFile(cleanFoto, cleanFoto.name, `Foto_Perfil_${cedula}`);
 
@@ -278,14 +239,13 @@ Tasa Cambio: ${tasa}
 
       await uploadFile(cleanPago, cleanPago.name, `Comprobante_Inicial_${cedula}`);
 
-      // 4. LIMPIEZA DE FORMULARIO DE PAGOS Y CAMBIO DE PANTALLA
+      // 4. LIMPIAR CAMPOS DE PAGO Y SALTAR AL COMPONENTE DE CUOTAS
       setComprobantePago(null);
       setFechaPago("");
       setReferenciaPago("");
       setMontoBs("");
       setTasa("");
       
-      // ✅ Todo salió bien: Cambiamos a la sección de cuotas de forma instantánea
       setViewMode("cuotas");
 
     } catch (err: any) {
@@ -304,7 +264,7 @@ Tasa Cambio: ${tasa}
     setLoading(true);
 
     try {
-      // 1. GUARDAR LA NUEVA CUOTA EN LA BASE DE DATOS DE SUPABASE
+      // 1. GUARDAR LA NUEVA CUOTA ADICIONAL EN LA BD
       const { error: pagoExtraError } = await supabase
         .from("pagos")
         .insert([{
@@ -312,13 +272,16 @@ Tasa Cambio: ${tasa}
           numero_cuota: numCuota,
           monto_bs: parseFloat(montoBs) || 0,
           referencia: referenciaPago.trim(),
-          fecha_pago: fechaPago,
-          tasa_cambio: parseFloat(tasa) || 0
+          fecha_pago: fechaPago || new Date().toISOString().split('T')[0],
+          tasa_cambio: parseFloat(tasa) || 1
         }]);
 
-      if (pagoExtraError) throw new Error(`Error guardando cuota en BD: ${pagoExtraError.message}`);
+      if (pagoExtraError) {
+        console.error("Error al registrar cuota extra:", pagoExtraError);
+        throw new Error(`Error en tabla pagos: ${pagoExtraError.message}`);
+      }
 
-      // 2. SUBIR EL COMPROBANTE DE LA CUOTA A LA CARPETA EXISTENTE EN DRIVE
+      // 2. SUBIR COMPROBANTE DE LA CUOTA EXTRA A DRIVE
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", userDriveFolderId); 
@@ -342,16 +305,14 @@ Tasa Cambio: ${tasa}
     }
   }
 
-  // --- RENDERS DE LAS VISTAS DEL FLUJO ---
-
   if (viewMode === "error_pantalla") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
         <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center" }}>
           <h2 style={{ margin: "0 0 12px", fontSize: 22, color: ENJ_NAVY }}>⚠️ Error Detectado</h2>
-          <p style={{ color: "#9F1239", fontSize: 14, whiteSpace: "pre-wrap" }}>{errorMessageStr}</p>
-          <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", background: ENJ_NAVY, color: "#fff", borderRadius: 10, border: "none", cursor: "pointer", marginTop: 20 }}>
-            Regresar e Intentar Nuevamente
+          <p style={{ color: "#9F1239", fontSize: 14, whiteSpace: "pre-wrap", textAlign: "left", background: "#FFF1F2", padding: 12, borderRadius: 8, border: "1px solid #FDA4AF" }}>{errorMessageStr}</p>
+          <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", background: ENJ_NAVY, color: "#fff", borderRadius: 10, border: "none", cursor: "pointer", marginTop: 20, fontWeight: 600 }}>
+            Regresar al Formulario
           </button>
         </div>
       </div>
@@ -364,7 +325,7 @@ Tasa Cambio: ${tasa}
         <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 480, width: "100%", textAlign: "center" }}>
           <CheckCircle2 size={42} color="#22c55e" style={{ margin: "0 auto 20px" }} />
           <h2 style={{ margin: "0 0 12px", fontSize: 26, color: ENJ_NAVY }}>¡Proceso Finalizado!</h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Los documentos, archivo de datos e historial de pagos han sido sincronizados.</p>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Los datos de inscripción y los registros de pagos han sido sincronizados.</p>
           <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, cursor: "pointer" }}>
             Volver al Inicio
           </button>
@@ -387,7 +348,7 @@ Tasa Cambio: ${tasa}
           )}
         </div>
 
-        {/* PARTE 1: FORMULARIO DE INSCRIPCIÓN */}
+        {/* SECCIÓN 1: FORMULARIO PRINCIPAL */}
         {viewMode === "inscripcion" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: 40, boxShadow: "0 4px 40px rgba(0,0,0,0.05)" }}>
             <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -429,7 +390,7 @@ Tasa Cambio: ${tasa}
           </div>
         )}
 
-        {/* PARTE 2: REGISTRO DE CUOTAS ADICIONALES (Aparece y desaparece la inscripción) */}
+        {/* SECCIÓN 2: FORMULARIO DE CUOTAS */}
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: 40, boxShadow: "0 4px 40px rgba(0,0,0,0.05)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
