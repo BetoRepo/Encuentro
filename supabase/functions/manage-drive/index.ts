@@ -1,6 +1,6 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 
-// Configuración de CORS para que tu página en Vercel pueda enviar datos y archivos sin bloqueos de seguridad
+// Configuración de CORS para permitir peticiones desde tu app en Vercel sin bloqueos de seguridad
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -17,7 +17,7 @@ async function getGoogleDriveAccessToken(clientEmail: string, privateKey: string
   const now = Math.floor(Date.now() / 1000);
   const claim = {
     iss: clientEmail,
-    scope: "https://www.googleapis.com/auth/drive", // Scope completo para permitir carpetas y subidas
+    scope: "https://www.googleapis.com/auth/drive", // Scope completo para permitir la creación de carpetas y subida de archivos
     aud: "https://oauth2.googleapis.com/token",
     exp: now + 3600,
     iat: now,
@@ -26,11 +26,12 @@ async function getGoogleDriveAccessToken(clientEmail: string, privateKey: string
   const encodeB64 = (obj: any) => btoa(JSON.stringify(obj)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const tokenString = `${encodeB64(header)}.${encodeB64(claim)}`;
 
-  // 2. Extrae quirúrgicamente la llave privada aislando cabeceras de texto residuales o comillas
+  // 2. Extrae quirúrgicamente la llave privada aislando cabeceras o comillas residuales
   const matches = cleanKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
   if (!matches) {
     throw new Error("El formato de la clave DRIVE_PRIVATE_KEY es incorrecto (Faltan encabezados BEGIN/END).");
   }
+  
   const pemContents = matches[1].replace(/\s/g, "").replace(/["']/g, "");
   const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
 
@@ -69,7 +70,7 @@ async function getGoogleDriveAccessToken(clientEmail: string, privateKey: string
 
 // Servidor de la Edge Function en Deno
 Deno.serve(async (req) => {
-  // Responder inmediatamente a las peticiones preflight OPTIONS del navegador (CORS)
+  // Responder de inmediato a las peticiones preflight OPTIONS del navegador (CORS)
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     const formData = await req.formData();
-    const action = formData.get("action") as string; // Identifica qué quiere hacer React ('create_folder' o 'upload_file')
+    const action = formData.get("action") as string; // Identifica la acción: 'create_folder' o 'upload_file'
 
     // Generar el token de acceso seguro para la operación actual
     const accessToken = await getGoogleDriveAccessToken(clientEmail, privateKey);
@@ -93,6 +94,7 @@ Deno.serve(async (req) => {
     // =========================================================================
     if (action === "create_folder") {
       const folderName = formData.get("folder_name") as string || "Nueva Carpeta Participante";
+      
       const driveResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
         method: "POST",
         headers: {
@@ -102,8 +104,8 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           name: folderName,
           mimeType: "application/vnd.google-apps.folder",
-          // 👇 AQUÍ SE FUERZA A QUE SE CREA DENTRO DE TU CARPETA COMPARTIDA DE DRIVE
-          parents: ["1-7S0OqA_mR36qOqX7-x6z1k6R_XyZb9a"]
+          // 👇 TU ID REAL DE CARPETA YA INTEGRADO AQUÍ
+          parents: ["1FeRqD2Ng-TRX6hSVE8TLWZUCiLecMZOr"] 
         }),
       });
 
@@ -112,7 +114,7 @@ Deno.serve(async (req) => {
         throw new Error(`Google Drive Folder Error: ${JSON.stringify(driveData)}`);
       }
 
-      // Devolvemos el ID de la subcarpeta recién creada para que React la use en las subidas
+      // Devolvemos el ID de la subcarpeta del participante recién creada
       return new Response(JSON.stringify({ success: true, folderId: driveData.id }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -125,7 +127,7 @@ Deno.serve(async (req) => {
     if (action === "upload_file") {
       const file = formData.get("file") as File;
       const folderId = formData.get("folder_id") as string; // El ID de la carpeta del usuario generada en el paso A
-      const customName = formData.get("custom_name") as string; // Nombre formateado de React (ej: Foto_Perfil_V12345)
+      const customName = formData.get("custom_name") as string; // Nombre formateado desde React (ej: Foto_Perfil_V12345)
 
       if (!file) {
         return new Response(JSON.stringify({ error: "No se encontró ningún archivo para subir en la petición." }), {
@@ -141,7 +143,7 @@ Deno.serve(async (req) => {
       const metadata: any = { name: finalName, mimeType: file.type };
       if (folderId) metadata.parents = [folderId];
 
-      // Construcción del cuerpo Multipart/Related para la API de Google Drive
+      // Construcción del cuerpo Multipart/Related exigido por la API de Google Drive
       const boundary = "-------314159265358979323846";
       const delimiter = `\r\n--${boundary}\r\n`;
       const closeDelimiter = `\r\n--${boundary}--`;
@@ -179,7 +181,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Acción no reconocida
+    // Acción no válida o vacía
     return new Response(JSON.stringify({ error: "Acción no válida o no especificada en el formulario." }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
