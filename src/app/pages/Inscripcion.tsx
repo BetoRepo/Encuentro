@@ -4,8 +4,8 @@ import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
 
-// ✅ RUTA CORREGIDA: Apunta exactamente al directorio padre correcto
-import { supabase } from "../supabaseClient";
+// ✅ RUTA CORREGIDA: Apuntando a tu carpeta 'lib/supabase.ts' exacta
+import { supabase } from "../lib/supabase";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -144,6 +144,7 @@ export function Inscripcion() {
     async function comprobarRegistroExistente() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        
         if (user) {
           setCorreo(user.email || "");
 
@@ -191,8 +192,10 @@ export function Inscripcion() {
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!acceptTerms) return alert("Debe leer y aceptar el acuerdo de convivencia.");
+    
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial de forma válida.");
+    
     setLoading(true);
 
     try {
@@ -208,6 +211,7 @@ export function Inscripcion() {
         headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
         body: folderForm,
       });
+      
       if (!driveResponse.ok) throw new Error("Error creando carpeta en el servidor de Google Drive.");
 
       const driveData = await driveResponse.json();
@@ -226,7 +230,7 @@ export function Inscripcion() {
           correo: correo.trim() || user?.email,
           telefono: telefono,
           tipo_sangre: tipoSangre,
-          alergias: allergies,
+          alergias: alergias,
           enfermedades: enfermedades,
           medicamentos: medicamentos,
           contacto_emergencia: contactoEmergencia,
@@ -289,6 +293,7 @@ export function Inscripcion() {
     e.preventDefault();
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
+    
     const finalFolderId = userDriveFolderId || folderIdDirecto;
     const finalCedula = cedula || cedulaDirecta;
 
@@ -417,6 +422,7 @@ export function Inscripcion() {
                   <InputField label="Fecha de Nacimiento" type="date" value={birthDate} onChange={(value: string) => { setBirthDate(value); setAge(calculateAge(value)); }} />
                 </div>
                 {age !== null && <p style={{ margin: "0", fontSize: 13, color: "rgba(0,11,111,0.65)", fontWeight: 600 }}>Edad calculada: {age} años</p>}
+                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Talla de Uniforme" placeholder="Ej. M, L" value={tallaUniforme} onChange={setTallaUniforme} />
                   <InputField label="Dirección de Habitación" placeholder="Av / Calle" icon={<MapPin size={16} />} value={direccion} onChange={setDireccion} />
@@ -424,7 +430,6 @@ export function Inscripcion() {
 
                 <SectionDivider title="Datos de Contacto" icon={<Phone size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {/* ✅ LOGUICA COMPONENTE FIJA: Se removieron los atributos erróneos del icono de Mail */}
                   <InputField label="Correo Electrónico" type="email" icon={<Mail size={16} />} value={correo} onChange={setCorreo} disabled={true} />
                   <InputField label="Teléfono (WhatsApp)" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} />
                 </div>
@@ -489,9 +494,11 @@ export function Inscripcion() {
             </div>
           </>
         )}
+
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              
               {!userDriveFolderId && (
                 <>
                   <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
