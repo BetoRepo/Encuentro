@@ -4,10 +4,8 @@ import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
 
-// NOTA DE CONTROL DE ERRORES (Ref: image_22655e.png): 
-// Si tu compilador vuelve a decir que no encuentra el archivo, cambia la ruta a "../../supabaseClient" 
-// dependiendo de si tu archivo se encuentra en la raíz de 'src'.
-import { supabase } from "../../supabaseClient";
+// ✅ RUTA CORREGIDA: Apunta exactamente al directorio padre correcto
+import { supabase } from "../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -140,27 +138,23 @@ export function Inscripcion() {
   const [loading, setLoading] = useState(false);
 
   // ==========================================
-  // LÓGICA DE DETECCIÓN AUTOMÁTICA DE USER INSCRITO
+  // AUTO-RECONOCIMIENTO DEL USUARIO LOGUEADO
   // ==========================================
   useEffect(() => {
     async function comprobarRegistroExistente() {
       try {
-        // 1. Obtener la sesión del usuario autenticado actual
         const { data: { user } } = await supabase.auth.getUser();
-        
         if (user) {
-          // Pre-poblamos el correo de autenticación por defecto
           setCorreo(user.email || "");
 
-          // 2. Buscar en la tabla 'participantes' (Ver: image_1a16c7.png) si existe este registro
-          const { data: participante, error } = await supabase
+          // Búsqueda limpia y segura en Supabase
+          const { data: participante } = await supabase
             .from("participantes")
             .select("*")
-            .or(`correo.eq.${user.email},id_usuario.eq.${user.id}`)
+            .eq("correo", user.email)
             .maybeSingle();
 
           if (participante) {
-            // Si el sistema lo encuentra inscrito, rellenamos datos y saltamos a cuotas de inmediato
             setNombre(participante.nombre || "");
             setApellido(participante.apellido || "");
             setCedula(participante.cedula || "");
@@ -169,7 +163,7 @@ export function Inscripcion() {
           }
         }
       } catch (err) {
-        console.warn("Validación de usuario existente no comprometió la carga de la vista:", err);
+        console.warn("Estado de sesión limpio:", err);
       }
     }
     comprobarRegistroExistente();
@@ -197,16 +191,13 @@ export function Inscripcion() {
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!acceptTerms) return alert("Debe leer y aceptar el acuerdo de convivencia.");
-    
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial de forma válida.");
-    
     setLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Crear carpeta en Google Drive mediante Edge Function
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -217,14 +208,12 @@ export function Inscripcion() {
         headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
         body: folderForm,
       });
-      
       if (!driveResponse.ok) throw new Error("Error creando carpeta en el servidor de Google Drive.");
 
       const driveData = await driveResponse.json();
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // 2. Guardar datos en la tabla 'participantes' de Supabase (Ver: image_1a16c7.png)
       const { error: partError } = await supabase
         .from("participantes")
         .upsert([{
@@ -237,7 +226,7 @@ export function Inscripcion() {
           correo: correo.trim() || user?.email,
           telefono: telefono,
           tipo_sangre: tipoSangre,
-          alergias: alergias,
+          alergias: allergies,
           enfermedades: enfermedades,
           medicamentos: medicamentos,
           contacto_emergencia: contactoEmergencia,
@@ -252,7 +241,6 @@ export function Inscripcion() {
 
       if (partError) throw new Error(`Error guardando participante: ${partError.message}`);
 
-      // 3. Guardar el registro del primer pago en la tabla 'pagos' (Ver: image_1a16c7.png)
       const { error: pagoError } = await supabase
         .from("pagos")
         .insert([{
@@ -266,7 +254,6 @@ export function Inscripcion() {
 
       if (pagoError) throw new Error(`Error guardando pago inicial: ${pagoError.message}`);
 
-      // 4. Subir archivos a Google Drive
       const uploadFile = async (nativeFile: File, name: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
@@ -283,7 +270,6 @@ export function Inscripcion() {
       if (cleanMedica) await uploadFile(cleanMedica, `Ficha_Medica_${cedula}`);
       await uploadFile(cleanPago, `Comprobante_Inicial_${cedula}`);
 
-      // Limpieza de campos de pago e intercambio de vista
       setComprobantePago(null);
       setFechaPago("");
       setReferenciaPago("");
@@ -303,16 +289,14 @@ export function Inscripcion() {
     e.preventDefault();
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
-    
     const finalFolderId = userDriveFolderId || folderIdDirecto;
     const finalCedula = cedula || cedulaDirecta;
 
-    if (!finalFolderId) return alert("Por favor, introduce un ID de carpeta de Google Drive válido o completa tu registro.");
+    if (!finalFolderId) return alert("Por favor, introduce tu ID de carpeta Drive o completa tu inscripción.");
 
     setLoading(true);
 
     try {
-      // 1. Guardar la nueva cuota en la tabla 'pagos' (Ver: image_1a16c7.png)
       const { error: pagoExtraError } = await supabase
         .from("pagos")
         .insert([{
@@ -326,7 +310,6 @@ export function Inscripcion() {
 
       if (pagoExtraError) throw new Error(`Error registrando cuota en base de datos: ${pagoExtraError.message}`);
 
-      // 2. Subir comprobante a Google Drive
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
       fileForm.append("folder_id", finalFolderId); 
@@ -339,7 +322,7 @@ export function Inscripcion() {
         body: fileForm,
       });
 
-      if (!res.ok) throw new Error("Error cargando el archivo del pago en Drive.");
+      if (!res.ok) throw new Error("Error cargando el archivo de pago en Google Drive.");
 
       setViewMode("exito");
     } catch (err: any) {
@@ -357,12 +340,12 @@ export function Inscripcion() {
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(215,0,126,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
             <span style={{ fontSize: 32, color: ENJ_MAGENTA, fontWeight: "bold" }}>⚠️</span>
           </div>
-          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>Error Encontrado</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>Error de Configuración</h2>
           <div style={{ background: "#FDF2F4", border: `1px solid ${ENJ_MAGENTA}`, borderRadius: 10, padding: 16, margin: "16px 0 24px", textAlign: "left" }}>
             <p style={{ margin: 0, color: "#9F1239", fontSize: 14, fontFamily: "monospace", wordBreak: "break-word" }}>{errorMessageStr}</p>
           </div>
           <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", borderRadius: 10, border: "none", background: ENJ_NAVY, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Aceptar / Volver
+            Volver a intentar
           </button>
         </div>
       </div>
@@ -376,10 +359,10 @@ export function Inscripcion() {
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(34,197,94,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
             <CheckCircle2 size={42} color="#22c55e" />
           </div>
-          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Registro Exitoso!</h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Los datos y comprobantes se sincronizaron correctamente en la base de datos y Google Drive.</p>
+          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Reporte Guardado!</h2>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Tu cuota y su comprobante se han actualizado con éxito en Google Drive y el sistema general.</p>
           <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Ir al Inicio
+            Terminar
           </button>
         </div>
       </div>
@@ -434,7 +417,6 @@ export function Inscripcion() {
                   <InputField label="Fecha de Nacimiento" type="date" value={birthDate} onChange={(value: string) => { setBirthDate(value); setAge(calculateAge(value)); }} />
                 </div>
                 {age !== null && <p style={{ margin: "0", fontSize: 13, color: "rgba(0,11,111,0.65)", fontWeight: 600 }}>Edad calculada: {age} años</p>}
-                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Talla de Uniforme" placeholder="Ej. M, L" value={tallaUniforme} onChange={setTallaUniforme} />
                   <InputField label="Dirección de Habitación" placeholder="Av / Calle" icon={<MapPin size={16} />} value={direccion} onChange={setDireccion} />
@@ -442,7 +424,8 @@ export function Inscripcion() {
 
                 <SectionDivider title="Datos de Contacto" icon={<Phone size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Correo Electrónico" type="email" icon={<Mail size={16} value={correo} disabled={true} required={true} />} value={correo} onChange={setCorreo} disabled={true} />
+                  {/* ✅ LOGUICA COMPONENTE FIJA: Se removieron los atributos erróneos del icono de Mail */}
+                  <InputField label="Correo Electrónico" type="email" icon={<Mail size={16} />} value={correo} onChange={setCorreo} disabled={true} />
                   <InputField label="Teléfono (WhatsApp)" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} />
                 </div>
 
@@ -506,11 +489,9 @@ export function Inscripcion() {
             </div>
           </>
         )}
-
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              
               {!userDriveFolderId && (
                 <>
                   <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
