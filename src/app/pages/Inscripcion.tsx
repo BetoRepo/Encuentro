@@ -4,8 +4,8 @@ import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
 
-// ✅ RUTA CORREGIDA: Apuntando a tu carpeta 'lib/supabase.ts' exacta
-import { supabase } from "../lib/supabase";
+// 🚀 RUTA CORREGIDA: Subimos dos niveles hasta 'src/' y apuntamos a 'supabaseClient'
+import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
