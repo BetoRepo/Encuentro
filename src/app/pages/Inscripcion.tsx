@@ -4,15 +4,17 @@ import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
 import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
 
-// Importación del cliente de Supabase
-import { supabase } from "../supabaseClient";
+// NOTA DE CONTROL DE ERRORES (Ref: image_22655e.png): 
+// Si tu compilador vuelve a decir que no encuentra el archivo, cambia la ruta a "../../supabaseClient" 
+// dependiendo de si tu archivo se encuentra en la raíz de 'src'.
+import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
 const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio"; 
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio";
 
 type ScoutDistrict = { district: string };
 type ScoutRegion = { region: string; districts: ScoutDistrict[] };
@@ -30,6 +32,9 @@ const scoutRegions: ScoutRegion[] = [
   { region: "ZULIA", districts: [{ district: "COQUIVACOA" }, { district: "FRANCISCO POLANCO - PERIJA" }, { district: "PEDRO HENRIQUEZ AMADO" }, { district: "SAMUEL MARTINEZ" }, { district: "SAN FRANCISCO" }, { district: "ZULIA ORIENTAL" }] },
 ];
 
+const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
+const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "No lo sé"];
+
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -38,10 +43,7 @@ function InputField({ label, placeholder, type = "text", icon, required = true, 
       </label>
       <div style={{ position: "relative" }}>
         {icon && <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)", display: "flex", pointerEvents: "none" }}>{icon}</div>}
-        <input 
-          type={type} placeholder={placeholder} value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} 
-          style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} 
-        />
+        <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} />
       </div>
     </div>
   );
@@ -54,10 +56,7 @@ function SelectField({ label, options, value, onChange, placeholder = "Seleccion
         {label} {required && <span style={{ color: ENJ_MAGENTA, marginLeft: 3 }}>*</span>}
       </label>
       <div style={{ position: "relative" }}>
-        <select 
-          value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} 
-          style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.35)" : "#0D0D2B", outline: "none", appearance: "none", cursor: disabled ? "not-allowed" : "pointer", boxSizing: "border-box" }}
-        >
+        <select value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.35)" : "#0D0D2B", outline: "none", appearance: "none", cursor: disabled ? "not-allowed" : "pointer", boxSizing: "border-box" }}>
           <option value="" disabled>{placeholder}</option>
           {options.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -73,6 +72,20 @@ function SectionDivider({ title, icon }: { title: string; icon: React.ReactNode 
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(0,11,111,0.07)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
       <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.09em" }}>{title}</span>
       <div style={{ flex: 1, height: 1, background: "rgba(0,11,111,0.1)" }} />
+    </div>
+  );
+}
+
+function BankDetailsCard() {
+  return (
+    <div style={{ background: "#F4F6FB", border: "1.5px dashed rgba(0,11,111,0.2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+      <h4 style={{ margin: "0 0 10px", fontSize: 13, color: ENJ_NAVY, fontWeight: 700 }}>Datos para Transferencia Bancaria</h4>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13, color: "rgba(0,11,111,0.7)" }}>
+        <div><strong>Banco:</strong> Banesco</div>
+        <div><strong>RIF:</strong> J-12345678-9</div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Cuenta:</strong> 0134-0000-0000-0000-0000</div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Titular:</strong> Asociación de Scouts de Venezuela</div>
+      </div>
     </div>
   );
 }
@@ -115,6 +128,9 @@ export function Inscripcion() {
   const [tasa, setTasa] = useState("");
   const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
+  const [cedulaDirecta, setCedulaDirecta] = useState("");
+  const [folderIdDirecto, setFolderIdDirecto] = useState("");
+
   const [fotoParticipante, setFotoParticipante] = useState<any>(null);
   const [screenshotMedica, setScreenshotMedica] = useState<any>(null);
   const [comprobantePago, setComprobantePago] = useState<any>(null);
@@ -122,6 +138,42 @@ export function Inscripcion() {
 
   const [userDriveFolderId, setUserDriveFolderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+
+  // ==========================================
+  // LÓGICA DE DETECCIÓN AUTOMÁTICA DE USER INSCRITO
+  // ==========================================
+  useEffect(() => {
+    async function comprobarRegistroExistente() {
+      try {
+        // 1. Obtener la sesión del usuario autenticado actual
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Pre-poblamos el correo de autenticación por defecto
+          setCorreo(user.email || "");
+
+          // 2. Buscar en la tabla 'participantes' (Ver: image_1a16c7.png) si existe este registro
+          const { data: participante, error } = await supabase
+            .from("participantes")
+            .select("*")
+            .or(`correo.eq.${user.email},id_usuario.eq.${user.id}`)
+            .maybeSingle();
+
+          if (participante) {
+            // Si el sistema lo encuentra inscrito, rellenamos datos y saltamos a cuotas de inmediato
+            setNombre(participante.nombre || "");
+            setApellido(participante.apellido || "");
+            setCedula(participante.cedula || "");
+            setUserDriveFolderId(participante.drive_folder_id || "");
+            setViewMode("cuotas");
+          }
+        }
+      } catch (err) {
+        console.warn("Validación de usuario existente no comprometió la carga de la vista:", err);
+      }
+    }
+    comprobarRegistroExistente();
+  }, []);
 
   function calculateAge(dateString: string) {
     const date = new Date(dateString);
@@ -147,12 +199,14 @@ export function Inscripcion() {
     if (!acceptTerms) return alert("Debe leer y aceptar el acuerdo de convivencia.");
     
     const cleanPago = extractNativeFile(comprobantePago);
-    if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial correctamente.");
+    if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial de forma válida.");
     
     setLoading(true);
 
     try {
-      // 1. GENERAR LA CARPETA EN GOOGLE DRIVE DE MANERA INMEDIATA (Lo que ya te servía)
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 1. Crear carpeta en Google Drive mediante Edge Function
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
@@ -170,7 +224,7 @@ export function Inscripcion() {
       const generatedFolderId = driveData.folderId;
       setUserDriveFolderId(generatedFolderId);
 
-      // 2. REGISTRAR LOS DATOS EN LA BASE DE DATOS DE SUPABASE (CON CLAUSULA UPSERT PARA EVITAR ERRORES DE LLAVE DUPLICADA)
+      // 2. Guardar datos en la tabla 'participantes' de Supabase (Ver: image_1a16c7.png)
       const { error: partError } = await supabase
         .from("participantes")
         .upsert([{
@@ -178,22 +232,27 @@ export function Inscripcion() {
           nombre: nombre.trim(),
           apellido: apellido.trim(),
           fecha_nacimiento: birthDate,
-          correo: correo.trim() || `${cedula.trim()}@enj2026.com`, // Fallback seguro
-          telefono: telefono.trim(),
+          talla_uniforme: tallaUniforme,
+          direccion: direccion,
+          correo: correo.trim() || user?.email,
+          telefono: telefono,
+          tipo_sangre: tipoSangre,
+          alergias: alergias,
+          enfermedades: enfermedades,
+          medicamentos: medicamentos,
+          contacto_emergencia: contactoEmergencia,
           region: selectedRegion,
           distrito: selectedDistrict,
           grupo_scout: grupoScout,
           rama: ramaScout,
           tipo_participante: participantType,
-          drive_folder_id: generatedFolderId // Guardamos la referencia de la carpeta creada
+          drive_folder_id: generatedFolderId,
+          id_usuario: user?.id || null
         }], { onConflict: 'cedula' });
 
-      if (partError) {
-        console.error("Error detallado de base de datos (participantes):", partError);
-        throw new Error(`Base de Datos (Participantes): ${partError.message}. Verifica que los nombres de las columnas coincidan.`);
-      }
+      if (partError) throw new Error(`Error guardando participante: ${partError.message}`);
 
-      // Guardar el Pago Inicial en la tabla 'pagos'
+      // 3. Guardar el registro del primer pago en la tabla 'pagos' (Ver: image_1a16c7.png)
       const { error: pagoError } = await supabase
         .from("pagos")
         .insert([{
@@ -205,49 +264,33 @@ export function Inscripcion() {
           tasa_cambio: parseFloat(tasa) || 1
         }]);
 
-      if (pagoError) {
-        console.error("Error detallado de base de datos (pagos):", pagoError);
-        throw new Error(`Base de Datos (Pagos): ${pagoError.message}. Verifica las columnas en la tabla 'pagos'.`);
-      }
+      if (pagoError) throw new Error(`Error guardando pago inicial: ${pagoError.message}`);
 
-      // 3. SUBIR ARCHIVOS A DRIVE CORRELATIVAMENTE
-      const uploadFile = async (fileObj: Blob | File, filename: string, customDriveName: string) => {
+      // 4. Subir archivos a Google Drive
+      const uploadFile = async (nativeFile: File, name: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
         fileForm.append("folder_id", generatedFolderId);
-        fileForm.append("file", fileObj, filename);
-        fileForm.append("custom_name", customDriveName);
-        
-        await fetch(SUPABASE_FUNCTION_URL, { 
-          method: "POST", 
-          headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
-          body: fileForm 
-        });
+        fileForm.append("file", nativeFile, nativeFile.name);
+        fileForm.append("custom_name", name);
+        await fetch(SUPABASE_FUNCTION_URL, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }, body: fileForm });
       };
 
-      // Archivo de texto resumen
-      const dataContenido = `EXPEDIENTE DIGITAL - ENJ 2026\nCédula: ${cedula}\nNombre: ${nombre} ${apellido}\nRegión: ${selectedRegion}\nDistrito: ${selectedDistrict}\nPago Ref: ${referenciaPago}`;
-      const datosBlob = new Blob([dataContenido], { type: "text/plain;charset=utf-8" });
-      await uploadFile(datosBlob, "Datos_Inscripcion.txt", `Ficha_Datos_${cedula}.txt`);
-
-      // Subir fotos y comprobantes
       const cleanFoto = extractNativeFile(fotoParticipante);
-      if (cleanFoto) await uploadFile(cleanFoto, cleanFoto.name, `Foto_Perfil_${cedula}`);
-
       const cleanMedica = extractNativeFile(screenshotMedica);
-      if (cleanMedica) await uploadFile(cleanMedica, cleanMedica.name, `Ficha_Medica_${cedula}`);
 
-      await uploadFile(cleanPago, cleanPago.name, `Comprobante_Inicial_${cedula}`);
+      if (cleanFoto) await uploadFile(cleanFoto, `Foto_Perfil_${cedula}`);
+      if (cleanMedica) await uploadFile(cleanMedica, `Ficha_Medica_${cedula}`);
+      await uploadFile(cleanPago, `Comprobante_Inicial_${cedula}`);
 
-      // 4. LIMPIAR CAMPOS DE PAGO Y SALTAR AL COMPONENTE DE CUOTAS
+      // Limpieza de campos de pago e intercambio de vista
       setComprobantePago(null);
       setFechaPago("");
       setReferenciaPago("");
       setMontoBs("");
       setTasa("");
-      
-      setViewMode("cuotas");
 
+      setViewMode("cuotas");
     } catch (err: any) {
       setErrorMessageStr(err.message || String(err));
       setViewMode("error_pantalla");
@@ -259,16 +302,21 @@ export function Inscripcion() {
   async function handleCuotasSubmit(e: React.FormEvent) {
     e.preventDefault();
     const cleanPago = extractNativeFile(comprobantePago);
-    if (!cleanPago) return alert("Adjunta un comprobante de pago válido.");
+    if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
     
+    const finalFolderId = userDriveFolderId || folderIdDirecto;
+    const finalCedula = cedula || cedulaDirecta;
+
+    if (!finalFolderId) return alert("Por favor, introduce un ID de carpeta de Google Drive válido o completa tu registro.");
+
     setLoading(true);
 
     try {
-      // 1. GUARDAR LA NUEVA CUOTA ADICIONAL EN LA BD
+      // 1. Guardar la nueva cuota en la tabla 'pagos' (Ver: image_1a16c7.png)
       const { error: pagoExtraError } = await supabase
         .from("pagos")
         .insert([{
-          cedula_participante: cedula.trim(),
+          cedula_participante: finalCedula.trim(),
           numero_cuota: numCuota,
           monto_bs: parseFloat(montoBs) || 0,
           referencia: referenciaPago.trim(),
@@ -276,17 +324,14 @@ export function Inscripcion() {
           tasa_cambio: parseFloat(tasa) || 1
         }]);
 
-      if (pagoExtraError) {
-        console.error("Error al registrar cuota extra:", pagoExtraError);
-        throw new Error(`Error en tabla pagos: ${pagoExtraError.message}`);
-      }
+      if (pagoExtraError) throw new Error(`Error registrando cuota en base de datos: ${pagoExtraError.message}`);
 
-      // 2. SUBIR COMPROBANTE DE LA CUOTA EXTRA A DRIVE
+      // 2. Subir comprobante a Google Drive
       const fileForm = new FormData();
       fileForm.append("action", "upload_file");
-      fileForm.append("folder_id", userDriveFolderId); 
+      fileForm.append("folder_id", finalFolderId); 
       fileForm.append("file", cleanPago, cleanPago.name);
-      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_REF_${referenciaPago || "NUEVA"}_${cedula}`);
+      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${finalCedula}`);
 
       const res = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
@@ -294,7 +339,7 @@ export function Inscripcion() {
         body: fileForm,
       });
 
-      if (!res.ok) throw new Error("Fallo al subir el archivo de la cuota extra a Drive.");
+      if (!res.ok) throw new Error("Error cargando el archivo del pago en Drive.");
 
       setViewMode("exito");
     } catch (err: any) {
@@ -308,11 +353,16 @@ export function Inscripcion() {
   if (viewMode === "error_pantalla") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
-        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 22, color: ENJ_NAVY }}>⚠️ Error Detectado</h2>
-          <p style={{ color: "#9F1239", fontSize: 14, whiteSpace: "pre-wrap", textAlign: "left", background: "#FFF1F2", padding: 12, borderRadius: 8, border: "1px solid #FDA4AF" }}>{errorMessageStr}</p>
-          <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", background: ENJ_NAVY, color: "#fff", borderRadius: 10, border: "none", cursor: "pointer", marginTop: 20, fontWeight: 600 }}>
-            Regresar al Formulario
+        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
+          <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(215,0,126,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
+            <span style={{ fontSize: 32, color: ENJ_MAGENTA, fontWeight: "bold" }}>⚠️</span>
+          </div>
+          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>Error Encontrado</h2>
+          <div style={{ background: "#FDF2F4", border: `1px solid ${ENJ_MAGENTA}`, borderRadius: 10, padding: 16, margin: "16px 0 24px", textAlign: "left" }}>
+            <p style={{ margin: 0, color: "#9F1239", fontSize: 14, fontFamily: "monospace", wordBreak: "break-word" }}>{errorMessageStr}</p>
+          </div>
+          <button onClick={() => setViewMode("inscripcion")} style={{ padding: "12px 28px", borderRadius: 10, border: "none", background: ENJ_NAVY, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Aceptar / Volver
           </button>
         </div>
       </div>
@@ -322,12 +372,14 @@ export function Inscripcion() {
   if (viewMode === "exito") {
     return (
       <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
-        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 480, width: "100%", textAlign: "center" }}>
-          <CheckCircle2 size={42} color="#22c55e" style={{ margin: "0 auto 20px" }} />
-          <h2 style={{ margin: "0 0 12px", fontSize: 26, color: ENJ_NAVY }}>¡Proceso Finalizado!</h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)" }}>Los datos de inscripción y los registros de pagos han sido sincronizados.</p>
-          <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, cursor: "pointer" }}>
-            Volver al Inicio
+        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 480, width: "100%", textAlign: "center", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
+          <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(34,197,94,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
+            <CheckCircle2 size={42} color="#22c55e" />
+          </div>
+          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Registro Exitoso!</h2>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Los datos y comprobantes se sincronizaron correctamente en la base de datos y Google Drive.</p>
+          <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Ir al Inicio
           </button>
         </div>
       </div>
@@ -337,83 +389,158 @@ export function Inscripcion() {
   return (
     <div style={{ background: "#F0F2FA", padding: "48px 24px 80px" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
-        
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 16px", borderRadius: 100 }}>ENJ 2026</span>
-          <h1 style={{ margin: "16px 0 10px", fontSize: 32, color: ENJ_NAVY }}>
-            {viewMode === "inscripcion" ? "Inscripción Oficial" : "Registro de Cuotas Siguientes"}
-          </h1>
-          {viewMode === "cuotas" && (
-            <p style={{ color: ENJ_MAGENTA, fontWeight: 700 }}>Expediente Activo: {nombre} {apellido} (CI: {cedula})</p>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
+          <button type="button" onClick={() => viewMode === "cuotas" ? setViewMode("inscripcion") : navigate("/")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.6)", fontSize: 14, fontWeight: 600 }}>
+            <ArrowLeft size={16} /> {viewMode === "cuotas" ? "Regresar al formulario principal" : "Volver al inicio"}
+          </button>
+
+          {viewMode === "inscripcion" && (
+            <button type="button" onClick={() => setViewMode("cuotas")} style={{ background: ENJ_MAGENTA, color: "#fff", border: "none", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              Reportar Siguiente Cuota ➜
+            </button>
           )}
         </div>
 
-        {/* SECCIÓN 1: FORMULARIO PRINCIPAL */}
+        <div style={{ marginBottom: 36, textAlign: "center" }}>
+          <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 16px", borderRadius: 100, textTransform: "uppercase" }}>ENJ 2026</span>
+          <h1 style={{ margin: "16px 0 10px", fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 900, color: ENJ_NAVY }}>
+            {viewMode === "inscripcion" ? "Inscripción Oficial" : "Registro de Cuotas Adicionales"}
+          </h1>
+          {viewMode === "cuotas" && cedula && (
+            <p style={{ color: ENJ_MAGENTA, fontWeight: 700, margin: 0 }}>Expediente Reconocido: {nombre} {apellido} (CI: {cedula})</p>
+          )}
+        </div>
+
         {viewMode === "inscripcion" && (
-          <div style={{ background: "#fff", borderRadius: 20, padding: 40, boxShadow: "0 4px 40px rgba(0,0,0,0.05)" }}>
-            <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              
-              <SectionDivider title="Datos Básicos" icon={<User size={16} color={ENJ_NAVY} />} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <InputField label="Nombre" value={nombre} onChange={setNombre} />
-                <InputField label="Apellido" value={apellido} onChange={setApellido} />
-                <InputField label="Cédula" value={cedula} onChange={setCedula} />
-                <InputField label="Fecha Nacimiento" type="date" value={birthDate} onChange={(v: string) => { setBirthDate(v); setAge(calculateAge(v)); }} />
-              </div>
-              
-              <SectionDivider title="Credenciales" icon={<Shield size={16} color={ENJ_NAVY} />} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <SelectField label="Región" options={scoutRegions.map(r => r.region)} value={selectedRegion} onChange={(v: string) => { setSelectedRegion(v); setSelectedDistrict(""); }} />
-                <SelectField label="Distrito" options={selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : []} value={selectedDistrict} onChange={setSelectedDistrict} disabled={!selectedRegion} />
-              </div>
+          <>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 30 }}>
+              {[{ label: "Joven", value: "joven" }, { label: "Adulto", value: "adulto" }].map((option) => (
+                <button key={option.value} type="button" onClick={() => setParticipantType(option.value as "joven" | "adulto")} style={{ borderRadius: 999, border: `1.5px solid ${participantType === option.value ? ENJ_MAGENTA : "rgba(0,11,111,0.18)"}`, background: participantType === option.value ? ENJ_MAGENTA : "#fff", color: participantType === option.value ? "#fff" : ENJ_NAVY, padding: "12px 28px", cursor: "pointer", fontWeight: 700 }}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
 
-              <SectionDivider title="Pago Inicial (Inscripción)" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <InputField label="Monto en Bs" type="number" value={montoBs} onChange={setMontoBs} />
-                <InputField label="Referencia Bancaria" value={referenciaPago} onChange={setReferenciaPago} />
-                <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
-                <InputField label="Tasa de Cambio" type="number" value={tasa} onChange={setTasa} />
-              </div>
+            <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
+              <form onSubmit={handleInscriptionSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <SectionDivider title="Datos Personales" icon={<User size={16} color={ENJ_NAVY} />} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Nombre(s)" placeholder="Ej. María" value={nombre} onChange={setNombre} />
+                  <InputField label="Apellido(s)" placeholder="Ej. González" value={apellido} onChange={setApellido} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Cédula de Identidad" placeholder="V-12.345.678" icon={<Hash size={16} />} value={cedula} onChange={setCedula} />
+                  <InputField label="Fecha de Nacimiento" type="date" value={birthDate} onChange={(value: string) => { setBirthDate(value); setAge(calculateAge(value)); }} />
+                </div>
+                {age !== null && <p style={{ margin: "0", fontSize: 13, color: "rgba(0,11,111,0.65)", fontWeight: 600 }}>Edad calculada: {age} años</p>}
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Talla de Uniforme" placeholder="Ej. M, L" value={tallaUniforme} onChange={setTallaUniforme} />
+                  <InputField label="Dirección de Habitación" placeholder="Av / Calle" icon={<MapPin size={16} />} value={direccion} onChange={setDireccion} />
+                </div>
 
-              <SectionDivider title="Archivos Expediente" icon={<GoogleDriveIcon size={16} />} />
-              <FileDropzone label="Foto del Participante" accept=".jpg,.png" onFileSelect={setFotoParticipante} />
-              <FileDropzone label="Comprobante Pago Inicial *" accept=".jpg,.png,.pdf" onFileSelect={setComprobantePago} />
+                <SectionDivider title="Datos de Contacto" icon={<Phone size={16} color={ENJ_NAVY} />} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Correo Electrónico" type="email" icon={<Mail size={16} value={correo} disabled={true} required={true} />} value={correo} onChange={setCorreo} disabled={true} />
+                  <InputField label="Teléfono (WhatsApp)" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} />
+                </div>
 
-              <label style={{ display: "flex", gap: 10, cursor: "pointer", fontSize: 13 }}>
-                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} /> Acepto términos y condiciones del evento
-              </label>
+                <SectionDivider title="Ficha Médica Básica" icon={<HeartPulse size={16} color={ENJ_NAVY} />} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <SelectField label="Tipo de Sangre" options={tiposSangre} value={tipoSangre} onChange={setTipoSangre} />
+                  <InputField label="Alergias Conocidas" required={false} value={alergias} onChange={setAlergias} />
+                  <InputField label="Enfermedades o Condiciones" required={false} value={enfermedades} onChange={setEnfermedades} />
+                  <InputField label="Medicamentos actuales" required={false} value={medicamentos} onChange={setMedicamentos} />
+                </div>
+                <InputField label="Contacto de Emergencia" value={contactoEmergencia} onChange={setContactoEmergencia} />
 
-              <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 }}>
-                {loading ? "Sincronizando Base de Datos y Drive..." : "Enviar Inscripción y Crear Expediente"}
-              </button>
-            </form>
-          </div>
+                <SectionDivider title="Credenciales Scouts" icon={<Shield size={16} color={ENJ_NAVY} />} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <SelectField label="Región Scout" options={scoutRegions.map(r => r.region)} value={selectedRegion} onChange={(val: string) => { setSelectedRegion(val); setSelectedDistrict(""); }} />
+                  <SelectField label="Distrito Scout" options={selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : []} value={selectedDistrict} onChange={setSelectedDistrict} disabled={!selectedRegion} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Grupo Scout" placeholder="Ej. Mafeking" icon={<Building size={16} />} value={grupoScout} onChange={setGrupoScout} />
+                  <SelectField label="Unidad Scout" options={ramas} value={ramaScout} onChange={setRamaScout} />
+                </div>
+                {participantType === "joven" ? (
+                  <InputField label="Adulto de Unidad" value={adultoUnidad} onChange={setAdultoUnidad} />
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <InputField label="Cargo o Rol" value={cargoAdulto} onChange={setCargoAdulto} />
+                    <InputField label="Área" value={areaAdulto} onChange={setAreaAdulto} />
+                  </div>
+                )}
+
+                <SectionDivider title="Cuota Inicial (Inscripción)" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
+                <BankDetailsCard />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
+                  <InputField label="Nro. Referencia (6 dígitos)" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
+                  <InputField label="Monto transferido (Bs)" type="number" value={montoBs} onChange={setMontoBs} />
+                  <InputField label="Tasa de cambio aplicada" type="number" value={tasa} onChange={setTasa} />
+                </div>
+
+                <SectionDivider title="Expediente Digital" icon={<GoogleDriveIcon size={16} />} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Foto del Participante *</p>
+                    <FileDropzone label="Subir foto" accept=".jpg,.jpeg,.png" onFileSelect={setFotoParticipante} />
+                  </div>
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Comprobante Cuota Inicial *</p>
+                    <FileDropzone label="Subir pago" accept=".jpg,.jpeg,.png,.pdf" onFileSelect={setComprobantePago} />
+                  </div>
+                </div>
+
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>
+                  <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
+                  He leído y acepto los términos del Acuerdo de Convivencia.
+                </label>
+
+                <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  {loading ? "Procesando inscripción..." : "Finalizar Inscripción y Guardar"}
+                </button>
+              </form>
+            </div>
+          </>
         )}
 
-        {/* SECCIÓN 2: FORMULARIO DE CUOTAS */}
         {viewMode === "cuotas" && (
-          <div style={{ background: "#fff", borderRadius: 20, padding: 40, boxShadow: "0 4px 40px rgba(0,0,0,0.05)" }}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <SectionDivider title="Registrar Siguiente Cuota" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
-              <SelectField label="Cuota a reportar" options={["Segunda Cuota", "Tercera Cuota / Saldo Final"]} value={numCuota} onChange={setNumCuota} />
               
+              {!userDriveFolderId && (
+                <>
+                  <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <InputField label="Cédula del Participante" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
+                    <InputField label="ID de Carpeta Google Drive" placeholder="ID enviado a tu correo" value={folderIdDirecto} onChange={setFolderIdDirecto} />
+                  </div>
+                </>
+              )}
+
+              <SectionDivider title="Registrar Siguiente Cuota" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
+              <BankDetailsCard />
+
+              <SelectField label="¿Qué cuota estás reportando?" options={["Segunda Cuota", "Tercera Cuota / Saldo Final"]} value={numCuota} onChange={setNumCuota} />
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <InputField label="Monto en Bs" type="number" value={montoBs} onChange={setMontoBs} />
-                <InputField label="Referencia Bancaria" value={referenciaPago} onChange={setReferenciaPago} />
-                <InputField label="Fecha de Pago" type="date" value={fechaPago} onChange={setFechaPago} />
-                <InputField label="Tasa de Cambio aplicada" type="number" value={tasa} onChange={setTasa} />
+                <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
+                <InputField label="Nro. Referencia" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
+                <InputField label="Monto transferido (Bs)" type="number" value={montoBs} onChange={setMontoBs} />
+                <InputField label="Tasa de cambio" type="number" value={tasa} onChange={setTasa} />
               </div>
 
-              <FileDropzone label="Comprobante Cuota *" accept=".pdf,.jpg,.png" onFileSelect={setComprobantePago} />
-
-              <div style={{ display: "flex", gap: 10 }}>
-                <button type="submit" disabled={loading} style={{ flex: 1, background: ENJ_MAGENTA, color: "#fff", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 }}>
-                  {loading ? "Guardando pago en Base de Datos..." : "Registrar Cuota Extra"}
-                </button>
-                <button type="button" onClick={() => setViewMode("exito")} style={{ background: "#eee", padding: 15, borderRadius: 10, border: "none", cursor: "pointer", color: ENJ_NAVY, fontWeight: 600 }}>
-                  Finalizar Flujo Completo
-                </button>
+              <div>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Comprobante de Pago *</p>
+                <FileDropzone label="Subir comprobante" accept=".pdf,.jpg,.jpeg,.png" onFileSelect={setComprobantePago} />
               </div>
+
+              <button type="submit" disabled={loading} style={{ background: ENJ_MAGENTA, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                {loading ? "Sincronizando pago..." : "Registrar Cuota Extra"}
+              </button>
             </form>
           </div>
         )}
