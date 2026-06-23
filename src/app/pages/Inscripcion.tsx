@@ -126,8 +126,9 @@ export function Inscripcion() {
   const [tasa, setTasa] = useState("");
   const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
+  // Campos manuales para la pestaña de cuotas si no está logueado
+  const [nombreDirecto, setNombreDirecto] = useState("");
   const [cedulaDirecta, setCedulaDirecta] = useState("");
-  const [folderIdDirecto, setFolderIdDirecto] = useState("");
 
   const [fotoParticipante, setFotoParticipante] = useState<any>(null);
   const [screenshotMedica, setScreenshotMedica] = useState<any>(null);
@@ -148,7 +149,6 @@ export function Inscripcion() {
         if (user) {
           setCorreo(user.email || "");
 
-          // Búsqueda limpia y segura en Supabase
           const { data: participante } = await supabase
             .from("participantes")
             .select("*")
@@ -294,14 +294,29 @@ export function Inscripcion() {
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
     
-    const finalFolderId = userDriveFolderId || folderIdDirecto;
     const finalCedula = cedula || cedulaDirecta;
+    let finalFolderId = userDriveFolderId;
 
-    if (!finalFolderId) return alert("Por favor, introduce tu ID de carpeta Drive o completa tu inscripción.");
+    if (!finalCedula) return alert("Por favor, introduce tu número de cédula de identidad.");
 
     setLoading(true);
 
     try {
+      // Si el usuario no tiene carpeta precargada (porque escribe manual), la buscamos en Supabase mediante su cédula
+      if (!finalFolderId) {
+        const { data: partData } = await supabase
+          .from("participantes")
+          .select("drive_folder_id")
+          .eq("cedula", finalCedula.trim())
+          .maybeSingle();
+        
+        if (partData?.drive_folder_id) {
+          finalFolderId = partData.drive_folder_id;
+        } else {
+          throw new Error("No se encontró ningún expediente de inscripción con la cédula suministrada. Asegúrate de estar inscrito primero.");
+        }
+      }
+
       const { error: pagoExtraError } = await supabase
         .from("pagos")
         .insert([{
@@ -503,8 +518,8 @@ export function Inscripcion() {
                 <>
                   <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <InputField label="Cédula del Participante" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
-                    <InputField label="ID de Carpeta Google Drive" placeholder="ID enviado a tu correo" value={folderIdDirecto} onChange={setFolderIdDirecto} />
+                    <InputField label="Nombre Completo" placeholder="Ej. María González" value={nombreDirecto} onChange={setNombreDirecto} />
+                    <InputField label="Cédula de Identidad" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
                   </div>
                 </>
               )}
