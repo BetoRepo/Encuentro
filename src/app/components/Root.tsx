@@ -169,21 +169,6 @@ useEffect(() => {
               Inicio
             </NavLink>
             <NavLink
-              to="/conocenos"
-              style={({ isActive }) => ({
-                padding: "7px 16px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontSize: 14,
-                fontWeight: 600,
-                color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
-                background: isActive ? "rgba(255,255,255,0.16)" : "transparent",
-                transition: "all 0.15s",
-              })}
-            >
-              Conócenos
-            </NavLink>
-            <NavLink
               to="/consultas"
               style={({ isActive }) => ({
                 padding: "7px 16px",
@@ -258,21 +243,6 @@ useEffect(() => {
               })}
             >
               Inicio
-            </NavLink>
-            <NavLink
-              to="/conocenos"
-              onClick={() => setMobileOpen(false)}
-              style={({ isActive }) => ({
-                padding: "10px 14px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#fff",
-                background: isActive ? "rgba(255,255,255,0.16)" : "transparent",
-              })}
-            >
-              Conócenos
             </NavLink>
             <NavLink
               to="/consultas"
