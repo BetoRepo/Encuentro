@@ -4,8 +4,8 @@ import { Mail, Lock, User as UserIcon } from "lucide-react";
 
 // 1. IMPORTACIÓN DE IMÁGENES
 // Asegúrate de que la carpeta assets esté en 'src/assets/'
-import bgImage from "../assets/background.png";
-import logoImage from "../assets/logonacional.svg";
+import bgImage from "src/assets/background.png";
+import logoImage from "src/assets/logonacional.svg";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
@@ -24,7 +24,6 @@ export function Login() {
     try {
       const API_BASE = (import.meta.env.VITE_API_BASE as string) || '';
       const url = isLogin ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
-      
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
