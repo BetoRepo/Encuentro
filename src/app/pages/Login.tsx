@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { LogIn, Mail, Lock, User as UserIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Mail, Lock, User as UserIcon } from "lucide-react";
 
-// 1. IMPORTAMOS LAS IMÁGENES (Ajusta los "../" dependiendo de dónde esté este archivo)
+// 1. IMPORTACIÓN DE IMÁGENES
+// Asegúrate de que la carpeta assets esté en 'src/assets/'
 import bgImage from "../assets/background.png";
 import logoImage from "../assets/logonacional.svg";
 
@@ -9,6 +11,7 @@ const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
 
 export function Login() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,6 +24,7 @@ export function Login() {
     try {
       const API_BASE = (import.meta.env.VITE_API_BASE as string) || '';
       const url = isLogin ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
+      
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,8 +41,31 @@ export function Login() {
       }
 
       if (res.ok && data && data.ok) {
+        // Guardar token de sesión
         localStorage.setItem('token', data.token);
-        window.location.reload();
+
+        if (!isLogin) {
+          // --- FLUJO DE REGISTRO ---
+          // Separar el nombre en Nombre y Apellido de forma limpia
+          const nameParts = name.trim().split(" ");
+          const firstName = nameParts[0] || "";
+          const lastName = nameParts.slice(1).join(" ") || "";
+
+          // Pre-guardar los datos del usuario para que /perfil los tome automáticamente
+          const initialProfile = {
+            nombre: firstName,
+            apellido: lastName,
+            correo: email.trim(),
+          };
+          localStorage.setItem("enj_profile", JSON.stringify(initialProfile));
+
+          // Redirigir al formulario de perfil
+          navigate("/perfil");
+        } else {
+          // --- FLUJO DE LOGIN ---
+          navigate("/");
+          window.location.reload();
+        }
       } else {
         alert(data?.error || `Error: ${res.status} ${res.statusText}`);
       }
@@ -68,8 +95,8 @@ export function Login() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        // 2. USAMOS LA VARIABLE DEL FONDO IMPORTADO
-        background: `linear-gradient(rgba(233,240,255,0.6), rgba(248,245,255,0.6)), url(${bgImage})`,
+        // Fondo con degradado e imagen corregida
+        backgroundImage: `linear-gradient(rgba(233,240,255,0.65), rgba(248,245,255,0.65)), url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -92,22 +119,26 @@ export function Login() {
           zIndex: 1,
         }}
       >
-        <div style={{ marginBottom: 18 }}>
-          {/* 3. USAMOS LA VARIABLE DEL LOGO IMPORTADO */}
+        <div style={{ marginBottom: 18, minHeight: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {/* Logo cargado mediante variable importada */}
           <img
             src={logoImage}
             alt="ENJ 2026"
             style={{
-              width: 120,
+              width: 130,
               height: "auto",
+              maxHeight: 80,
+              objectFit: "contain",
               margin: "0 auto",
               display: "block",
             }}
           />
         </div>
-        <p style={{ color: "rgba(0,11,111,0.65)", marginBottom: 32, lineHeight: 1.6, fontSize: 16 }}>
+
+        <p style={{ color: "rgba(0,11,111,0.65)", marginBottom: 32, lineHeight: 1.6, fontSize: 15 }}>
           {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta de participante"}
         </p>
+
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {!isLogin && (
             <div style={{ position: "relative" }}>
@@ -115,10 +146,12 @@ export function Login() {
               <input style={inputStyle} type="text" placeholder="Nombre completo" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
           )}
+
           <div style={{ position: "relative" }}>
             <Mail size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
             <input style={inputStyle} type="email" placeholder="Correo electrónico" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
+
           <div style={{ position: "relative" }}>
             <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
             <input style={inputStyle} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
@@ -138,7 +171,7 @@ export function Login() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Procesando..." : isLogin ? "Entrar" : "Registrarme"}
+            {loading ? "Procesando..." : isLogin ? "Entrar" : "Registrarme y completar perfil"}
           </button>
         </form>
 
@@ -152,4 +185,5 @@ export function Login() {
     </div>
   );
 }
+
 export default Login;
