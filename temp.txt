@@ -1,0 +1,59 @@
+Note: The tool simplified the command to `npx tsc --noEmit src/app/routes.tsx src/app/pages/Inscripcion.tsx src/app/pages/Perfil.tsx` (terminal ID=630e02bf-5cc0-4e2b-a895-24c001fc5f86). This is the output of running that command instead:
+src/app/pages/Inscripcion.tsx:620:19 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:27:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:28:30 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:30:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:31:18 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:32:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:59:5 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:60:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:61:30 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:63:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:64:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:84:11 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:85:39 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:87:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:95:5 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:96:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:97:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:98:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:194:5 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:195:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:196:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:201:11 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:204:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:205:11 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:206:11 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:207:11 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:210:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:211:11 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:212:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:212:57 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:213:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:214:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:215:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:218:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:219:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:220:9 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:223:7 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:224:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:227:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:228:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:229:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:232:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:232:52 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:233:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:234:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:234:61 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:235:15 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:235:61 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/pages/Perfil.tsx:238:13 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/routes.tsx:2:22 - error TS6142: Module './components/Root' was resolved to 'C:/Users/fpineda.pnaturalyst/Documents/Proyectos/ENJ/src/app/components/Root.tsx', but '--jsx' is not set.
+src/app/routes.tsx:9:16 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/routes.tsx:11:33 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/routes.tsx:12:39 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/routes.tsx:13:41 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/app/routes.tsx:14:36 - error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+   150  src/app/pages/Inscripcion.tsx:3
+    49  src/app/pages/Perfil.tsx:26
+     6  src/app/routes.tsx:2

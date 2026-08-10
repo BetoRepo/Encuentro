@@ -27,7 +27,7 @@ interface BloquePrograma {
 
 export function ScoutsLogo({ size = 44 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnYAFnlVZFbKpjZnHwMM6uaVO5dD9KUgM4xRvt1KEM_g&s=10">
       <circle cx="22" cy="22" r="22" fill={ENJ_YELLOW} />
       <path d="M22 8C22 8 14 15 14 22C14 26.4 17.6 30 22 30C26.4 30 30 26.4 30 22C30 15 22 8 22 8Z" fill={ENJ_NAVY} />
       <circle cx="22" cy="22" r="4" fill={ENJ_YELLOW} />
@@ -43,7 +43,7 @@ export function Home() {
   const navigate = useNavigate();
   const infoRef = useRef<HTMLDivElement>(null);
 
-  const targetDate = new Date("2026-09-11T08:00:00").getTime();
+  const targetDate = new Date("2026-10-30T08:00:00").getTime();
 
   const scrollToInfo = () => {
     infoRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,11 +59,6 @@ export function Home() {
       title: "La Red en Vivo",
       tagline: "Ciudadanía Activa",
       desc: "Tu voz y tus ideas tienen el poder de transformar el Movimiento Scout. Desde la Red de Jóvenes (RDJ) se impulsan espacios formales de participación ciudadana donde podrás formar parte de procesos electorales, liderar mesas de trabajo y debatir propuestas para la elaboración del manifiesto de San Juan de los Morros. El lugar ideal para construir redes de contacto (networking) y ejercer un liderazgo."
-    },
-    {
-      title: "Puebleando por Guárico",
-      tagline: "Ruta Viva",
-      desc: "Descubre el potencial del Estado Guárico a través de una experiencia de campo única. Coordinamos una ruta turística integral, diseñada bajo un modelo de aprendizaje vivencial y de servicio comunitario. Nos encargamos de toda la planificación y logística de traslado para que vivas una aventura segura, conectes con la identidad local y sumes experiencias valiosas a tu crecimiento personal."
     },
     {
       title: "Vitamina",
@@ -120,7 +115,7 @@ export function Home() {
   const agendaPresencial: AgendaDay[] = [
     {
       day: "Viernes",
-      date: "11 Sep",
+      date: "30 Oct",
       color: ENJ_NAVY,
       events: [
         { time: "08:00 - 12:00", title: "Llegada, Acreditación e Instalación de Campamento" },
@@ -131,7 +126,7 @@ export function Home() {
     },
     {
       day: "Sábado",
-      date: "12 Sep",
+      date: "31 Oct",
       color: ENJ_YELLOW,
       events: [
         { time: "07:00 - 08:00", title: "Despertar Scout y Desayuno" },
@@ -143,7 +138,7 @@ export function Home() {
     },
     {
       day: "Domingo",
-      date: "13 Sep",
+      date: "1 Nov",
       color: ENJ_MAGENTA,
       events: [
         { time: "07:30 - 08:30", title: "Levantamiento y Desayuno" },
@@ -157,11 +152,11 @@ export function Home() {
   return (
     <div style={{ background: "#F5F7FB", minHeight: "100vh", boxSizing: "border-box" }}>
       {/* SECCIÓN HERO PRINCIPAL */}
-      <header 
-        style={{ 
-          background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #00063D 100%)`, 
-          color: "white", 
-          padding: "90px 16px 70px", 
+      <header
+        style={{
+          background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #00063D 100%)`,
+          color: "white",
+          padding: "90px 16px 70px",
           textAlign: "center",
           position: "relative",
           overflow: "hidden",
@@ -172,7 +167,6 @@ export function Home() {
           <p style={{ color: ENJ_YELLOW, fontWeight: 700, fontSize: 14, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 20 }}>
             Scouts de Venezuela · Movimiento Scout Mundial
           </p>
-          
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
             <span style={{ background: "rgba(255,255,255,0.1)", color: "white", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: "0.05em" }}>
               INSCRIPCIONES ABIERTAS 2026
@@ -195,11 +189,11 @@ export function Home() {
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Calendar size={16} color={ENJ_YELLOW} />
-              <span>11 Sep - 13 Sep</span>
+              <span>30 Oct - 1 Nov</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <MapPin size={16} color={ENJ_YELLOW} />
-              <span>Guárico, Venezuela</span>
+              <span>Aguirre, Venezuela</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Users size={16} color={ENJ_YELLOW} />
@@ -215,19 +209,19 @@ export function Home() {
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
-            <button 
+            <button
               onClick={() => navigate("/inscripcion")}
               style={{ background: ENJ_MAGENTA, color: "white", border: "none", padding: "14px 28px", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(80,3,157,0.4)" }}
             >
               Inscribirme ahora <ChevronRight size={16} />
             </button>
-            <button 
+            <button
               onClick={() => navigate("/consultas")}
               style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
               Ver consultas
             </button>
-            <button 
+            <button
               onClick={scrollToInfo}
               style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
@@ -239,7 +233,6 @@ export function Home() {
 
       {/* Contenido Principal */}
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 16px", boxSizing: "border-box" }}>
-        
         <div ref={infoRef} style={{ textAlign: "center", marginBottom: 70, paddingTop: "20px", boxSizing: "border-box" }}>
           <h2 style={{ color: "#000B6F", fontSize: "clamp(28px, 4.5vw, 36px)", fontWeight: 800, margin: "0 0 16px" }}>
             ¿Qué es el ENJ?
@@ -271,7 +264,7 @@ export function Home() {
         <div style={{ marginBottom: 80 }}>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Programa de Actividades Virtuales</h2>
-            <p style={{ color: "#666", fontSize: 15 }}>Sesiones previas de alineación y formación digital antes de vernos en Guárico</p>
+            <p style={{ color: "#666", fontSize: 15 }}>Sesiones previas de alineación y formación digital antes de vernos en Aguirre</p>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>

@@ -54,7 +54,6 @@ useEffect(() => {
       }
       setLoading(false);
     };
-    
     checkAuth();
   }, []);
 
@@ -198,6 +197,21 @@ useEffect(() => {
             >
               Inscripción
             </NavLink>
+            <NavLink
+              to="/perfil"
+              style={({ isActive }) => ({
+                padding: "7px 16px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontSize: 14,
+                fontWeight: 600,
+                color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
+                background: isActive ? "rgba(215,0,126,0.2)" : "transparent",
+                transition: "all 0.15s",
+              })}
+            >
+              Perfil
+            </NavLink>
           </div>
 
           {/* mobile hamburger */}
@@ -273,6 +287,21 @@ useEffect(() => {
               })}
             >
               Inscripción
+            </NavLink>
+            <NavLink
+              to="/perfil"
+              onClick={() => setMobileOpen(false)}
+              style={({ isActive }) => ({
+                padding: "10px 14px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#fff",
+                background: isActive ? "rgba(215,0,126,0.2)" : "rgba(215,0,126,0.3)",
+              })}
+            >
+              Perfil
             </NavLink>
           </div>
         )}

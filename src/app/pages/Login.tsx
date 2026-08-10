@@ -61,102 +61,41 @@ export function Login() {
     boxSizing: "border-box" as const
   };
 
-  const collageImages = [
-    "/assets/staff/william-bruno.jpg",
-    "/assets/staff/sandra-peraza.jpg",
-    "/assets/staff/michelle-lozada.jpg",
-    "/assets/staff/mariana-alvarado.jpg",
-  ];
+  const bg = "/assets/background.png";
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "linear-gradient(180deg, #E9F0FF 0%, #F8F5FF 100%)",
-      padding: "24px",
-      position: "relative",
-      overflow: "hidden"
-    }}>
-      <div style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        zIndex: 0,
+    <div
+      style={{
+        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-      }}>
-        <div style={{
-          position: "absolute",
-          width: 240,
-          height: 260,
-          top: "10%",
-          left: "5%",
-          borderRadius: 28,
-          overflow: "hidden",
-          boxShadow: "0 30px 60px rgba(0,0,0,0.12)",
-          transform: "rotate(-14deg)",
-        }}>
-          <img src={collageImages[0]} alt="Collage ENJ 2026" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-        <div style={{
-          position: "absolute",
-          width: 200,
-          height: 220,
-          top: "15%",
-          right: "7%",
-          borderRadius: 28,
-          overflow: "hidden",
-          boxShadow: "0 30px 60px rgba(0,0,0,0.12)",
-          transform: "rotate(10deg)",
-        }}>
-          <img src={collageImages[1]} alt="Collage ENJ 2026" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-        <div style={{
-          position: "absolute",
-          width: 220,
-          height: 240,
-          bottom: "8%",
-          left: "12%",
-          borderRadius: 28,
-          overflow: "hidden",
-          boxShadow: "0 30px 60px rgba(0,0,0,0.12)",
-          transform: "rotate(8deg)",
-        }}>
-          <img src={collageImages[2]} alt="Collage ENJ 2026" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-        <div style={{
-          position: "absolute",
-          width: 180,
-          height: 200,
-          bottom: "6%",
-          right: "10%",
-          borderRadius: 28,
-          overflow: "hidden",
-          boxShadow: "0 30px 60px rgba(0,0,0,0.12)",
-          transform: "rotate(-6deg)",
-        }}>
-          <img src={collageImages[3]} alt="Collage ENJ 2026" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-      </div>
-
-      <div style={{
+        background: `linear-gradient(rgba(233,240,255,0.6), rgba(248,245,255,0.6)), url(${bg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        padding: "24px",
         position: "relative",
-        background: "rgba(255,255,255,0.96)",
-        borderRadius: 24,
-        padding: "48px 32px",
-        maxWidth: 400,
-        width: "100%",
-        textAlign: "center",
-        boxShadow: "0 20px 50px rgba(0,11,111,0.12)",
-        backdropFilter: "blur(16px)",
-        zIndex: 1,
-      }}>
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          background: "rgba(255,255,255,0.96)",
+          borderRadius: 24,
+          padding: "48px 32px",
+          maxWidth: 400,
+          width: "100%",
+          textAlign: "center",
+          boxShadow: "0 20px 50px rgba(0,11,111,0.12)",
+          backdropFilter: "blur(16px)",
+          zIndex: 1,
+        }}
+      >
         <div style={{ marginBottom: 18 }}>
           <img
-            src="/assets/logo-scout.png"
+            src="/assets/logonacional.svg"
             alt="ENJ 2026"
             style={{
               width: 120,

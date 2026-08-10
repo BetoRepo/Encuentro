@@ -13,6 +13,10 @@ const ENJ_MAGENTA = "#D7007E";
 
 const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio";
+const LOCAL_REGISTRATION_KEY = "enj_registration";
+const LOCAL_PROFILE_KEY = "enj_profile";
+const ALERT_AUTHORIZED_EMAILS = ["admin@enj.org", "coordinador@enj.org"];
+const DRIVE_FAILURE_EMAILS = ["admin@enj.org", "coordinador@enj.org", "operaciones@enj.org"];
 
 type ScoutDistrict = { district: string };
 type ScoutRegion = { region: string; districts: ScoutDistrict[] };
@@ -94,6 +98,7 @@ export function Inscripcion() {
   const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "error_pantalla">("inscripcion");
   const [errorMessageStr, setErrorMessageStr] = useState("");
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
+  const [registrationExists, setRegistrationExists] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
@@ -168,7 +173,56 @@ export function Inscripcion() {
       }
     }
     comprobarRegistroExistente();
+
+    const registroLocal = localStorage.getItem(LOCAL_REGISTRATION_KEY);
+    if (registroLocal) {
+      try {
+        const data = JSON.parse(registroLocal);
+        if (data?.cedula) {
+          setRegistrationExists(true);
+          setNombre(data.nombre || "");
+          setApellido(data.apellido || "");
+          setCedula(data.cedula || "");
+          setCorreo(data.correo || "");
+          setTelefono(data.telefono || "");
+          setSelectedRegion(data.selectedRegion || "");
+          setSelectedDistrict(data.selectedDistrict || "");
+          setGrupoScout(data.grupoScout || "");
+          setRamaScout(data.ramaScout || "");
+          setParticipantType(data.participantType || "joven");
+          setViewMode("cuotas");
+        }
+      } catch (error) {
+        console.warn("Error leyendo el registro local:", error);
+      }
+    }
+
+    const perfilLocal = localStorage.getItem(LOCAL_PROFILE_KEY);
+    if (perfilLocal) {
+      try {
+        const data = JSON.parse(perfilLocal);
+        setNombre((current) => current || data.nombre || "");
+        setApellido((current) => current || data.apellido || "");
+        setCedula((current) => current || data.cedula || "");
+        setCorreo((current) => current || data.correo || "");
+        setTelefono((current) => current || data.telefono || "");
+        setBirthDate((current) => current || data.birthDate || "");
+        setAge((current) => current || data.age || (data.birthDate ? calculateAge(data.birthDate) : null));
+        setSelectedRegion((current) => current || data.selectedRegion || "");
+        setSelectedDistrict((current) => current || data.selectedDistrict || "");
+        setGrupoScout((current) => current || data.grupoScout || "");
+        setRamaScout((current) => current || data.ramaScout || "");
+      } catch (error) {
+        console.warn("Error leyendo el perfil local:", error);
+      }
+    }
   }, []);
+
+  const authorizedToAlert = ALERT_AUTHORIZED_EMAILS.includes(correo);
+
+  const handleProfileToggle = () => {
+    navigate("/perfil");
+  };
 
   function calculateAge(dateString: string) {
     const date = new Date(dateString);
@@ -188,6 +242,70 @@ export function Inscripcion() {
     if (fileValue.target?.files?.[0]) return fileValue.target.files[0];
     return null;
   };
+
+  async function saveRegistrationLocally() {
+    if (!cedula) return;
+    const payload = {
+      nombre,
+      apellido,
+      cedula,
+      correo,
+      telefono,
+      selectedRegion,
+      selectedDistrict,
+      grupoScout,
+      ramaScout,
+      participantType,
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(LOCAL_REGISTRATION_KEY, JSON.stringify(payload));
+    setRegistrationExists(true);
+  }
+
+  async function triggerAlarm() {
+    if (!authorizedToAlert) {
+      return alert("No estás autorizado para enviar esta alerta.");
+    }
+
+    if (typeof Notification !== "undefined") {
+      if (Notification.permission !== "granted") {
+        await Notification.requestPermission();
+      }
+      if (Notification.permission === "granted") {
+        new Notification("Alerta ENJ", {
+          body: "Se ha activado una alarma para los equipos."
+        });
+      }
+    }
+
+    try {
+      await fetch("/api/notifications/alert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: correo, message: "Alarma de usuario autorizado" }),
+      });
+    } catch (err) {
+      console.warn("No se pudo enviar la alarma remota (endpoint no configurado aún):", err);
+    }
+  }
+
+  async function sendDriveFailureEmail(message: string) {
+    if (!DRIVE_FAILURE_EMAILS.length) return;
+
+    try {
+      await fetch("/api/notify-drive-failure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipients: DRIVE_FAILURE_EMAILS,
+          subject: "ENJ - Error al crear carpeta en Drive",
+          body: message,
+        }),
+      });
+    } catch (err) {
+      console.warn("No se pudo notificar por correo la falla en Drive:", err);
+    }
+  }
 
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -212,7 +330,11 @@ export function Inscripcion() {
         body: folderForm,
       });
       
-      if (!driveResponse.ok) throw new Error("Error creando carpeta en el servidor de Google Drive.");
+      if (!driveResponse.ok) {
+        const errorText = await driveResponse.text();
+        await sendDriveFailureEmail(`No se pudo crear carpeta en Drive para ${cedula} - ${nombre} ${apellido}. Respuesta: ${errorText}`);
+        throw new Error("No se creó carpeta en Drive. El equipo técnico ha sido notificado.");
+      }
 
       const driveData = await driveResponse.json();
       const generatedFolderId = driveData.folderId;
@@ -258,6 +380,8 @@ export function Inscripcion() {
 
       if (pagoError) throw new Error(`Error guardando pago inicial: ${pagoError.message}`);
 
+      await saveRegistrationLocally();
+
       const uploadFile = async (nativeFile: File, name: string) => {
         const fileForm = new FormData();
         fileForm.append("action", "upload_file");
@@ -280,6 +404,7 @@ export function Inscripcion() {
       setMontoBs("");
       setTasa("");
 
+      await saveRegistrationLocally();
       setViewMode("cuotas");
     } catch (err: any) {
       setErrorMessageStr(err.message || String(err));
@@ -344,6 +469,7 @@ export function Inscripcion() {
 
       if (!res.ok) throw new Error("Error cargando el archivo de pago en Google Drive.");
 
+      await saveRegistrationLocally();
       setViewMode("exito");
     } catch (err: any) {
       setErrorMessageStr(err.message || String(err));
@@ -390,8 +516,53 @@ export function Inscripcion() {
   }
 
   return (
-    <div style={{ background: "#F0F2FA", padding: "48px 24px 80px" }}>
+    <div style={{ background: "#F0F2FA", padding: "48px 24px 80px", position: "relative" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
+
+        <button
+          type="button"
+          onClick={handleProfileToggle}
+          style={{
+            position: "fixed",
+            right: 24,
+            bottom: 24,
+            zIndex: 200,
+            background: ENJ_MAGENTA,
+            color: "#fff",
+            border: "none",
+            borderRadius: 999,
+            padding: "14px 20px",
+            boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
+            cursor: "pointer",
+            fontWeight: 700,
+          }}
+        >
+          Perfil
+        </button>
+
+        {authorizedToAlert && (
+          <button
+            type="button"
+            onClick={triggerAlarm}
+            style={{
+              position: "fixed",
+              right: 24,
+              bottom: 88,
+              zIndex: 200,
+              background: "#F7BF16",
+              color: "#000B6F",
+              border: "none",
+              borderRadius: 999,
+              padding: "14px 20px",
+              boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Alarma
+          </button>
+        )}
+
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
           <button type="button" onClick={() => viewMode === "cuotas" ? setViewMode("inscripcion") : navigate("/")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.6)", fontSize: 14, fontWeight: 600 }}>
