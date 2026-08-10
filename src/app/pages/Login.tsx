@@ -32,9 +32,8 @@ export function Login() {
 
         if (error) throw error;
 
-        // Redirección exitosa
+        // Redirección exitosa directa a Home (Sin reload)
         navigate("/");
-        window.location.reload();
       } else {
         // --- FLUJO DE REGISTRO DIRECTO CON SUPABASE ---
         const { error } = await supabase.auth.signUp({
