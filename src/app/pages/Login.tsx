@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { LogIn, Mail, Lock, User as UserIcon } from "lucide-react";
 
+// 1. IMPORTAMOS LAS IMÁGENES (Ajusta los "../" dependiendo de dónde esté este archivo)
+import bgImage from "../assets/background.png";
+import logoImage from "../assets/logonacional.svg";
+
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
 
@@ -23,15 +27,12 @@ export function Login() {
         body: JSON.stringify({ email, password, name }),
       });
 
-      // SOLUCIÓN: Leemos el texto plano una única vez de forma segura
       const text = await res.text();
       let data: any = null;
 
       try {
-        // Si el texto es una estructura JSON válida, la parseamos
         data = JSON.parse(text);
       } catch (err) {
-        // Si no es JSON (es un error de red o HTML plano), tiramos el texto crudo
         throw new Error(text || `HTTP ${res.status}`);
       }
 
@@ -39,7 +40,6 @@ export function Login() {
         localStorage.setItem('token', data.token);
         window.location.reload();
       } else {
-        // Aquí atrapamos correctamente los mensajes de Supabase ("Usuario ya existe", etc.)
         alert(data?.error || `Error: ${res.status} ${res.statusText}`);
       }
     } catch (err: any) {
@@ -61,8 +61,6 @@ export function Login() {
     boxSizing: "border-box" as const
   };
 
-  const bg = "/assets/background.png";
-
   return (
     <div
       style={{
@@ -70,7 +68,8 @@ export function Login() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: `linear-gradient(rgba(233,240,255,0.6), rgba(248,245,255,0.6)), url(${bg})`,
+        // 2. USAMOS LA VARIABLE DEL FONDO IMPORTADO
+        background: `linear-gradient(rgba(233,240,255,0.6), rgba(248,245,255,0.6)), url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -94,8 +93,9 @@ export function Login() {
         }}
       >
         <div style={{ marginBottom: 18 }}>
+          {/* 3. USAMOS LA VARIABLE DEL LOGO IMPORTADO */}
           <img
-            src="/assets/logonacional.svg"
+            src={logoImage}
             alt="ENJ 2026"
             style={{
               width: 120,
