@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
 
-// 1. IMPORTACIÓN DE IMÁGENES
-// Asegúrate de que la carpeta assets esté en 'src/assets/'
-import bgImage from "src/assets/background.png";
-import logoImage from "src/assets/logonacional.svg";
+import bgImage from "../../assets/background.png";
+import logoImage from "../../assets/logonacional.svg";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
