@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Root } from './components/Root'
 import { Home, Inscripcion, Consultas, Perfil } from './pages'
 import { Login } from './pages/Login' // <-- Ajusta esta ruta según donde esté Login.tsx
-import { supabase } from './supabaseClient' // <-- Ajusta esta ruta a tu cliente de Supabase
+import { supabase } from '../supabaseClient' // <-- Ajusta esta ruta a tu cliente de Supabase
 
 // 1. CREAMOS EL GUARDIÁN DE RUTAS (PROTECTED ROUTE)
 const ProtectedRoute = () => {
