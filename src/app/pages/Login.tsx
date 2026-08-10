@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
+import { supabase } from "../../supabaseClient"; // Importación de Supabase
 
+// 1. IMPORTACIÓN DE IMÁGENES (Rutas relativas corregidas)
 import bgImage from "../../assets/background.png";
 import logoImage from "../../assets/logonacional.svg";
 
@@ -19,56 +21,52 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      const API_BASE = (import.meta.env.VITE_API_BASE as string) || '';
-      const url = isLogin ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
-      });
+      if (isLogin) {
+        // --- FLUJO DE INICIO DE SESIÓN DIRECTO CON SUPABASE ---
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password,
+        });
 
-      const text = await res.text();
-      let data: any = null;
+        if (error) throw error;
 
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-
-      if (res.ok && data && data.ok) {
-        // Guardar token de sesión
-        localStorage.setItem('token', data.token);
-
-        if (!isLogin) {
-          // --- FLUJO DE REGISTRO ---
-          // Separar el nombre en Nombre y Apellido de forma limpia
-          const nameParts = name.trim().split(" ");
-          const firstName = nameParts[0] || "";
-          const lastName = nameParts.slice(1).join(" ") || "";
-
-          // Pre-guardar los datos del usuario para que /perfil los tome automáticamente
-          const initialProfile = {
-            nombre: firstName,
-            apellido: lastName,
-            correo: email.trim(),
-          };
-          localStorage.setItem("enj_profile", JSON.stringify(initialProfile));
-
-          // Redirigir al formulario de perfil
-          navigate("/perfil");
-        } else {
-          // --- FLUJO DE LOGIN ---
-          navigate("/");
-          window.location.reload();
-        }
+        // Redirección exitosa
+        navigate("/");
+        window.location.reload();
       } else {
-        alert(data?.error || `Error: ${res.status} ${res.statusText}`);
+        // --- FLUJO DE REGISTRO DIRECTO CON SUPABASE ---
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: password,
+          options: {
+            data: {
+              full_name: name.trim(), // Lo lee el Trigger de SQL para la tabla profiles
+            },
+          },
+        });
+
+        if (error) throw error;
+
+        // Separar el nombre en Nombre y Apellido para pre-guardar en LocalStorage
+        const nameParts = name.trim().split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        const initialProfile = {
+          nombre: firstName,
+          apellido: lastName,
+          correo: email.trim(),
+        };
+        localStorage.setItem("enj_profile", JSON.stringify(initialProfile));
+
+        // Redirigir al formulario de perfil
+        navigate("/perfil");
       }
     } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Error de conexión con el servidor.");
+      console.error("Error de autenticación:", err);
+      alert(err.message || "Error al procesar la solicitud.");
     } finally {
       setLoading(false);
     }
