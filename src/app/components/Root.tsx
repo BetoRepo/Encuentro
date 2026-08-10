@@ -1,6 +1,7 @@
-import { Outlet, NavLink, useLocation } from "react-router-dom"; // <-- Corregido aquí
+import { Navigate, Outlet, NavLink, useLocation } from "react-router-dom"; // <-- Corregido aquí
 import { useState, useEffect } from "react";
 import { Menu, X, Bell } from "lucide-react";
+import { supabase } from "../../supabaseClient";
 import Login from "../pages/Login";
 
 const ENJ_NAVY = "#000B6F";
@@ -30,9 +31,9 @@ useEffect(() => {
     const checkAuth = async () => {
       // 🟢 BYPASS AUTOMÁTICO EN ENTORNO LOCAL
       if (import.meta.env.DEV) {
-        setUser({ 
-          email: "enj@scouts.org.ve", 
-          name: "Beto (Local Staff)" 
+        setUser({
+          email: "enj@scouts.org.ve",
+          name: "Beto (Local Staff)"
         });
         setLoading(false);
         return; // Detiene la ejecución aquí para no tocar el backend
