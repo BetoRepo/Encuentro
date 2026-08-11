@@ -1,8 +1,7 @@
-import { Navigate, Outlet, NavLink, useLocation } from "react-router-dom"; // <-- Corregido aquí
+import { Outlet, NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Menu, X, Bell } from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import Login from "../pages/Login";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -27,35 +26,34 @@ export function Root() {
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
-      // 🟢 BYPASS AUTOMÁTICO EN ENTORNO LOCAL
-      if (import.meta.env.DEV) {
-        setUser({
-          email: "enj@scouts.org.ve",
-          name: "Beto (Local Staff)"
-        });
-        setLoading(false);
-        return; // Detiene la ejecución aquí para no tocar el backend
-      }
+      // Usar la sesión de Supabase directamente para mantener el mismo flujo del login.
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
 
-      // 🔒 CÓDIGO ORIGINAL SE EJECUTARÁ EXCLUSIVAMENTE EN VERCEL
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (error) {
+        console.error("Error obteniendo usuario Supabase:", error);
+        setUser(null);
         setLoading(false);
         return;
       }
-      try {
-        const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.ok) setUser(data.user);
-        else localStorage.removeItem('token');
-      } catch (e) {
-        console.error("Auth check failed", e);
-      }
+
+      setUser(user ? { email: user.email || "", name: user.user_metadata?.full_name || "" } : null);
       setLoading(false);
     };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const sessionUser = session?.user;
+      setUser(sessionUser ? { email: sessionUser.email || "", name: sessionUser.user_metadata?.full_name || "" } : null);
+      setLoading(false);
+    });
+
     checkAuth();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const subscribeToNotifications = async () => {
@@ -88,10 +86,6 @@ useEffect(() => {
 
   if (loading) {
     return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>Cargando...</div>;
-  }
-
-  if (!user) {
-    return <Login />;
   }
 
   return (
