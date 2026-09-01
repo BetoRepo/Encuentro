@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import { Calendar, Users, ChevronRight, Clock } from "lucide-react";
+import logoImage from "../../assets/logonacional.svg";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -174,12 +175,16 @@ export function Home() {
           </div>
 
           <div style={{ margin: "0 auto 28px", padding: "0 10px" }}>
-            <h1 style={{ fontFamily: "'Inter', 'Montserrat', sans-serif", fontSize: "clamp(34px, 5.5vw, 52px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em", color: "#FFFFFF", margin: 0 }}>
-              Encuentro Nacional
-            </h1>
-            <h1 style={{ fontFamily: "'Inter', 'Montserrat', sans-serif", fontSize: "clamp(36px, 6vw, 56px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.02em", color: ENJ_YELLOW, margin: "6px 0 0 0" }}>
-              de Jóvenes
-            </h1>
+            <div style={{ position: "relative", width: "min(100%, 360px)", height: 170, margin: "0 auto", display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 18 }}>
+              <img
+                src={logoImage}
+                alt="Encuentro Nacional de Jóvenes"
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", filter: "blur(8px)", transform: "scale(1.08)", opacity: 0.75 }}
+              />
+              <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff", fontSize: "clamp(24px, 5vw, 34px)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", textShadow: "0 2px 12px rgba(0,0,0,0.55)" }}>
+                Próximamente
+              </span>
+            </div>
           </div>
 
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.85)", maxWidth: 580, margin: "0 auto 36px", lineHeight: 1.6 }}>
@@ -193,7 +198,7 @@ export function Home() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Users size={16} color={ENJ_YELLOW} />
-              <span>+100 Jóvenes</span>
+              <span>+70 Jóvenes</span>
             </div>
           </div>
 

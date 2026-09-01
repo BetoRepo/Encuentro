@@ -21,7 +21,7 @@ const DRIVE_FAILURE_EMAILS = ["admin@enj.org", "coordinador@enj.org", "operacion
 type ScoutDistrict = { district: string };
 type ScoutRegion = { region: string; districts: ScoutDistrict[] };
 
-const scoutRegions: ScoutRegion[] = [
+export const scoutRegions: ScoutRegion[] = [
   { region: "ARAGUA", districts: [{ district: "Guarico" }, { district: "HENRI PITTIER" }, { district: "JOSE FELIX RIBAS" }, { district: "MANUEL ATANASIO GIRARDOT" }, { district: "SANTIAGO MARIÑO" }, { district: "SUCRE ZAMORA" }] },
   { region: "ATENDIDOS POR LA OSN", districts: [{ district: "BOLIVAR" }, { district: "COJEDES" }, { district: "FALCON" }, { district: "GUARAPICHE" }, { district: "PORTUGUESA" }, { district: "PUERTO LA CRUZ" }, { district: "TRUJILLO" }, { district: "YARACUY" }] },
   { region: "CARABOBO", districts: [{ district: "GUACARA" }, { district: "SAN ESTEBAN" }, { district: "VALENCIA NORTE" }, { district: "VALENCIA SUR" }] },

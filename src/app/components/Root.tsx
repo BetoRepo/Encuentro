@@ -1,23 +1,15 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Menu, X, Bell, LogOut } from "lucide-react";
+import logoImage from "../../assets/logonacional.svg";
+import scoutLogoImage from "../../assets/logo-scout.png";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
 function ScoutsLogo() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="22" fill={ENJ_YELLOW} />
-      <path d="M22 8C22 8 14 15 14 22C14 26.4 17.6 30 22 30C26.4 30 30 26.4 30 22C30 15 22 8 22 8Z" fill={ENJ_NAVY} />
-      <circle cx="22" cy="22" r="4" fill={ENJ_YELLOW} />
-      <path d="M22 30V36" stroke={ENJ_NAVY} strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M18 34H26" stroke={ENJ_NAVY} strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M14 22H10" stroke={ENJ_NAVY} strokeWidth="2" strokeLinecap="round" />
-      <path d="M34 22H30" stroke={ENJ_NAVY} strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
+  return <img src={scoutLogoImage} alt="Scouts de Venezuela" width={36} height={36} style={{ objectFit: "contain" }} />;
 }
 
 export function Root() {
@@ -353,11 +345,9 @@ export function Root() {
         <div style={{ display: "center", justifyContent: "center", marginBottom: 14 }}>
           <ScoutsLogo />
         </div>
-        <p style={{ margin: "0 0 5px", fontSize: 13, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-          Encuentro Nacional de Jóvenes · ENJ 2026
-        </p>
+        <img src={logoImage} alt="Encuentro Nacional de Jóvenes · ENJ 2026" style={{ width: 150, height: "auto", maxHeight: 72, objectFit: "contain", margin: "0 auto 12px", display: "block" }} />
         <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-          11, 12 y 13 de Septiembre · Guárico, Venezuela
+          30 Oct - 1 Nov · Aguirre, Venezuela
         </p>
         <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
           Scouts de Venezuela · Siempre Listos

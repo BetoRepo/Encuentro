@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { FileText, Upload, CheckCircle, Users, Scroll, HelpCircle } from "lucide-react";
+import { scoutRegions } from "./Inscripcion";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#50039D";
 const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-const distritos = ["Aragua", "Carabobo", "Distrito Capital", "Lara", "Mérida", "Metropolitana", "Miranda", "Táchira", "Zulia", "Otro"];
+const distritos = Array.from(new Set(scoutRegions.flatMap((region) => region.districts.map(({ district }) => district))));
 
 // Definimos los 4 pilares de información que solicitas
 const areasPrograma = [
@@ -111,7 +112,6 @@ export function Consultas() {
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "60px 24px" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        
         {/* ── CABECERA DE LA PESTAÑA ── */}
         <div style={{ textAlign: "center", marginBottom: 44 }}>
           <div style={{ display: "inline-block", marginBottom: 12 }}>
