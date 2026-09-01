@@ -85,11 +85,14 @@ export function Login() {
     event.preventDefault();
     if (newPassword !== confirmation) return alert("Las contraseñas no coinciden.");
     setChangePasswordLoading(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
     try {
       const response = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         body: JSON.stringify({ email: email.trim(), newPassword }),
+        signal: controller.signal,
       });
       const result = await readResponse(response);
       alert(result.message);
@@ -97,8 +100,9 @@ export function Login() {
       setConfirmation("");
       setChangePasswordOpen(false);
     } catch (error: any) {
-      alert(error.message || "No se pudo cambiar la contraseña.");
+      alert(error.name === "AbortError" ? "El servidor tardó demasiado en responder. Revisa la configuración de Supabase en Vercel." : error.message || "No se pudo cambiar la contraseña.");
     } finally {
+      window.clearTimeout(timeoutId);
       setChangePasswordLoading(false);
     }
   };
