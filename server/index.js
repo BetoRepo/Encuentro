@@ -121,8 +121,13 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/change-password', async (req, res) => {
   try {
-    const user = await getAuthenticatedUser(req);
-    if (!user) return res.status(401).json({ ok: false, error: 'Debes iniciar sesión para cambiar la contraseña.' });
+    let user = await getAuthenticatedUser(req);
+    if (!user && req.body.email) {
+      const cleanEmail = String(req.body.email).trim().toLowerCase();
+      const { data: account } = await supabase.from('user').select('id').eq('email', cleanEmail).maybeSingle();
+      user = account;
+    }
+    if (!user) return res.status(401).json({ ok: false, error: 'Indica el correo de la cuenta para cambiar la contraseña.' });
     const { newPassword } = req.body;
     if (!newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
     const passwordHash = crypto.scryptSync(newPassword, sessionSecret, 64).toString('hex');

@@ -11,11 +11,27 @@ const ENJ_MAGENTA = "#D7007E";
 
 export function Login() {
   const navigate = useNavigate();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+
+  const readResponse = async (response: Response) => {
+    const contentType = response.headers.get("content-type") || "";
+    const body = contentType.includes("application/json")
+      ? await response.json()
+      : { error: (await response.text()).trim() };
+    if (!response.ok) {
+      throw new Error(body.error || "El servidor no pudo procesar la solicitud.");
+    }
+    return body;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +44,7 @@ export function Login() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email.trim(), password }),
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "No se pudo iniciar sesión.");
+        const result = await readResponse(response);
         localStorage.setItem("token", result.token);
         localStorage.setItem("enj_user", JSON.stringify(result.user));
         navigate("/");
@@ -39,8 +54,7 @@ export function Login() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "No se pudo crear la cuenta.");
+        const result = await readResponse(response);
         localStorage.setItem("token", result.token);
         localStorage.setItem("enj_user", JSON.stringify(result.user));
 
@@ -64,6 +78,28 @@ export function Login() {
       alert(err.message || "Error al procesar la solicitud.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (newPassword !== confirmation) return alert("Las contraseñas no coinciden.");
+    setChangePasswordLoading(true);
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+        body: JSON.stringify({ email: email.trim(), newPassword }),
+      });
+      const result = await readResponse(response);
+      alert(result.message);
+      setNewPassword("");
+      setConfirmation("");
+      setChangePasswordOpen(false);
+    } catch (error: any) {
+      alert(error.message || "No se pudo cambiar la contraseña.");
+    } finally {
+      setChangePasswordLoading(false);
     }
   };
 
@@ -174,7 +210,33 @@ export function Login() {
         >
           {isLogin ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión"}
         </button>
+        <button
+          type="button"
+          onClick={() => setChangePasswordOpen(true)}
+          style={{ display: "block", margin: "14px auto 0", background: "none", border: "none", color: ENJ_NAVY, fontSize: "13px", cursor: "pointer", fontWeight: 600 }}
+        >
+          Cambiar Contraseña
+        </button>
       </div>
+
+      {changePasswordOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="change-password-title" style={{ position: "fixed", inset: 0, zIndex: 10, display: "grid", placeItems: "center", padding: 24, background: "rgba(0,11,111,0.35)" }}>
+          <form onSubmit={handleChangePassword} style={{ width: "min(100%, 380px)", background: "#fff", borderRadius: 18, padding: 28, boxShadow: "0 20px 50px rgba(0,0,0,0.2)" }}>
+            <h2 id="change-password-title" style={{ margin: "0 0 8px", color: ENJ_NAVY }}>Cambiar Contraseña</h2>
+            <p style={{ margin: "0 0 20px", color: "rgba(0,11,111,0.62)", fontSize: 14 }}>Escribe y confirma tu nueva contraseña.</p>
+            {[{ label: "Nueva contraseña", value: newPassword, setValue: setNewPassword }, { label: "Confirmar nueva contraseña", value: confirmation, setValue: setConfirmation }].map((field) => (
+              <div key={field.label} style={{ position: "relative", marginTop: 14 }}>
+                <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
+                <input required minLength={8} type="password" placeholder={`${field.label} (mínimo 8 caracteres)`} value={field.value} onChange={(event) => field.setValue(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10 }} />
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+              <button type="button" onClick={() => setChangePasswordOpen(false)} style={{ flex: 1, padding: 12, border: "1px solid rgba(0,11,111,0.18)", borderRadius: 10, background: "#fff", color: ENJ_NAVY, fontWeight: 600 }}>Cancelar</button>
+              <button type="submit" disabled={changePasswordLoading} style={{ flex: 1, padding: 12, border: 0, borderRadius: 10, background: ENJ_NAVY, color: "#fff", fontWeight: 700 }}>{changePasswordLoading ? "Guardando..." : "Guardar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
