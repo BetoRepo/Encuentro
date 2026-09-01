@@ -9,6 +9,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  if (!req.url.startsWith('/api')) req.url = `/api${req.url}`;
+  next();
+});
+
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const sessionSecret = process.env.SESSION_SECRET || 'enj-change-this-session-secret';
@@ -186,6 +191,10 @@ app.get('/api/dashboard', async (req, res) => {
 
 app.post('/api/notify-drive-failure', (req, res) => {
   return res.status(501).json({ ok: false, error: 'Las notificaciones por correo están desactivadas.' });
+});
+
+app.use((req, res) => {
+  return res.status(404).json({ ok: false, error: `Ruta no encontrada: ${req.method} ${req.path}` });
 });
 
 if (process.env.NODE_ENV !== 'production') {
