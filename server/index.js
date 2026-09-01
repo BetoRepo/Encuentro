@@ -121,20 +121,23 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/change-password', async (req, res) => {
   try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (!supabase) return res.status(503).json({ ok: false, error: 'La conexión con la base de datos no está configurada.' });
     let user = await getAuthenticatedUser(req);
-    if (!user && req.body.email) {
-      const cleanEmail = String(req.body.email).trim().toLowerCase();
+    if (!user && body.email) {
+      const cleanEmail = String(body.email).trim().toLowerCase();
       const { data: account } = await supabase.from('user').select('id').eq('email', cleanEmail).maybeSingle();
       user = account;
     }
     if (!user) return res.status(401).json({ ok: false, error: 'Indica el correo de la cuenta para cambiar la contraseña.' });
-    const { newPassword } = req.body;
+    const { newPassword } = body;
     if (!newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
     const passwordHash = crypto.scryptSync(newPassword, sessionSecret, 64).toString('hex');
     const { error: updateError } = await supabase.from('user').update({ password_hash: passwordHash }).eq('id', user.id);
     if (updateError) throw updateError;
     return res.json({ ok: true, message: 'Contraseña actualizada correctamente.' });
   } catch (globalError) {
+    console.error('change-password error:', globalError);
     return res.status(500).json({ ok: false, error: globalError.message });
   }
 });
