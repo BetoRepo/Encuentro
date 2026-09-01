@@ -24,6 +24,11 @@ const fetchWithTimeout = async (input, init = {}) => {
   }
 };
 
+const withTimeout = (promise, milliseconds = 7000) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error('La base de datos tardó demasiado en responder.')), milliseconds)),
+]);
+
 const supabase = (supabaseUrl && supabaseKey) 
   ? createClient(supabaseUrl, supabaseKey, { global: { fetch: fetchWithTimeout } }) 
   : null;
@@ -48,7 +53,7 @@ const getAuthenticatedUser = async (req) => {
     return null;
   }
   if (!tokenData.sub || tokenData.exp < Date.now()) return null;
-  const { data: user } = await supabase.from('user').select('id, email, name, role').eq('id', tokenData.sub).maybeSingle();
+  const { data: user } = await withTimeout(supabase.from('user').select('id, email, name, role').eq('id', tokenData.sub).maybeSingle());
   return user || null;
 };
 
@@ -78,11 +83,11 @@ app.post('/api/auth/register', async (req, res) => {
 
     if (cleanPassword.length < 8) return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres.' });
 
-    const { data: existingUser, error: searchError } = await supabase
+    const { data: existingUser, error: searchError } = await withTimeout(supabase
       .from('user')
       .select('id')
       .eq('email', cleanEmail)
-      .maybeSingle();
+      .maybeSingle());
 
     if (searchError) return res.status(500).json({ ok: false, error: searchError.message });
     if (existingUser) return res.status(400).json({ ok: false, error: 'Usuario ya existe' });
@@ -91,7 +96,7 @@ app.post('/api/auth/register', async (req, res) => {
     const passwordHash = crypto.scryptSync(cleanPassword, sessionSecret, 64).toString('hex');
     const newUser = { id: userId, email: cleanEmail, password_hash: passwordHash, name: name || '', role: 'participant' };
     
-    const { error: insertError } = await supabase.from('user').insert([newUser]);
+    const { error: insertError } = await withTimeout(supabase.from('user').insert([newUser]));
     if (insertError) return res.status(500).json({ ok: false, error: insertError.message });
 
     return res.json({ ok: true, token: createToken(newUser), user: publicUser(newUser) });
@@ -110,11 +115,11 @@ app.post('/api/auth/login', async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim(); 
 
-    const { data: user, error: loginError } = await supabase
+    const { data: user, error: loginError } = await withTimeout(supabase
       .from('user')
       .select('*')
       .eq('email', cleanEmail)
-      .maybeSingle();
+      .maybeSingle());
     
     if (loginError) return res.status(500).json({ ok: false, error: loginError.message });
     if (!user) return res.status(401).json({ ok: false, error: 'Usuario no encontrado' });
@@ -136,14 +141,14 @@ app.post('/api/auth/change-password', async (req, res) => {
     let user = await getAuthenticatedUser(req);
     if (!user && body.email) {
       const cleanEmail = String(body.email).trim().toLowerCase();
-      const { data: account } = await supabase.from('user').select('id').eq('email', cleanEmail).maybeSingle();
+      const { data: account } = await withTimeout(supabase.from('user').select('id').eq('email', cleanEmail).maybeSingle());
       user = account;
     }
     if (!user) return res.status(401).json({ ok: false, error: 'Indica el correo de la cuenta para cambiar la contraseña.' });
     const { newPassword } = body;
     if (!newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
     const passwordHash = crypto.scryptSync(newPassword, sessionSecret, 64).toString('hex');
-    const { error: updateError } = await supabase.from('user').update({ password_hash: passwordHash }).eq('id', user.id);
+    const { error: updateError } = await withTimeout(supabase.from('user').update({ password_hash: passwordHash }).eq('id', user.id));
     if (updateError) throw updateError;
     return res.json({ ok: true, message: 'Contraseña actualizada correctamente.' });
   } catch (globalError) {
