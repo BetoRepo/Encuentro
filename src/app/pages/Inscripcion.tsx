@@ -83,12 +83,17 @@ function BankDetailsCard() {
     <div style={{ background: "#F4F6FB", border: "1.5px dashed rgba(0,11,111,0.2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
       <h4 style={{ margin: "0 0 10px", fontSize: 13, color: ENJ_NAVY, fontWeight: 700 }}>Datos para Transferencia Bancaria</h4>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13, color: "rgba(0,11,111,0.7)" }}>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Mercantil Banco Universal:</strong> 0105 0616 63 1616066830</div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Encuentro Nacional de Jóvenes 2026</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Mercantil Banco Universal</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}>0105 0616 63 1616066830</div>
+        <div style={{ gridColumn: "1 / -1" }}>J-00066665-2</div>
+        <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>(Pago en Bolívares)</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga Cash Asv</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Banco Universal</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}>0172 0111 55 1118053857</div>
         <div><strong>RIF:</strong> J-00066665-2</div>
-        <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>Pago en Bolívares</strong></div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga Banco Universal:</strong> 0172 0111 55 1118053857</div>
-        <div><strong>RIF:</strong> J-00066665-2</div>
-        <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>Pago en divisas</strong></div>
+        <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>(Pago en divisas)</strong></div>
       </div>
     </div>
   );
@@ -433,7 +438,7 @@ export function Inscripcion() {
           .select("drive_folder_id")
           .eq("cedula", finalCedula.trim())
           .maybeSingle();
-        
+
         if (partData?.drive_folder_id) {
           finalFolderId = partData.drive_folder_id;
         } else {
@@ -679,7 +684,6 @@ export function Inscripcion() {
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              
               {!userDriveFolderId && (
                 <>
                   <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
