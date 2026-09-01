@@ -110,14 +110,14 @@ export function Root() {
           <button 
             onClick={subscribeToNotifications}
             style={{ 
-              background: 'rgba(255,255,255,0.1)', 
-              border: 'none', 
+              background: 'rgba(215,0,126,0.18)', 
+              border: '1px solid rgba(255,255,255,0.12)', 
               borderRadius: '50%', 
               padding: '8px', 
               cursor: 'pointer',
               marginLeft: 'auto',
               marginRight: '12px',
-              color: ENJ_YELLOW 
+              color: '#fff' 
             }}
             title="Activar Notificaciones"
           >
@@ -135,8 +135,8 @@ export function Root() {
                 textDecoration: "none",
                 fontSize: 14,
                 fontWeight: 600,
-                color: isActive ? ENJ_NAVY : "rgba(255,255,255,0.8)",
-                background: isActive ? ENJ_YELLOW : "transparent",
+                color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
+                background: isActive ? ENJ_MAGENTA : "transparent",
                 transition: "all 0.15s",
               })}
             >
@@ -151,7 +151,7 @@ export function Root() {
                 fontSize: 14,
                 fontWeight: 600,
                 color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
-                background: isActive ? "rgba(247,191,22,0.18)" : "transparent",
+                background: isActive ? "rgba(215,0,126,0.28)" : "transparent",
                 transition: "all 0.15s",
               })}
             >
@@ -181,13 +181,13 @@ export function Root() {
                 fontSize: 14,
                 fontWeight: 600,
                 color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
-                background: isActive ? "rgba(215,0,126,0.2)" : "transparent",
+                background: isActive ? "rgba(215,0,126,0.24)" : "transparent",
                 transition: "all 0.15s",
               })}
             >
               Perfil
             </NavLink>
-            {user?.role === "admin" && <NavLink to="/dashboard" style={({ isActive }) => ({ padding: "7px 16px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, color: "#fff", background: isActive ? ENJ_YELLOW : "transparent" })}>Dashboard</NavLink>}
+            {user?.role === "admin" && <NavLink to="/dashboard" style={({ isActive }) => ({ padding: "7px 16px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, color: "#fff", background: isActive ? ENJ_MAGENTA : "transparent" })}>Dashboard</NavLink>}
             
             {/* Botón de Cerrar Sesión Desktop (solo si hay usuario) */}
             {user && (
@@ -200,16 +200,16 @@ export function Root() {
                   padding: "7px 16px",
                   marginLeft: "8px",
                   borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.8)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(215,0,126,0.12)",
+                  color: "#fff",
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-                onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                onMouseOver={(e) => (e.currentTarget.style.background = "rgba(215,0,126,0.2)")}
+                onMouseOut={(e) => (e.currentTarget.style.background = "rgba(215,0,126,0.12)")}
               >
                 <LogOut size={16} />
                 Salir
@@ -255,8 +255,8 @@ export function Root() {
                 textDecoration: "none",
                 fontSize: 15,
                 fontWeight: 600,
-                color: isActive ? ENJ_NAVY : "rgba(255,255,255,0.9)",
-                background: isActive ? ENJ_YELLOW : "transparent",
+                color: isActive ? "#fff" : "rgba(255,255,255,0.9)",
+                background: isActive ? ENJ_MAGENTA : "transparent",
               })}
             >
               Inicio
@@ -271,7 +271,7 @@ export function Root() {
                 fontSize: 15,
                 fontWeight: 600,
                 color: "#fff",
-                background: isActive ? "rgba(247,191,22,0.18)" : "transparent",
+                background: isActive ? "rgba(215,0,126,0.28)" : "transparent",
               })}
             >
               Consultas
@@ -301,7 +301,7 @@ export function Root() {
                 fontSize: 15,
                 fontWeight: 600,
                 color: "#fff",
-                background: isActive ? "rgba(215,0,126,0.2)" : "rgba(215,0,126,0.3)",
+                background: isActive ? "rgba(215,0,126,0.24)" : "rgba(215,0,126,0.12)",
               })}
             >
               Perfil
@@ -320,9 +320,9 @@ export function Root() {
                     gap: "8px",
                     padding: "10px 14px",
                     borderRadius: 8,
-                    border: "none",
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.9)",
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(215,0,126,0.12)",
+                    color: "#fff",
                     fontSize: 15,
                     fontWeight: 600,
                     cursor: "pointer",

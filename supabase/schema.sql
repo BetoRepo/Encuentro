@@ -100,6 +100,14 @@ create table public.alertas_emergencia (
   created_at timestamptz not null default now()
 );
 
+alter table public."user" disable row level security;
+alter table public.profiles disable row level security;
+alter table public.participantes disable row level security;
+alter table public.pagos disable row level security;
+alter table public.documentos_participante disable row level security;
+alter table public.alertas_emergencia disable row level security;
+alter table public.subscriptions disable row level security;
+
 create table public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id text not null references public."user"(id) on delete cascade,
