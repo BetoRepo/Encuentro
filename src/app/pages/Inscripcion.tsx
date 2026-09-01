@@ -222,10 +222,6 @@ export function Inscripcion() {
 
   const authorizedToAlert = ALERT_AUTHORIZED_EMAILS.includes(correo);
 
-  const handleProfileToggle = () => {
-    navigate("/perfil");
-  };
-
   function calculateAge(dateString: string) {
     const date = new Date(dateString);
     if (!dateString || Number.isNaN(date.getTime())) return null;
@@ -520,27 +516,6 @@ export function Inscripcion() {
   return (
     <div style={{ background: "#F0F2FA", padding: "48px 24px 80px", position: "relative" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
-
-        <button
-          type="button"
-          onClick={handleProfileToggle}
-          style={{
-            position: "fixed",
-            right: 24,
-            bottom: 24,
-            zIndex: 200,
-            background: ENJ_MAGENTA,
-            color: "#fff",
-            border: "none",
-            borderRadius: 999,
-            padding: "14px 20px",
-            boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
-            cursor: "pointer",
-            fontWeight: 700,
-          }}
-        >
-          Perfil
-        </button>
 
         {authorizedToAlert && (
           <button
