@@ -10,7 +10,20 @@ const ProtectedRoute = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } })
+    const storedUser = localStorage.getItem('enj_user');
+    const storedToken = localStorage.getItem('token');
+    if (!storedUser || !storedToken) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setUser(JSON.parse(storedUser));
+    } catch {
+      localStorage.removeItem('enj_user');
+    }
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${storedToken}` }, signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Sesión inválida');
         const result = await response.json();
@@ -22,7 +35,10 @@ const ProtectedRoute = () => {
         localStorage.removeItem('enj_user');
         setUser(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
