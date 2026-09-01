@@ -97,7 +97,7 @@ function BankDetailsCard() {
 export function Inscripcion() {
   const navigate = useNavigate();
 
-  const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "error_pantalla">("inscripcion");
+  const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "inscripcion_exito" | "error_pantalla">("inscripcion");
   const [errorMessageStr, setErrorMessageStr] = useState("");
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
   const [registrationExists, setRegistrationExists] = useState(false);
@@ -321,6 +321,7 @@ export function Inscripcion() {
       const folderForm = new FormData();
       folderForm.append("action", "create_folder");
       folderForm.append("folder_name", folderName);
+      folderForm.append("destination", "inscritos");
 
       const driveResponse = await fetch(SUPABASE_FUNCTION_URL, {
         method: "POST",
@@ -403,7 +404,7 @@ export function Inscripcion() {
       setTasa("");
 
       await saveRegistrationLocally();
-      setViewMode("cuotas");
+      setViewMode("inscripcion_exito");
     } catch (err: any) {
       setErrorMessageStr(err.message || String(err));
       setViewMode("error_pantalla");
@@ -507,6 +508,23 @@ export function Inscripcion() {
           <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Tu cuota y su comprobante se han actualizado con éxito en Google Drive y el sistema general.</p>
           <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Terminar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (viewMode === "inscripcion_exito") {
+    return (
+      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", background: "#F0F2FA" }}>
+        <div style={{ background: "#fff", borderRadius: 20, padding: "56px 40px", maxWidth: 520, width: "100%", textAlign: "center", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
+          <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(34,197,94,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
+            <CheckCircle2 size={42} color="#22c55e" />
+          </div>
+          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Inscripción completada!</h2>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Tus datos, comprobante y documentos fueron guardados correctamente. Tu expediente ya está creado.</p>
+          <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Ir al inicio
           </button>
         </div>
       </div>

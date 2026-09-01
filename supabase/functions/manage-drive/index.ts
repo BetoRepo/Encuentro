@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const INSCRITOS_FOLDER_ID = "19x82SIOAUpB9L25Fu2Rk4uq8lCdDxTh0";
+const CONSULTAS_FOLDER_ID = "152_8MBFo_NoKp0sA-EHw4NrwUYTt_t1R";
+
 // Nueva función ultra-simple para actualizar el Token de Acceso usando tu cuenta real
 async function getGoogleDriveAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
   const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -44,6 +47,7 @@ Deno.serve(async (req) => {
 
     const formData = await req.formData();
     const action = formData.get("action") as string;
+    const destination = formData.get("destination") as string || "inscritos";
 
     // Generar el token de acceso seguro simulando a tu usuario real
     const accessToken = await getGoogleDriveAccessToken(clientId, clientSecret, refreshToken);
@@ -63,7 +67,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           name: folderName,
           mimeType: "application/vnd.google-apps.folder",
-          parents: ["1FeRqD2Ng-TRX6hSVE8TLWZUCiLecMZOr"] // Tu ID real de carpeta principal
+          parents: [destination === "consultas" ? CONSULTAS_FOLDER_ID : INSCRITOS_FOLDER_ID]
         }),
       });
 

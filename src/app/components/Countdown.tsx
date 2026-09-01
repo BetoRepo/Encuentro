@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 
-const EVENT_DATE = new Date("2026-10-31T08:00:00");
-
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export function Countdown() {
+export function Countdown({ targetDate }: { targetDate?: number }) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const eventDate = targetDate ? new Date(targetDate) : new Date("2026-10-31T08:00:00");
 
   useEffect(() => {
     function update() {
       const now = new Date();
-      const diff = EVENT_DATE.getTime() - now.getTime();
+      const diff = eventDate.getTime() - now.getTime();
       if (diff <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
@@ -26,7 +25,7 @@ export function Countdown() {
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [targetDate]);
 
   const units = [
     { label: "Días", value: timeLeft.days },

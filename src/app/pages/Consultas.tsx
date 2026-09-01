@@ -4,6 +4,9 @@ import { FileText, Upload, CheckCircle, Users, Scroll, HelpCircle } from "lucide
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#50039D";
+const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const distritos = ["Aragua", "Carabobo", "Distrito Capital", "Lara", "Mérida", "Metropolitana", "Miranda", "Táchira", "Zulia", "Otro"];
 
 // Definimos los 4 pilares de información que solicitas
 const areasPrograma = [
@@ -39,12 +42,13 @@ const areasPrograma = [
 
 export function Consultas() {
   // Estado para manejar el texto libre y el archivo cargado de cada área
-  const [formData, setFormData] = useState<Record<string, { summary: string; file: File | null }>>({
-    waigunga: { summary: "", file: null },
-    comunidad: { summary: "", file: null },
-    clan: { summary: "", file: null },
-    jar: { summary: "", file: null },
+  const [formData, setFormData] = useState<Record<string, { summary: string; file: File | null; district: string }>>({
+    waigunga: { summary: "", file: null, district: "" },
+    comunidad: { summary: "", file: null, district: "" },
+    clan: { summary: "", file: null, district: "" },
+    jar: { summary: "", file: null, district: "" },
   });
+  const [savingArea, setSavingArea] = useState<string | null>(null);
 
   const handleTextChange = (id: string, text: string) => {
     setFormData((prev) => ({
@@ -60,11 +64,49 @@ export function Consultas() {
     }));
   };
 
-  const handleSubmit = (id: string) => {
-    const data = formData[id];
-    alert(`Información guardada para ${id.toUpperCase()}:\nResumen: ${data.summary}\nArchivo: ${data.file?.name || "Ninguno"}`);
-    // Aquí conectarías con tu API/Backend (Firebase, Supabase, Node, etc.)
+  const handleDistrictChange = (id: string, district: string) => {
+    setFormData((prev) => ({ ...prev, [id]: { ...prev[id], district } }));
   };
+
+  const handleSubmit = async (id: string) => {
+    const data = formData[id];
+    if (!data.district) return alert("Selecciona tu distrito antes de cargar el archivo.");
+    if (!data.file) return alert("Selecciona un archivo antes de guardar el reporte.");
+    if (data.file.size > 15 * 1024 * 1024) return alert("El archivo no puede superar los 15 MB.");
+
+    setSavingArea(id);
+    try {
+      const folderForm = new FormData();
+      folderForm.append("action", "create_folder");
+      folderForm.append("destination", "consultas");
+      folderForm.append("folder_name", `${data.district} - ${titleForArea(id)}`);
+      const folderResponse = await fetch(SUPABASE_FUNCTION_URL, { method: "POST", headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: folderForm });
+      const folderResult = await readDriveResponse(folderResponse);
+
+      const fileForm = new FormData();
+      fileForm.append("action", "upload_file");
+      fileForm.append("folder_id", folderResult.folderId);
+      fileForm.append("file", data.file, data.file.name);
+      fileForm.append("custom_name", `${data.district}_${id}`);
+      const uploadResponse = await fetch(SUPABASE_FUNCTION_URL, { method: "POST", headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: fileForm });
+      await readDriveResponse(uploadResponse);
+      setFormData((prev) => ({ ...prev, [id]: { summary: "", file: null, district: "" } }));
+      alert("Reporte cargado correctamente.");
+    } catch (error: any) {
+      alert(error.message || "No se pudo cargar el reporte.");
+    } finally {
+      setSavingArea(null);
+    }
+  };
+
+  const readDriveResponse = async (response: Response) => {
+    const contentType = response.headers.get("content-type") || "";
+    const body = contentType.includes("application/json") ? await response.json() : { error: await response.text() };
+    if (!response.ok) throw new Error(body.error || "Google Drive rechazó la carga.");
+    return body;
+  };
+
+  const titleForArea = (id: string) => areasPrograma.find((area) => area.id === id)?.title || id;
 
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "60px 24px" }}>
@@ -158,6 +200,14 @@ export function Consultas() {
                   />
                 </div>
 
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label htmlFor={`district-${id}`} style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>Distrito</label>
+                  <select id={`district-${id}`} value={formData[id].district} onChange={(e) => handleDistrictChange(id, e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: "#fff", color: ENJ_NAVY }}>
+                    <option value="">Selecciona tu distrito</option>
+                    {distritos.map((district) => <option key={district} value={district}>{district}</option>)}
+                  </select>
+                </div>
+
                 {/* Campo: Subida de Documento (Input File Escondido con label estilizado) */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -230,7 +280,7 @@ export function Consultas() {
                       e.currentTarget.style.filter = "none";
                     }}
                   >
-                    Guardar Reporte
+                    {savingArea === id ? "Cargando..." : "Guardar Reporte"}
                   </button>
                 </div>
 

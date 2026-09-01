@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
-import { MapPin, Calendar, Users, ChevronRight, Clock } from "lucide-react";
+import { Calendar, Users, ChevronRight, Clock } from "lucide-react";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -189,11 +189,7 @@ export function Home() {
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Calendar size={16} color={ENJ_YELLOW} />
-              <span>30 Oct - 1 Nov</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
-              <MapPin size={16} color={ENJ_YELLOW} />
-              <span>Aguirre, Venezuela</span>
+              <span>30 Oct - 1 Nov · Aguirre</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Users size={16} color={ENJ_YELLOW} />
@@ -271,7 +267,7 @@ export function Home() {
             {agendaVirtual.map((day, dIdx) => (
               <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
                 {/* Bloque Izquierdo Responsivo */}
-                <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", mdWidth: "180px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="agenda-badge">
+                <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="agenda-badge">
                   <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
                   <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.9, fontWeight: 600 }}>{day.date}</p>
                 </div>
