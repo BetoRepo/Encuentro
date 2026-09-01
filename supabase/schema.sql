@@ -95,17 +95,6 @@ create table public.subscriptions (
   created_at timestamptz not null default now()
 );
 
-create table public.password_reset_tokens (
-  id uuid primary key default gen_random_uuid(),
-  user_id text not null references public."user"(id) on delete cascade,
-  token_hash text not null unique,
-  expires_at timestamptz not null,
-  used_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-create index password_reset_expires_idx on public.password_reset_tokens (expires_at);
-
 -- El backend usa la service role key y valida token y rol.
 -- No se habilita RLS porque la aplicacion usa autenticacion propia, no auth.uid().
 create index pagos_cedula_idx on public.pagos (cedula_participante);

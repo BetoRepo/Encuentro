@@ -25,14 +25,16 @@ export function Login() {
 
     try {
       if (isChangingPassword) {
-        const response = await fetch("/api/auth/forgot-password", {
+        const response = await fetch("/api/auth/change-password", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim() }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+          body: JSON.stringify({ currentPassword: password, newPassword }),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "No se pudo solicitar la recuperación.");
+        if (!response.ok) throw new Error(result.error || "No se pudo cambiar la contraseña.");
         alert(result.message);
+        setPassword("");
+        setNewPassword("");
         setIsChangingPassword(false);
       } else if (isLogin) {
         const response = await fetch("/api/auth/login", {
@@ -156,8 +158,19 @@ export function Login() {
 
           <div style={{ position: "relative" }}>
             <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
-            {!isChangingPassword && <input style={inputStyle} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />}
+            <input style={inputStyle} type="password" placeholder={isChangingPassword ? "Contraseña actual" : "Contraseña"} value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
+
+          {isChangingPassword && (
+            <div style={{ position: "relative" }}>
+              <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
+              <input style={inputStyle} type="password" placeholder="Nueva contraseña (mínimo 8 caracteres)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
+            </div>
+          )}
+
+          {isChangingPassword && (
+            <p style={{ margin: 0, fontSize: 12, color: "rgba(0,11,111,0.6)" }}>Debes iniciar sesión antes de utilizar esta opción.</p>
+          )}
 
 
           <button
@@ -174,7 +187,7 @@ export function Login() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Procesando..." : isChangingPassword ? "Enviar enlace" : isLogin ? "Entrar" : "Registrarme y completar perfil"}
+            {loading ? "Procesando..." : isChangingPassword ? "Cambiar contraseña" : isLogin ? "Entrar" : "Registrarme y completar perfil"}
           </button>
         </form>
 
@@ -198,7 +211,9 @@ export function Login() {
           >
             ¿Olvidaste tu contraseña?
           </button>
-        )}
+          )}
+                  {loading ? "Procesando..." : isChangingPassword ? "Cambiar contraseña" : isLogin ? "Entrar" : "Registrarme y completar perfil"}
+                  ¿Quieres cambiar tu contraseña?
       </div>
     </div>
   );

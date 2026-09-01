@@ -120,53 +120,18 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/change-password', async (req, res) => {
   try {
-    const cleanEmail = String(req.body.email || '').trim().toLowerCase();
-    if (!cleanEmail || !supabase) return res.json({ ok: true, message: 'Si el correo existe, recibiras un enlace de recuperacion.' });
-
-    const { data: user } = await supabase.from('user').select('id, email').eq('email', cleanEmail).maybeSingle();
-    if (user) {
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const { error: tokenError } = await supabase.from('password_reset_tokens').insert({
-        user_id: user.id,
-        token_hash: hashResetToken(rawToken),
-        expires_at: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
-      });
-      if (tokenError) throw tokenError;
-      if (!process.env.SMTP_USER || !process.env.SMTP_PASS) throw new Error('SMTP configuration missing.');
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      });
-      const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-      await transporter.sendMail({
-        from: process.env.SMTP_USER,
-        to: user.email,
-        subject: 'ENJ - Recuperacion de contraseña',
-        html: `<p>Solicitaste recuperar tu contraseña.</p><p><a href="${appUrl}/reset-password?token=${rawToken}">Crear nueva contraseña</a></p><p>Este enlace vence en 30 minutos.</p>`,
-      });
-    }
-    return res.json({ ok: true, message: 'Si el correo existe, recibiras un enlace de recuperacion.' });
-  } catch (globalError) {
-    return res.status(500).json({ ok: false, error: globalError.message });
-  }
-});
-
-app.post('/api/auth/reset-password', async (req, res) => {
-  try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'El enlace o la nueva contraseña no son validos.' });
-    const { data: resetToken, error: tokenError } = await supabase.from('password_reset_tokens').select('id, user_id').eq('token_hash', hashResetToken(token)).gt('expires_at', new Date().toISOString()).is('used_at', null).maybeSingle();
-    if (tokenError || !resetToken) return res.status(400).json({ ok: false, error: 'El enlace es invalido o ya vencio.' });
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ ok: false, error: 'Debes iniciar sesión para cambiar la contraseña.' });
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'Completa la contraseña actual y una nueva de al menos 8 caracteres.' });
+    const { data: storedUser, error: userError } = await supabase.from('user').select('password_hash').eq('id', user.id).single();
+    if (userError || !storedUser || !(await verifyPassword(currentPassword, storedUser.password_hash))) return res.status(401).json({ ok: false, error: 'La contraseña actual es incorrecta.' });
     const passwordHash = crypto.scryptSync(newPassword, sessionSecret, 64).toString('hex');
-    const { error: updateError } = await supabase.from('user').update({ password_hash: passwordHash }).eq('id', resetToken.user_id);
+    const { error: updateError } = await supabase.from('user').update({ password_hash: passwordHash }).eq('id', user.id);
     if (updateError) throw updateError;
-    const { error: usedError } = await supabase.from('password_reset_tokens').update({ used_at: new Date().toISOString() }).eq('id', resetToken.id);
-    if (usedError) throw usedError;
-    return res.json({ ok: true, message: 'Contraseña recuperada correctamente.' });
+    return res.json({ ok: true, message: 'Contraseña actualizada correctamente.' });
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
   }

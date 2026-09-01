@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Root } from './components/Root'
-import { Home, Inscripcion, Consultas, Perfil, Dashboard, ResetPassword } from './pages'
+import { Home, Inscripcion, Consultas, Perfil, Dashboard } from './pages'
 import { Login } from './pages/Login' // <-- Ajusta esta ruta según donde esté Login.tsx
 
 // 1. CREAMOS EL GUARDIÁN DE RUTAS (PROTECTED ROUTE)
@@ -45,10 +45,6 @@ export const router = createBrowserRouter(
       // La ruta pública (Login) va separada para que no pida autenticación
       path: '/login',
       element: <Login />,
-    },
-    {
-      path: '/reset-password',
-      element: <ResetPassword />,
     },
     {
       // Agrupamos todas las demás rutas dentro del Guardián
