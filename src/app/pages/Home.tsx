@@ -175,7 +175,7 @@ export function Home() {
           </div>
 
           <div style={{ margin: "0 auto 28px", padding: "0 10px" }}>
-            <div style={{ position: "relative", width: "min(100%, 360px)", height: 170, margin: "0 auto", display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 18 }}>
+            <div style={{ position: "relative", width: "min(100%, 360px)", aspectRatio: "364 / 218", margin: "0 auto", display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 18 }}>
               <img
                 src={logoImage}
                 alt="Encuentro Nacional de Jóvenes"
