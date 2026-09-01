@@ -2,7 +2,7 @@ import { Outlet, NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Menu, X, Bell, LogOut } from "lucide-react";
 import logoImage from "../../assets/logonacional.svg";
-import scoutLogoImage from "../../assets/logo-scout.png";
+import scoutLogoImage from "../../assets/logo-scout.svg";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
