@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Root } from './components/Root'
-import { Home, Inscripcion, Consultas, Perfil, Dashboard } from './pages'
+import { Home, Inscripcion, Consultas, Perfil, Dashboard, ChangePassword } from './pages'
 import { Login } from './pages/Login' // <-- Ajusta esta ruta según donde esté Login.tsx
 
 // 1. CREAMOS EL GUARDIÁN DE RUTAS (PROTECTED ROUTE)
@@ -60,6 +60,7 @@ export const router = createBrowserRouter(
             { path: 'inscripcion', element: <Inscripcion /> },
             { path: 'perfil', element: <Perfil /> },
             { path: 'dashboard', element: <Dashboard /> },
+            { path: 'cambiar-contrasena', element: <ChangePassword /> },
           ],
         },
       ],

@@ -50,7 +50,6 @@ const verifyPassword = async (password, storedHash) => {
   return storedHash === candidateHash;
 };
 
-const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 // Ruta de prueba
 app.get('/api', (req, res) => {
@@ -124,10 +123,8 @@ app.post('/api/auth/change-password', async (req, res) => {
   try {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ ok: false, error: 'Debes iniciar sesión para cambiar la contraseña.' });
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'Completa la contraseña actual y una nueva de al menos 8 caracteres.' });
-    const { data: storedUser, error: userError } = await supabase.from('user').select('password_hash').eq('id', user.id).single();
-    if (userError || !storedUser || !(await verifyPassword(currentPassword, storedUser.password_hash))) return res.status(401).json({ ok: false, error: 'La contraseña actual es incorrecta.' });
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
     const passwordHash = crypto.scryptSync(newPassword, sessionSecret, 64).toString('hex');
     const { error: updateError } = await supabase.from('user').update({ password_hash: passwordHash }).eq('id', user.id);
     if (updateError) throw updateError;

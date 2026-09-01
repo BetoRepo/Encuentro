@@ -196,6 +196,7 @@ export function Root() {
               Perfil
             </NavLink>
             {user?.role === "admin" && <NavLink to="/dashboard" style={({ isActive }) => ({ padding: "7px 16px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, color: "#fff", background: isActive ? ENJ_YELLOW : "transparent" })}>Dashboard</NavLink>}
+            <NavLink to="/cambiar-contrasena" style={({ isActive }) => ({ padding: "7px 16px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, color: isActive ? "#fff" : "rgba(255,255,255,0.8)", background: isActive ? "rgba(255,255,255,0.14)" : "transparent" })}>Cambiar clave</NavLink>
             
             {/* Botón de Cerrar Sesión Desktop (solo si hay usuario) */}
             {user && (
@@ -315,6 +316,7 @@ export function Root() {
               Perfil
             </NavLink>
             {user?.role === "admin" && <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} style={{ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff" }}>Dashboard</NavLink>}
+            <NavLink to="/cambiar-contrasena" onClick={() => setMobileOpen(false)} style={{ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff" }}>Cambiar clave</NavLink>
             
             {/* Botón de Cerrar Sesión Mobile (solo si hay usuario) */}
             {user && (
