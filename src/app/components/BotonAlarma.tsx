@@ -42,9 +42,8 @@ export function BotonAlarma() {
     }
 
     try {
-      // 2. Obtener datos del usuario logueado
-      const { data: { user } } = await supabase.auth.getUser();
-      // Leer perfil guardado en localStorage o Supabase
+      // 2. Obtener datos del usuario y perfil guardados localmente
+      const user = JSON.parse(localStorage.getItem("enj_user") || "null");
       const storedProfile = localStorage.getItem("enj_profile");
       const profile = storedProfile ? JSON.parse(storedProfile) : {};
       const nombreCompleto = profile.nombre ? `${profile.nombre} ${profile.apellido}` : user?.email || "Usuario Anónimo";

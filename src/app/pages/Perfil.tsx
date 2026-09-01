@@ -125,7 +125,7 @@ export function Perfil() {
 
   useEffect(() => {
     const loadProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = JSON.parse(localStorage.getItem("enj_user") || "null");
       if (user) {
         setUserId(user.id);
         setCorreo(user.email || "");

@@ -83,10 +83,12 @@ function BankDetailsCard() {
     <div style={{ background: "#F4F6FB", border: "1.5px dashed rgba(0,11,111,0.2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
       <h4 style={{ margin: "0 0 10px", fontSize: 13, color: ENJ_NAVY, fontWeight: 700 }}>Datos para Transferencia Bancaria</h4>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13, color: "rgba(0,11,111,0.7)" }}>
-        <div><strong>Banco:</strong> Banesco</div>
-        <div><strong>RIF:</strong> J-12345678-9</div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Cuenta:</strong> 0134-0000-0000-0000-0000</div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Titular:</strong> Asociación de Scouts de Venezuela</div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Mercantil Banco Universal:</strong> 0105 0616 63 1616066830</div>
+        <div><strong>RIF:</strong> J-00066665-2</div>
+        <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>Pago en Bolívares</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga Banco Universal:</strong> 0172 0111 55 1118053857</div>
+        <div><strong>RIF:</strong> J-00066665-2</div>
+        <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>Pago en divisas</strong></div>
       </div>
     </div>
   );
@@ -149,7 +151,7 @@ export function Inscripcion() {
   useEffect(() => {
     async function comprobarRegistroExistente() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = JSON.parse(localStorage.getItem("enj_user") || "null");
         
         if (user) {
           setCorreo(user.email || "");
@@ -317,7 +319,7 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = JSON.parse(localStorage.getItem("enj_user") || "null");
 
       const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
       const folderForm = new FormData();

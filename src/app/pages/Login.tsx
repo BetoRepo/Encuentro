@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
-import { supabase } from "../../supabaseClient"; // Importación de Supabase
 
 // 1. IMPORTACIÓN DE IMÁGENES (Rutas relativas corregidas)
 import bgImage from "../../assets/background.png";
@@ -13,8 +12,10 @@ const ENJ_MAGENTA = "#D7007E";
 export function Login() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,30 +24,37 @@ export function Login() {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        // --- FLUJO DE INICIO DE SESIÓN DIRECTO CON SUPABASE ---
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password,
+      if (isChangingPassword) {
+        const response = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim() }),
         });
-
-        if (error) throw error;
-
-        // Redirección exitosa directa a Home (Sin reload)
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "No se pudo solicitar la recuperación.");
+        alert(result.message);
+        setIsChangingPassword(false);
+      } else if (isLogin) {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "No se pudo iniciar sesión.");
+        localStorage.setItem("token", result.token);
+        localStorage.setItem("enj_user", JSON.stringify(result.user));
         navigate("/");
       } else {
-        // --- FLUJO DE REGISTRO DIRECTO CON SUPABASE ---
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password,
-          options: {
-            data: {
-              full_name: name.trim(), // Lo lee el Trigger de SQL para la tabla profiles
-            },
-          },
+        const response = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
         });
-
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "No se pudo crear la cuenta.");
+        localStorage.setItem("token", result.token);
+        localStorage.setItem("enj_user", JSON.stringify(result.user));
 
         // Separar el nombre en Nombre y Apellido para pre-guardar en LocalStorage
         const nameParts = name.trim().split(" ");
@@ -130,11 +138,11 @@ export function Login() {
         </div>
 
         <p style={{ color: "rgba(0,11,111,0.65)", marginBottom: 32, lineHeight: 1.6, fontSize: 15 }}>
-          {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta de participante"}
+          {isChangingPassword ? "Actualiza tu contraseña" : isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta de participante"}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {!isLogin && (
+          {!isLogin && !isChangingPassword && (
             <div style={{ position: "relative" }}>
               <UserIcon size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
               <input style={inputStyle} type="text" placeholder="Nombre completo" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -148,8 +156,9 @@ export function Login() {
 
           <div style={{ position: "relative" }}>
             <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
-            <input style={inputStyle} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            {!isChangingPassword && <input style={inputStyle} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />}
           </div>
+
 
           <button
             disabled={loading}
@@ -165,16 +174,31 @@ export function Login() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Procesando..." : isLogin ? "Entrar" : "Registrarme y completar perfil"}
+            {loading ? "Procesando..." : isChangingPassword ? "Enviar enlace" : isLogin ? "Entrar" : "Registrarme y completar perfil"}
           </button>
         </form>
 
         <button
-          onClick={() => setIsLogin(!isLogin)}
+          onClick={() => {
+            if (isChangingPassword) {
+              setIsChangingPassword(false);
+              setIsLogin(true);
+            } else {
+              setIsLogin(!isLogin);
+            }
+          }}
           style={{ background: "none", border: "none", color: ENJ_MAGENTA, marginTop: "24px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
         >
-          {isLogin ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión"}
+          {isChangingPassword ? "Volver a iniciar sesión" : isLogin ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión"}
         </button>
+        {!isChangingPassword && (
+          <button
+            onClick={() => setIsChangingPassword(true)}
+            style={{ background: "none", border: "none", color: ENJ_NAVY, marginTop: "12px", fontSize: "13px", cursor: "pointer" }}
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+        )}
       </div>
     </div>
   );

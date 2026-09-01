@@ -1,7 +1,6 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Menu, X, Bell } from "lucide-react";
-import { supabase } from "../../supabaseClient";
+import { Menu, X, Bell, LogOut } from "lucide-react";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -23,37 +22,13 @@ function ScoutsLogo() {
 
 export function Root() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; name: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Usar la sesión de Supabase directamente para mantener el mismo flujo del login.
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (error) {
-        console.error("Error obteniendo usuario Supabase:", error);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      setUser(user ? { email: user.email || "", name: user.user_metadata?.full_name || "" } : null);
-      setLoading(false);
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const sessionUser = session?.user;
-      setUser(sessionUser ? { email: sessionUser.email || "", name: sessionUser.user_metadata?.full_name || "" } : null);
-      setLoading(false);
-    });
-
-    checkAuth();
-
-    return () => subscription.unsubscribe();
+    const storedUser = localStorage.getItem("enj_user");
+    setUser(storedUser ? JSON.parse(storedUser) : null);
+    setLoading(false);
   }, []);
 
   const subscribeToNotifications = async () => {
@@ -81,6 +56,18 @@ export function Root() {
       alert("¡Notificaciones activadas!");
     } catch (err) {
       console.error("Error al suscribir:", err);
+    }
+  };
+
+  // Nueva función para cerrar sesión
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("enj_user");
+      setUser(null);
+      setMobileOpen(false); // Cierra el menú móvil si estaba abierto
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
     }
   };
 
@@ -140,6 +127,7 @@ export function Root() {
               marginRight: '12px',
               color: ENJ_YELLOW 
             }}
+            title="Activar Notificaciones"
           >
             <Bell size={18} />
           </button>
@@ -207,6 +195,34 @@ export function Root() {
             >
               Perfil
             </NavLink>
+            {user?.role === "admin" && <NavLink to="/dashboard" style={({ isActive }) => ({ padding: "7px 16px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, color: "#fff", background: isActive ? ENJ_YELLOW : "transparent" })}>Dashboard</NavLink>}
+            
+            {/* Botón de Cerrar Sesión Desktop (solo si hay usuario) */}
+            {user && (
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "7px 16px",
+                  marginLeft: "8px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.8)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <LogOut size={16} />
+                Salir
+              </button>
+            )}
           </div>
 
           {/* mobile hamburger */}
@@ -298,6 +314,34 @@ export function Root() {
             >
               Perfil
             </NavLink>
+            {user?.role === "admin" && <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} style={{ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff" }}>Dashboard</NavLink>}
+            
+            {/* Botón de Cerrar Sesión Mobile (solo si hay usuario) */}
+            {user && (
+              <>
+                <div style={{ height: "1px", background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "transparent",
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <LogOut size={18} />
+                  Cerrar sesión
+                </button>
+              </>
+            )}
           </div>
         )}
       </nav>
