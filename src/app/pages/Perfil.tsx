@@ -109,7 +109,6 @@ export function Perfil() {
   const [userId, setUserId] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
-  const [cedula, setCedula] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -135,7 +134,6 @@ export function Perfil() {
         if (data) {
           setNombre(data.nombre || "");
           setApellido(data.apellido || "");
-          setCedula(data.cedula || "");
           setBirthDate(data.birth_date || "");
           setSelectedRegion(data.selected_region || "");
           setSelectedDistrict(data.selected_district || "");
@@ -166,7 +164,7 @@ export function Perfil() {
   };
 
   const handleSaveProfile = async () => {
-    if (!nombre || !apellido || !cedula || !selectedRegion || !selectedDistrict || !grupoScout) {
+    if (!nombre || !apellido || !selectedRegion || !selectedDistrict || !grupoScout) {
       return alert("Por favor completa los campos obligatorios (*)");
     }
 
@@ -176,7 +174,6 @@ export function Perfil() {
         id: userId,
         nombre: nombre.trim(),
         apellido: apellido.trim(),
-        cedula: cedula.trim(),
         birth_date: birthDate,
         selected_region: selectedRegion,
         selected_district: selectedDistrict,
@@ -244,8 +241,8 @@ export function Perfil() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <InputField label="Cédula" placeholder="V-12.345.678" value={cedula} onChange={setCedula} />
               <InputField label="Fecha de nacimiento" type="date" value={birthDate} onChange={setBirthDate} />
+              <div />
             </div>
 
             <SectionDivider title="Ubicación Scout" icon={<MapPin size={16} color={ENJ_NAVY} />} />

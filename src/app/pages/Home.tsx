@@ -155,7 +155,7 @@ export function Home() {
       {/* SECCIÓN HERO PRINCIPAL */}
       <header
         style={{
-          background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #00063D 100%)`,
+          background: `linear-gradient(135deg, ${ENJ_MAGENTA} 0%, #00063D 100%)`,
           color: "white",
           padding: "90px 16px 70px",
           textAlign: "center",

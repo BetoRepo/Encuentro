@@ -11,8 +11,6 @@ const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
-const SUPABASE_FUNCTION_URL = "https://ikiqphxigtwkjhiachqg.supabase.co/functions/v1/manage-drive";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio";
 const LOCAL_REGISTRATION_KEY = "enj_registration";
 const LOCAL_PROFILE_KEY = "enj_profile";
 const ALERT_AUTHORIZED_EMAILS = ["admin@enj.org", "coordinador@enj.org"];
@@ -147,7 +145,6 @@ export function Inscripcion() {
   const [comprobantePago, setComprobantePago] = useState<any>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
-  const [userDriveFolderId, setUserDriveFolderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   // ==========================================
@@ -171,7 +168,6 @@ export function Inscripcion() {
             setNombre(participante.nombre || "");
             setApellido(participante.apellido || "");
             setCedula(participante.cedula || "");
-            setUserDriveFolderId(participante.drive_folder_id || "");
             setViewMode("cuotas");
           }
         }
@@ -244,6 +240,60 @@ export function Inscripcion() {
     if (fileValue.file instanceof File) return fileValue.file;
     if (fileValue.target?.files?.[0]) return fileValue.target.files[0];
     return null;
+  };
+
+  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo adjunto."));
+    reader.readAsDataURL(file);
+  });
+
+  const uploadParticipantDocument = async ({
+    cedulaParticipante,
+    file,
+    type,
+    label,
+  }: {
+    cedulaParticipante: string;
+    file: File;
+    type: "foto" | "ficha_medica" | "comprobante_inicial" | "comprobante_cuota";
+    label: string;
+  }) => {
+    const cleanCedula = cedulaParticipante.trim();
+    const safeName = `${type}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const storagePath = `${cleanCedula}/${safeName}`;
+    let publicUrl = "";
+    let base64Data = "";
+
+    try {
+      const { error: uploadError } = await supabase.storage.from("inscripciones").upload(storagePath, file, {
+        upsert: true,
+        contentType: file.type || 'application/octet-stream',
+      });
+
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("inscripciones").getPublicUrl(storagePath);
+      publicUrl = data?.publicUrl || "";
+    } catch (storageError) {
+      base64Data = await fileToBase64(file);
+    }
+
+    const { error: insertError } = await supabase
+      .from("documentos_participante")
+      .insert([{
+        cedula_participante: cleanCedula,
+        tipo_documento: type,
+        nombre_archivo: file.name,
+        path_archivo: storagePath,
+        url_archivo: publicUrl,
+        mime_type: file.type || "",
+        peso_bytes: file.size || 0,
+        archivo_base64: base64Data || null,
+      }]);
+
+    if (insertError) throw new Error(`Error guardando ${label}: ${insertError.message}`);
+    return { publicUrl, storagePath };
   };
 
   async function saveRegistrationLocally() {
@@ -322,28 +372,6 @@ export function Inscripcion() {
     try {
       const user = JSON.parse(localStorage.getItem("enj_user") || "null");
 
-      const folderName = `${cedula.trim()} - ${nombre.trim()} ${apellido.trim()}`;
-      const folderForm = new FormData();
-      folderForm.append("action", "create_folder");
-      folderForm.append("folder_name", folderName);
-      folderForm.append("destination", "inscritos");
-
-      const driveResponse = await fetch(SUPABASE_FUNCTION_URL, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
-        body: folderForm,
-      });
-      
-      if (!driveResponse.ok) {
-        const errorText = await driveResponse.text();
-        await sendDriveFailureEmail(`No se pudo crear carpeta en Drive para ${cedula} - ${nombre} ${apellido}. Respuesta: ${errorText}`);
-        throw new Error("No se creó carpeta en Drive. El equipo técnico ha sido notificado.");
-      }
-
-      const driveData = await driveResponse.json();
-      const generatedFolderId = driveData.folderId;
-      setUserDriveFolderId(generatedFolderId);
-
       const { error: partError } = await supabase
         .from("participantes")
         .upsert([{
@@ -365,7 +393,6 @@ export function Inscripcion() {
           grupo_scout: grupoScout,
           rama: ramaScout,
           tipo_participante: participantType,
-          drive_folder_id: generatedFolderId,
           id_usuario: user?.id || null
         }], { onConflict: 'cedula' });
 
@@ -386,21 +413,33 @@ export function Inscripcion() {
 
       await saveRegistrationLocally();
 
-      const uploadFile = async (nativeFile: File, name: string) => {
-        const fileForm = new FormData();
-        fileForm.append("action", "upload_file");
-        fileForm.append("folder_id", generatedFolderId);
-        fileForm.append("file", nativeFile, nativeFile.name);
-        fileForm.append("custom_name", name);
-        await fetch(SUPABASE_FUNCTION_URL, { method: "POST", headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }, body: fileForm });
-      };
-
       const cleanFoto = extractNativeFile(fotoParticipante);
       const cleanMedica = extractNativeFile(screenshotMedica);
 
-      if (cleanFoto) await uploadFile(cleanFoto, `Foto_Perfil_${cedula}`);
-      if (cleanMedica) await uploadFile(cleanMedica, `Ficha_Medica_${cedula}`);
-      await uploadFile(cleanPago, `Comprobante_Inicial_${cedula}`);
+      if (cleanFoto) {
+        await uploadParticipantDocument({
+          cedulaParticipante: cedula.trim(),
+          file: cleanFoto,
+          type: "foto",
+          label: "la foto del participante",
+        });
+      }
+
+      if (cleanMedica) {
+        await uploadParticipantDocument({
+          cedulaParticipante: cedula.trim(),
+          file: cleanMedica,
+          type: "ficha_medica",
+          label: "la ficha médica",
+        });
+      }
+
+      await uploadParticipantDocument({
+        cedulaParticipante: cedula.trim(),
+        file: cleanPago,
+        type: "comprobante_inicial",
+        label: "el comprobante de cuota inicial",
+      });
 
       setComprobantePago(null);
       setFechaPago("");
@@ -422,34 +461,27 @@ export function Inscripcion() {
     e.preventDefault();
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
-    
-    const finalCedula = cedula || cedulaDirecta;
-    let finalFolderId = userDriveFolderId;
 
+    const finalCedula = (cedula || cedulaDirecta || "").trim();
     if (!finalCedula) return alert("Por favor, introduce tu número de cédula de identidad.");
 
     setLoading(true);
 
     try {
-      // Si el usuario no tiene carpeta precargada (porque escribe manual), la buscamos en Supabase mediante su cédula
-      if (!finalFolderId) {
-        const { data: partData } = await supabase
-          .from("participantes")
-          .select("drive_folder_id")
-          .eq("cedula", finalCedula.trim())
-          .maybeSingle();
+      const { data: partData } = await supabase
+        .from("participantes")
+        .select("cedula")
+        .eq("cedula", finalCedula)
+        .maybeSingle();
 
-        if (partData?.drive_folder_id) {
-          finalFolderId = partData.drive_folder_id;
-        } else {
-          throw new Error("No se encontró ningún expediente de inscripción con la cédula suministrada. Asegúrate de estar inscrito primero.");
-        }
+      if (!partData) {
+        throw new Error("No se encontró ningún expediente de inscripción con la cédula suministrada. Asegúrate de estar inscrito primero.");
       }
 
       const { error: pagoExtraError } = await supabase
         .from("pagos")
         .insert([{
-          cedula_participante: finalCedula.trim(),
+          cedula_participante: finalCedula,
           numero_cuota: numCuota,
           monto_bs: parseFloat(montoBs) || 0,
           referencia: referenciaPago.trim(),
@@ -459,19 +491,12 @@ export function Inscripcion() {
 
       if (pagoExtraError) throw new Error(`Error registrando cuota en base de datos: ${pagoExtraError.message}`);
 
-      const fileForm = new FormData();
-      fileForm.append("action", "upload_file");
-      fileForm.append("folder_id", finalFolderId); 
-      fileForm.append("file", cleanPago, cleanPago.name);
-      fileForm.append("custom_name", `Comprobante_${numCuota.replace(/\s+/g, "_")}_${finalCedula}`);
-
-      const res = await fetch(SUPABASE_FUNCTION_URL, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
-        body: fileForm,
+      await uploadParticipantDocument({
+        cedulaParticipante: finalCedula,
+        file: cleanPago,
+        type: "comprobante_cuota",
+        label: "el comprobante de cuota",
       });
-
-      if (!res.ok) throw new Error("Error cargando el archivo de pago en Google Drive.");
 
       await saveRegistrationLocally();
       setViewMode("exito");
@@ -510,7 +535,7 @@ export function Inscripcion() {
             <CheckCircle2 size={42} color="#22c55e" />
           </div>
           <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>¡Reporte Guardado!</h2>
-          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Tu cuota y su comprobante se han actualizado con éxito en Google Drive y el sistema general.</p>
+          <p style={{ margin: "0 0 28px", color: "rgba(0,11,111,0.6)", fontSize: 15, lineHeight: 1.7 }}>Tu cuota y su comprobante se han actualizado con éxito y quedaron guardados en el sistema del evento.</p>
           <button onClick={() => navigate("/")} style={{ padding: "12px 20px", borderRadius: 10, border: `1.5px solid ${ENJ_NAVY}`, background: "transparent", color: ENJ_NAVY, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Terminar
           </button>
@@ -684,15 +709,13 @@ export function Inscripcion() {
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {!userDriveFolderId && (
-                <>
-                  <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <InputField label="Nombre Completo" placeholder="Ej. María González" value={nombreDirecto} onChange={setNombreDirecto} />
-                    <InputField label="Cédula de Identidad" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
-                  </div>
-                </>
-              )}
+              <>
+                <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField label="Nombre Completo" placeholder="Ej. María González" value={nombreDirecto} onChange={setNombreDirecto} />
+                  <InputField label="Cédula de Identidad" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
+                </div>
+              </>
 
               <SectionDivider title="Registrar Siguiente Cuota" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
               <BankDetailsCard />

@@ -75,6 +75,19 @@ create table public.pagos (
   created_at timestamptz not null default now()
 );
 
+create table public.documentos_participante (
+  id uuid primary key default gen_random_uuid(),
+  cedula_participante text not null references public.participantes(cedula) on delete cascade,
+  tipo_documento text not null,
+  nombre_archivo text not null,
+  path_archivo text,
+  url_archivo text,
+  mime_type text,
+  peso_bytes bigint default 0,
+  archivo_base64 text,
+  created_at timestamptz not null default now()
+);
+
 create table public.alertas_emergencia (
   id uuid primary key default gen_random_uuid(),
   user_id text references public."user"(id) on delete set null,
@@ -98,6 +111,7 @@ create table public.subscriptions (
 -- El backend usa la service role key y valida token y rol.
 -- No se habilita RLS porque la aplicacion usa autenticacion propia, no auth.uid().
 create index pagos_cedula_idx on public.pagos (cedula_participante);
+create index documentos_cedula_idx on public.documentos_participante (cedula_participante);
 create index participantes_usuario_idx on public.participantes (id_usuario);
 create index alertas_estado_idx on public.alertas_emergencia (estado);
 

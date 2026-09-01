@@ -3,6 +3,7 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { buildDashboardPayload } from './dashboardData.mjs';
 
 const app = express();
 
@@ -176,14 +177,23 @@ app.get('/api/dashboard', async (req, res) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ ok: false, error: 'Sesión inválida o expirada.' });
     if (user.role !== 'admin') return res.status(403).json({ ok: false, error: 'No tienes permisos para ver el dashboard.' });
-    const [{ count: participants, error: participantsError }, { data: payments, error: paymentsError }] = await Promise.all([
-      supabase.from('participantes').select('cedula', { count: 'exact', head: true }),
-      supabase.from('pagos').select('monto_bs'),
+
+    const [
+      { data: participants, error: participantsError },
+      { data: payments, error: paymentsError },
+      { data: documents, error: documentsError },
+    ] = await Promise.all([
+      supabase.from('participantes').select('*').order('created_at', { ascending: false }),
+      supabase.from('pagos').select('*').order('created_at', { ascending: false }),
+      supabase.from('documentos_participante').select('*').order('created_at', { ascending: false }),
     ]);
+
     if (participantsError) throw participantsError;
     if (paymentsError) throw paymentsError;
-    const totalAmount = (payments || []).reduce((sum, payment) => sum + (Number(payment.monto_bs) || 0), 0);
-    return res.json({ ok: true, metrics: { participants: participants || 0, payments: payments?.length || 0, totalAmount } });
+    if (documentsError) throw documentsError;
+
+    const payload = buildDashboardPayload({ participants: participants || [], payments: payments || [], documents: documents || [] });
+    return res.json({ ok: true, ...payload });
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
   }
