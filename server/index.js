@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
-import nodemailer from 'nodemailer';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
@@ -185,42 +184,8 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
-app.post('/api/notify-drive-failure', async (req, res) => {
-  try {
-    const { recipients, subject, body } = req.body;
-    if (!Array.isArray(recipients) || recipients.length === 0) {
-      return res.status(400).json({ ok: false, error: 'Recipients list required.' });
-    }
-    if (!subject || !body) {
-      return res.status(400).json({ ok: false, error: 'Subject and body are required.' });
-    }
-
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      return res.status(500).json({ ok: false, error: 'SMTP configuration missing.' });
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_USER,
-      to: recipients.join(','),
-      subject,
-      html: `<p>${body.replace(/\n/g, '<br/>')}</p>`,
-    });
-
-    return res.json({ ok: true, message: 'Correo enviado', info });
-  } catch (err) {
-    console.error('Notify drive failure error:', err);
-    return res.status(500).json({ ok: false, error: String(err.message || err) });
-  }
+app.post('/api/notify-drive-failure', (req, res) => {
+  return res.status(501).json({ ok: false, error: 'Las notificaciones por correo están desactivadas.' });
 });
 
 if (process.env.NODE_ENV !== 'production') {
