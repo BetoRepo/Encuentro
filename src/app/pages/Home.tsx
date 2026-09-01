@@ -179,11 +179,8 @@ export function Home() {
               <img
                 src={logoImage}
                 alt="Encuentro Nacional de Jóvenes"
-                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", filter: "blur(8px)", transform: "scale(1.08)", opacity: 0.75 }}
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
               />
-              <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#fff", fontSize: "clamp(24px, 5vw, 34px)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", textShadow: "0 2px 12px rgba(0,0,0,0.55)" }}>
-                Próximamente
-              </span>
             </div>
           </div>
 
@@ -261,6 +258,8 @@ export function Home() {
           ))}
         </div>
 
+        <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
+          <div style={{ filter: "blur(7px)", pointerEvents: "none", userSelect: "none" }} aria-hidden="true">
         {/* PROGRAMA DE ACTIVIDADES VIRTUALES CORREGIDO */}
         <div style={{ marginBottom: 80 }}>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
@@ -322,6 +321,13 @@ export function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+          </div>
+          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(245,247,251,0.28)" }}>
+            <span style={{ color: ENJ_NAVY, background: "rgba(255,255,255,0.9)", padding: "14px 26px", borderRadius: 12, fontSize: "clamp(20px, 4vw, 30px)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", boxShadow: "0 8px 24px rgba(0,11,111,0.14)" }}>
+              Próximamente
+            </span>
           </div>
         </div>
       </main>
