@@ -358,7 +358,7 @@ export function Root() {
           30 Oct - 1 Nov · Aguirre, Venezuela
         </p>
         <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
-          Scouts de Venezuela · Siempre Listos
+          Asociacion de Scouts de Venezuela.
         </p>
       </footer>
 
