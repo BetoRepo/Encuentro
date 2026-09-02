@@ -689,7 +689,7 @@ export function Inscripcion() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                   <InputField label="Nro. Referencia (6 dígitos)" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
-                  <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="Ej: 1250,50 o 1250.50" />
+                  <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="El decimal debe ir con Coma y no Punto ejemplo: 15.520,20" />
                   <InputField label="Tasa de cambio aplicada" type="number" value={tasa} onChange={setTasa} />
                 </div>
 

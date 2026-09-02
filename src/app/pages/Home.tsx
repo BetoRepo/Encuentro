@@ -275,7 +275,7 @@ export function Home() {
             marginRight: "auto"
           }}
         >
-          {bloques.map((b, idx) => (
+          {bloques.slice(0, 2).map((b, idx) => (
             <div
               key={idx}
               style={{
@@ -295,23 +295,21 @@ export function Home() {
             >
               <div
                 style={{
-                  width: 104,
-                  height: 104,
-                  borderRadius: 28,
-                  background: "linear-gradient(135deg, rgba(80,3,157,0.12), rgba(0,11,111,0.08))",
+                  width: 120,
+                  height: 120,
+                  borderRadius: 30,
                   display: "grid",
                   placeItems: "center",
                   marginBottom: 20,
                   overflow: "hidden",
-                  border: "1px solid rgba(80,3,157,0.12)",
-                  boxShadow: "0 10px 22px rgba(80, 3, 157, 0.08)"
+                  background: "transparent"
                 }}
               >
                 {b.logo ? (
                   <img
                     src={b.logo}
                     alt={b.logoAlt ?? b.title}
-                    style={{ width: "74%", height: "74%", objectFit: "contain", display: "block" }}
+                    style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
                   />
                 ) : (
                   <div
@@ -337,6 +335,82 @@ export function Home() {
               <p style={{ color: "#555", fontSize: 15, lineHeight: 1.7, margin: 0 }}>{b.desc}</p>
             </div>
           ))}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(260px, 1fr))",
+              gap: 28,
+              justifyContent: "center",
+              alignItems: "stretch",
+              minHeight: 430,
+              width: "100%",
+              maxWidth: 600,
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            {bloques.slice(2).map((b, idx) => (
+              <div
+                key={idx + 2}
+                style={{
+                  background: "linear-gradient(180deg, #ffffff 0%, #f8f5ff 100%)",
+                  padding: "30px 28px 26px",
+                  borderRadius: 24,
+                  boxShadow: "0 10px 30px rgba(80, 3, 157, 0.08)",
+                  border: "1px solid rgba(80, 3, 157, 0.08)",
+                  boxSizing: "border-box",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  textAlign: "center",
+                  minHeight: 430,
+                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 120,
+                    height: 120,
+                    borderRadius: 30,
+                    display: "grid",
+                    placeItems: "center",
+                    marginBottom: 20,
+                    overflow: "hidden",
+                    background: "transparent"
+                  }}
+                >
+                  {b.logo ? (
+                    <img
+                      src={b.logo}
+                      alt={b.logoAlt ?? b.title}
+                      style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: 14,
+                        background: ENJ_MAGENTA,
+                        color: "white",
+                        fontWeight: 800,
+                        fontSize: 20,
+                        display: "grid",
+                        placeItems: "center"
+                      }}
+                    >
+                      {b.title.charAt(0)}
+                    </div>
+                  )}
+                </div>
+
+                <span style={{ color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>{b.tagline}</span>
+                <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 800, margin: "12px 0 14px", lineHeight: 1.2 }}>{b.title}</h3>
+                <p style={{ color: "#555", fontSize: 15, lineHeight: 1.7, margin: 0 }}>{b.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
