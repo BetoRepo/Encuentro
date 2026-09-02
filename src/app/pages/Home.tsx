@@ -265,59 +265,64 @@ export function Home() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 260px))",
-            gap: 24,
+            gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
+            gap: 28,
             justifyContent: "center",
             alignItems: "stretch",
-            marginBottom: 80
+            marginBottom: 80,
+            maxWidth: 1100,
+            marginLeft: "auto",
+            marginRight: "auto"
           }}
         >
           {bloques.map((b, idx) => (
             <div
               key={idx}
               style={{
-                background: "white",
-                padding: 24,
-                borderRadius: 18,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
-                border: "1px solid #EAEFF8",
+                background: "linear-gradient(180deg, #ffffff 0%, #f8f5ff 100%)",
+                padding: "30px 28px 26px",
+                borderRadius: 24,
+                boxShadow: "0 10px 30px rgba(80, 3, 157, 0.08)",
+                border: "1px solid rgba(80, 3, 157, 0.08)",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 textAlign: "center",
-                minHeight: 330
+                minHeight: 430,
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
               }}
             >
               <div
                 style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: 22,
+                  width: 104,
+                  height: 104,
+                  borderRadius: 28,
                   background: "linear-gradient(135deg, rgba(80,3,157,0.12), rgba(0,11,111,0.08))",
                   display: "grid",
                   placeItems: "center",
-                  marginBottom: 18,
+                  marginBottom: 20,
                   overflow: "hidden",
-                  border: "1px solid rgba(80,3,157,0.12)"
+                  border: "1px solid rgba(80,3,157,0.12)",
+                  boxShadow: "0 10px 22px rgba(80, 3, 157, 0.08)"
                 }}
               >
                 {b.logo ? (
                   <img
                     src={b.logo}
                     alt={b.logoAlt ?? b.title}
-                    style={{ width: "72%", height: "72%", objectFit: "contain", display: "block" }}
+                    style={{ width: "74%", height: "74%", objectFit: "contain", display: "block" }}
                   />
                 ) : (
                   <div
                     style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 12,
+                      width: 46,
+                      height: 46,
+                      borderRadius: 14,
                       background: ENJ_MAGENTA,
                       color: "white",
                       fontWeight: 800,
-                      fontSize: 18,
+                      fontSize: 20,
                       display: "grid",
                       placeItems: "center"
                     }}
@@ -327,9 +332,9 @@ export function Home() {
                 )}
               </div>
 
-              <span style={{ color: ENJ_MAGENTA, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>{b.tagline}</span>
-              <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 700, margin: "10px 0 12px" }}>{b.title}</h3>
-              <p style={{ color: "#555", fontSize: 14, lineHeight: 1.6, margin: 0 }}>{b.desc}</p>
+              <span style={{ color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>{b.tagline}</span>
+              <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 800, margin: "12px 0 14px", lineHeight: 1.2 }}>{b.title}</h3>
+              <p style={{ color: "#555", fontSize: 15, lineHeight: 1.7, margin: 0 }}>{b.desc}</p>
             </div>
           ))}
         </div>
