@@ -26,6 +26,7 @@ create table public.profiles (
   grupo_scout text,
   distrito text,
   rol text not null default 'participant' check (rol in ('participant', 'staff', 'admin')),
+  rol_evento text not null default 'Joven Participante',
   birth_date date,
   selected_region text,
   selected_district text,

@@ -165,7 +165,7 @@ export function Home() {
   ];
 
   return (
-    <div style={{ background: "#F5F7FB", minHeight: "100vh", boxSizing: "border-box" }}>
+    <div style={{ background: "#F5F7FB", minHeight: "100vh", width: "100%", maxWidth: "100vw", overflowX: "hidden", boxSizing: "border-box" }}>
       {/* SECCIÓN HERO PRINCIPAL */}
       <header
         style={{
@@ -366,6 +366,7 @@ export function Home() {
           </div>
 
           <div
+            className="program-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(2, minmax(280px, 1fr))",
@@ -578,6 +579,11 @@ export function Home() {
           .program-grid {
             grid-template-columns: 1fr !important;
             gap: 18px !important;
+          }
+
+          .program-grid > div {
+            width: 100% !important;
+            max-width: 100% !important;
           }
 
           .program-stack > div {
