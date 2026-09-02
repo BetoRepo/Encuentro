@@ -178,12 +178,12 @@ export function Home() {
           boxSizing: "border-box"
         }}
       >
-        <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 2 }}>
-          <p style={{ color: ENJ_YELLOW, fontWeight: 700, fontSize: 14, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 20 }}>
+        <div className="hero-shell" style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 2 }}>
+          <p className="hero-kicker" style={{ color: ENJ_YELLOW, fontWeight: 700, fontSize: 14, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 20 }}>
             Scouts de Venezuela · Movimiento Scout Mundial
           </p>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-            <span style={{ background: "rgba(255,255,255,0.1)", color: "white", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: "0.05em" }}>
+            <span className="hero-badge" style={{ background: "rgba(255,255,255,0.1)", color: "white", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: "0.05em" }}>
               INSCRIPCIONES ABIERTAS 2026
             </span>
           </div>
@@ -202,38 +202,41 @@ export function Home() {
             El show más grande del escultismo venezolano. Tres días donde tú eres el protagonista de la aventura, el liderazgo y la hermandad scout.
           </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
+          <div className="hero-meta" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
+            <div className="hero-meta-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Calendar size={16} color={ENJ_YELLOW} />
               <span>30 Oct - 1 Nov · Aguirre</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
+            <div className="hero-meta-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Users size={16} color={ENJ_YELLOW} />
               <span>+70 Jóvenes</span>
             </div>
           </div>
 
-          <div style={{ marginBottom: 44 }}>
+          <div className="countdown-wrapper" style={{ marginBottom: 44 }}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>
               Cuenta regresiva al evento
             </p>
             <Countdown targetDate={targetDate} />
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
+          <div className="hero-cta-group" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
             <button
+              className="hero-primary-btn"
               onClick={() => navigate("/inscripcion")}
               style={{ background: ENJ_MAGENTA, color: "white", border: "none", padding: "14px 28px", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(80,3,157,0.4)" }}
             >
               Inscribirme ahora <ChevronRight size={16} />
             </button>
             <button
+              className="hero-secondary-btn"
               onClick={() => navigate("/consultas")}
               style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
               Ver consultas
             </button>
             <button
+              className="hero-secondary-btn"
               onClick={scrollToInfo}
               style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
@@ -276,6 +279,7 @@ export function Home() {
         </div>
 
         <div
+          className="program-stack"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -287,6 +291,7 @@ export function Home() {
           }}
         >
           <div
+            className="program-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(2, minmax(280px, 1fr))",
@@ -476,15 +481,15 @@ export function Home() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {agendaPresencial.map((day, dIdx) => (
-                  <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
+                  <div className="agenda-card" key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
                     <div style={{ background: day.color, color: day.color === ENJ_YELLOW ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }}>
                       <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
                       <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.8, fontWeight: 600 }}>{day.date}</p>
                     </div>
                     <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
                       {day.events.map((ev, eIdx) => (
-                        <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
+                        <div key={eIdx} className="agenda-event" style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
+                          <div className="agenda-time" style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
                             <Clock size={14} style={{ color: ENJ_MAGENTA, flexShrink: 0 }} />
                             <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
                           </div>
@@ -516,6 +521,99 @@ export function Home() {
           }
           main {
             padding: 60px 24px !important;
+          }
+        }
+
+        @media (max-width: 767px) {
+          header {
+            padding-top: 48px !important;
+            padding-bottom: 42px !important;
+          }
+
+          main {
+            padding: 32px 14px !important;
+          }
+
+          .hero-shell {
+            max-width: 100% !important;
+          }
+
+          .hero-kicker {
+            font-size: 10px !important;
+            letter-spacing: 0.14em !important;
+            line-height: 1.5 !important;
+          }
+
+          .hero-badge {
+            font-size: 10px !important;
+            padding: 8px 12px !important;
+          }
+
+          .hero-meta {
+            gap: 8px !important;
+          }
+
+          .hero-meta-item {
+            width: 100% !important;
+            justify-content: center !important;
+            font-size: 12px !important;
+          }
+
+          .countdown-wrapper {
+            margin-bottom: 28px !important;
+          }
+
+          .hero-cta-group {
+            gap: 10px !important;
+          }
+
+          .hero-primary-btn,
+          .hero-secondary-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+          }
+
+          .program-grid {
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+          }
+
+          .program-stack > div {
+            max-width: 100% !important;
+          }
+
+          .program-grid > div {
+            min-height: unset !important;
+            padding: 22px 18px !important;
+          }
+
+          .program-grid img {
+            max-width: 110px !important;
+            max-height: 110px !important;
+          }
+
+          .agenda-card {
+            display: block !important;
+          }
+
+          .agenda-badge {
+            max-width: none !important;
+            width: 100% !important;
+            padding: 18px 14px !important;
+          }
+
+          .agenda-event {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+
+          .agenda-time {
+            width: auto !important;
+            min-width: unset !important;
+            padding-top: 0 !important;
+            font-size: 12px !important;
           }
         }
       `}</style>
