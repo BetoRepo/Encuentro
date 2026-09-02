@@ -35,7 +35,7 @@ export const scoutRegions: ScoutRegion[] = [
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
 const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "No lo sé"];
 
-function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
+function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false, inputMode }: any) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>
@@ -43,7 +43,7 @@ function InputField({ label, placeholder, type = "text", icon, required = true, 
       </label>
       <div style={{ position: "relative" }}>
         {icon && <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)", display: "flex", pointerEvents: "none" }}>{icon}</div>}
-        <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} />
+        <input type={type} inputMode={inputMode} placeholder={placeholder} value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} />
       </div>
     </div>
   );
@@ -141,7 +141,6 @@ export function Inscripcion() {
   const [cedulaDirecta, setCedulaDirecta] = useState("");
 
   const [fotoParticipante, setFotoParticipante] = useState<any>(null);
-  const [screenshotMedica, setScreenshotMedica] = useState<any>(null);
   const [comprobantePago, setComprobantePago] = useState<any>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
@@ -248,6 +247,29 @@ export function Inscripcion() {
     reader.onerror = () => reject(new Error("No se pudo leer el archivo adjunto."));
     reader.readAsDataURL(file);
   });
+
+  const parseMontoBsValue = (value: string) => {
+    if (!value || value.trim() === "") return 0;
+
+    const normalized = value.trim().replace(/\s+/g, "");
+    const hasComma = normalized.includes(",");
+    const hasDot = normalized.includes(".");
+
+    if (hasComma && hasDot) {
+      const lastCommaIndex = normalized.lastIndexOf(",");
+      const lastDotIndex = normalized.lastIndexOf(".");
+      const decimalSeparator = lastCommaIndex > lastDotIndex ? "," : ".";
+      const thousandsSeparator = decimalSeparator === "," ? "." : ",";
+
+      const withoutThousands = normalized.replace(new RegExp(`\\${thousandsSeparator}`, "g"), "");
+      return Number(withoutThousands.replace(decimalSeparator, "."));
+    }
+
+    if (hasComma) return Number(normalized.replace(",", "."));
+    if (hasDot) return Number(normalized);
+
+    return Number(normalized);
+  };
 
   const uploadParticipantDocument = async ({
     cedulaParticipante,
@@ -403,7 +425,7 @@ export function Inscripcion() {
         .insert([{
           cedula_participante: cedula.trim(),
           numero_cuota: "Cuota Inicial",
-          monto_bs: parseFloat(montoBs) || 0,
+          monto_bs: parseMontoBsValue(montoBs),
           referencia: referenciaPago.trim(),
           fecha_pago: fechaPago || new Date().toISOString().split('T')[0],
           tasa_cambio: parseFloat(tasa) || 1
@@ -414,7 +436,6 @@ export function Inscripcion() {
       await saveRegistrationLocally();
 
       const cleanFoto = extractNativeFile(fotoParticipante);
-      const cleanMedica = extractNativeFile(screenshotMedica);
 
       if (cleanFoto) {
         await uploadParticipantDocument({
@@ -422,15 +443,6 @@ export function Inscripcion() {
           file: cleanFoto,
           type: "foto",
           label: "la foto del participante",
-        });
-      }
-
-      if (cleanMedica) {
-        await uploadParticipantDocument({
-          cedulaParticipante: cedula.trim(),
-          file: cleanMedica,
-          type: "ficha_medica",
-          label: "la ficha médica",
         });
       }
 
@@ -483,7 +495,7 @@ export function Inscripcion() {
         .insert([{
           cedula_participante: finalCedula,
           numero_cuota: numCuota,
-          monto_bs: parseFloat(montoBs) || 0,
+          monto_bs: parseMontoBsValue(montoBs),
           referencia: referenciaPago.trim(),
           fecha_pago: fechaPago || new Date().toISOString().split('T')[0],
           tasa_cambio: parseFloat(tasa) || 1
@@ -677,7 +689,7 @@ export function Inscripcion() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                   <InputField label="Nro. Referencia (6 dígitos)" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
-                  <InputField label="Monto transferido (Bs)" type="number" value={montoBs} onChange={setMontoBs} />
+                  <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="Ej: 1250,50 o 1250.50" />
                   <InputField label="Tasa de cambio aplicada" type="number" value={tasa} onChange={setTasa} />
                 </div>
 
@@ -688,8 +700,8 @@ export function Inscripcion() {
                     <FileDropzone label="Subir foto" accept=".jpg,.jpeg,.png" onFileSelect={setFotoParticipante} />
                   </div>
                   <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Comprobante Cuota Inicial *</p>
-                    <FileDropzone label="Subir pago" accept=".jpg,.jpeg,.png,.pdf" onFileSelect={setComprobantePago} />
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>Comprobante de Pago *</p>
+                    <FileDropzone label="Subir comprobante" accept=".jpg,.jpeg,.png,.pdf" onFileSelect={setComprobantePago} />
                   </div>
                 </div>
 
@@ -725,7 +737,7 @@ export function Inscripcion() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                 <InputField label="Nro. Referencia" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
-                <InputField label="Monto transferido (Bs)" type="number" value={montoBs} onChange={setMontoBs} />
+                <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="Ej: 1250,50 o 1250.50" />
                 <InputField label="Tasa de cambio" type="number" value={tasa} onChange={setTasa} />
               </div>
 

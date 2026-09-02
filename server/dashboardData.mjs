@@ -1,4 +1,11 @@
-export function buildDashboardPayload({ participants = [], payments = [], documents = [] }) {
+export function convertBsToUsd(montoBs, tasaBcv = 39) {
+  const monto = Number(montoBs) || 0;
+  const tasa = Number(tasaBcv) || 1;
+  if (tasa <= 0) return 0;
+  return Number((monto / tasa).toFixed(2));
+}
+
+export function buildDashboardPayload({ participants = [], payments = [], documents = [], bcvRate = 39 }) {
   const paymentsByParticipant = new Map();
   const documentsByParticipant = new Map();
 
@@ -6,13 +13,16 @@ export function buildDashboardPayload({ participants = [], payments = [], docume
     const cedula = String(payment.cedula_participante || '').trim();
     if (!cedula) continue;
     const existing = paymentsByParticipant.get(cedula) || [];
+    const montoBs = Number(payment.monto_bs) || 0;
     existing.push({
       id: payment.id || null,
       numero_cuota: payment.numero_cuota || 'N/A',
-      monto_bs: Number(payment.monto_bs) || 0,
+      monto_bs: montoBs,
+      monto_usd: convertBsToUsd(montoBs, bcvRate),
       referencia: payment.referencia || '',
       fecha_pago: payment.fecha_pago || null,
       tasa_cambio: Number(payment.tasa_cambio) || 1,
+      tasa_bcv: Number(bcvRate) || 1,
       estado: payment.estado || 'pendiente',
     });
     paymentsByParticipant.set(cedula, existing);
@@ -39,6 +49,7 @@ export function buildDashboardPayload({ participants = [], payments = [], docume
     const pagos = paymentsByParticipant.get(cedula) || [];
     const documentos = documentsByParticipant.get(cedula) || [];
     const totalPagado = pagos.reduce((sum, payment) => sum + Number(payment.monto_bs || 0), 0);
+    const totalPagadoUsd = convertBsToUsd(totalPagado, bcvRate);
 
     return {
       cedula,
@@ -55,20 +66,24 @@ export function buildDashboardPayload({ participants = [], payments = [], docume
       pagos,
       documentos,
       totalPagado,
+      totalPagadoUsd,
       totalCuotas: pagos.length,
     };
   });
 
   const totalAmount = payments.reduce((sum, payment) => sum + (Number(payment.monto_bs) || 0), 0);
+  const totalAmountUsd = convertBsToUsd(totalAmount, bcvRate);
 
   return {
+    bcvRate: Number(bcvRate) || 1,
     metrics: {
       participants: participantEntries.length,
       payments: payments.length,
       totalAmount,
+      totalAmountUsd,
     },
     participants: participantEntries,
   };
 }
 
-export default { buildDashboardPayload };
+export default { buildDashboardPayload, convertBsToUsd };

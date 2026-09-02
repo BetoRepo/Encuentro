@@ -13,8 +13,8 @@ function ScoutsLogo() {
     <img
       src={scoutLogoImage}
       alt="Scouts de Venezuela"
-      width={52}
-      height={52}
+      width={90}
+      height={90}
       style={{ objectFit: "contain", display: "block" }}
     />
   );

@@ -54,12 +54,12 @@ export function Home() {
     {
       title: "Desafío Generación Z",
       tagline: "Aldea Global",
-      desc: "El mercado laboral evoluciona rápidamente y queremos que estés preparado para liderarlo. En este espacio te conectamos de forma directa con empresas líderes y ferias de empleo estratégicas. A través de nuestros talleres prácticos, desarrollarás las hard skills (habilidades técnicas) más demandadas hoy en día, asegurando que tu transición al mundo profesional sea un éxito rotundo."
+      desc: "El mercado laboral evoluciona rápidamente y queremos que estés preparado para liderarlo. A través de nuestros talleres prácticos, desarrollarás las hard skills (habilidades técnicas) más demandadas hoy en día, asegurando que tu transición al mundo profesional sea un éxito rotundo."
     },
     {
       title: "La Red en Vivo",
       tagline: "Ciudadanía Activa",
-      desc: "Tu voz y tus ideas tienen el poder de transformar el Movimiento Scout. Desde la Red de Jóvenes (RDJ) se impulsan espacios formales de participación ciudadana donde podrás formar parte de procesos electorales, liderar mesas de trabajo y debatir propuestas para la elaboración del manifiesto de San Juan de los Morros. El lugar ideal para construir redes de contacto (networking) y ejercer un liderazgo."
+      desc: "Tu voz y tus ideas tienen el poder de transformar el Movimiento Scout. Desde la Red de Jóvenes (RDJ) se impulsan espacios formales de participación ciudadana donde podrás formar parte de procesos electorales, liderar mesas de trabajo y debatir propuestas."
     },
     {
       title: "Vitamina",
@@ -244,7 +244,7 @@ export function Home() {
 
         {/* Ejes Temáticos */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Los 5 grandes Bloques de programa</h2>
+          <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Los 4 grandes Bloques de programa</h2>
           <p style={{ color: "#666", fontSize: 15 }}>Descubre los grandes bloques de actividades preparados para ti</p>
         </div>
 

@@ -17,12 +17,13 @@ type DashboardParticipant = {
   rama: string;
   tipo_participante: string;
   totalPagado: number;
-  pagos: Array<{ numero_cuota: string; monto_bs: number; referencia: string; fecha_pago: string | null; estado: string }>;
+  totalPagadoUsd: number;
+  pagos: Array<{ numero_cuota: string; monto_bs: number; monto_usd: number; referencia: string; fecha_pago: string | null; estado: string }>;
   documentos: Array<{ tipo_documento: string; nombre_archivo: string; url_archivo?: string; mime_type?: string; path_archivo?: string }>;
 };
 
 export function Dashboard() {
-  const [data, setData] = useState<{ metrics: { participants: number; payments: number; totalAmount: number }; participants: DashboardParticipant[] } | null>(null);
+  const [data, setData] = useState<{ bcvRate: number; metrics: { participants: number; payments: number; totalAmount: number; totalAmountUsd: number }; participants: DashboardParticipant[] } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -30,7 +31,11 @@ export function Dashboard() {
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "No se pudieron cargar las métricas.");
-        setData({ metrics: result.metrics, participants: result.participants || [] });
+        setData({
+          bcvRate: Number(result.bcvRate) || 1,
+          metrics: result.metrics,
+          participants: result.participants || [],
+        });
       })
       .catch((requestError: Error) => setError(requestError.message));
   }, []);
@@ -44,7 +49,7 @@ export function Dashboard() {
   const cards = [
     { label: "Personas inscritas", value: data.metrics.participants.toLocaleString("es-VE"), icon: <Users size={24} />, color: ENJ_NAVY },
     { label: "Pagos registrados", value: data.metrics.payments.toLocaleString("es-VE"), icon: <Receipt size={24} />, color: ENJ_MAGENTA },
-    { label: "Total recaudado", value: `${data.metrics.totalAmount.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs`, icon: <WalletCards size={24} />, color: "#157347" },
+    { label: "Total recaudado", value: `${data.metrics.totalAmount.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs / ${data.metrics.totalAmountUsd.toLocaleString("es-VE", { minimumFractionDigits: 2 })} USD`, icon: <WalletCards size={24} />, color: "#157347" },
   ];
 
   return (
@@ -76,6 +81,7 @@ export function Dashboard() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ color: ENJ_MAGENTA, fontWeight: 800 }}>{participant.totalPagado.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs</div>
+                    <div style={{ color: "rgba(0,11,111,0.7)", fontWeight: 700 }}>{participant.totalPagadoUsd.toLocaleString("es-VE", { minimumFractionDigits: 2 })} USD</div>
                     <small style={{ color: "rgba(0,11,111,0.6)" }}>{participant.pagos.length} pagos</small>
                   </div>
                 </div>
@@ -97,8 +103,8 @@ export function Dashboard() {
                   <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 12 }}>
                     <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8 }}>Pagos</strong>
                     {participant.pagos.length ? participant.pagos.map((payment, index) => (
-                      <div key={`${payment.numero_cuota}-${index}`} style={{ fontSize: 12, color: "rgba(0,11,111,0.7)", marginBottom: 6 }}>
-                        {payment.numero_cuota}: {Number(payment.monto_bs).toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs • {payment.referencia || "Sin referencia"}
+                      <div key={`${payment.numero_cuota}-${index}`} style={{ fontSize: 12, color: "rgba(0,11,111,0.7)", marginBottom: 8 }}>
+                        {payment.numero_cuota}: {Number(payment.monto_bs).toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs ({Number(payment.monto_usd || 0).toLocaleString("es-VE", { minimumFractionDigits: 2 })} USD) • {payment.referencia || "Sin referencia"}
                       </div>
                     )) : <div style={{ fontSize: 12, color: "rgba(0,11,111,0.7)" }}>Sin pagos</div>}
                   </div>
@@ -106,13 +112,18 @@ export function Dashboard() {
                   <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 12 }}>
                     <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8 }}>Archivos</strong>
                     {participant.documentos.length ? participant.documentos.map((doc, index) => (
-                      <div key={`${doc.tipo_documento}-${index}`} style={{ marginBottom: 6, fontSize: 12 }}>
+                      <div key={`${doc.tipo_documento}-${index}`} style={{ marginBottom: 8, fontSize: 12, display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                         {doc.url_archivo ? (
-                          <a href={doc.url_archivo} target="_blank" rel="noreferrer" style={{ color: ENJ_NAVY, textDecoration: "underline" }}>
+                          <a href={doc.url_archivo} target="_blank" rel="noreferrer" style={{ color: ENJ_NAVY, textDecoration: "underline", wordBreak: "break-word" }}>
                             {doc.nombre_archivo || doc.tipo_documento}
                           </a>
                         ) : (
                           <span style={{ color: "rgba(0,11,111,0.7)" }}>{doc.nombre_archivo || doc.tipo_documento}</span>
+                        )}
+                        {doc.url_archivo && (
+                          <a href={doc.url_archivo} target="_blank" rel="noreferrer" download={doc.nombre_archivo || doc.tipo_documento} style={{ color: "#fff", background: ENJ_MAGENTA, borderRadius: 8, padding: "5px 8px", textDecoration: "none", fontWeight: 700 }}>
+                            Descargar
+                          </a>
                         )}
                       </div>
                     )) : <div style={{ fontSize: 12, color: "rgba(0,11,111,0.7)" }}>Sin archivos</div>}

@@ -64,6 +64,63 @@ const getAuthenticatedUser = async (req) => {
 
 const publicUser = (user) => ({ id: user.id, email: user.email, name: user.name || '', role: user.role || 'participant' });
 
+const parseBcvRate = (payload) => {
+  if (!payload || typeof payload !== 'object') return null;
+
+  const candidates = [
+    payload.tasa,
+    payload.tasa_dolar,
+    payload.rate,
+    payload.value,
+    payload.promedio,
+    payload.dolar,
+    payload?.data?.tasa,
+    payload?.data?.tasa_dolar,
+    payload?.data?.rate,
+    payload?.data?.value,
+    payload?.data?.promedio,
+    payload?.data?.dolar,
+  ];
+
+  for (const value of candidates) {
+    const sanitized = Number(String(value).replace(/[^0-9.,-]/g, '').replace(',', '.'));
+    if (Number.isFinite(sanitized) && sanitized > 0) return sanitized;
+  }
+
+  if (Array.isArray(payload.data)) {
+    for (const item of payload.data) {
+      const value = parseBcvRate(item);
+      if (value) return value;
+    }
+  }
+
+  return null;
+};
+
+const fetchBcvRate = async () => {
+  const fallbackRate = 39;
+  const endpoints = [
+    'https://api.bcv.org.ve/tasa-informativa',
+    'https://api.bcv.org.ve/data/',
+    'https://api.bcv.org.ve/tasa',
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetchWithTimeout(endpoint, { headers: { Accept: 'application/json' } });
+      if (!response.ok) continue;
+      const rawText = await response.text();
+      const payload = rawText ? JSON.parse(rawText) : null;
+      const parsed = parseBcvRate(payload);
+      if (parsed) return parsed;
+    } catch (error) {
+      console.warn(`BCV fetch falló para ${endpoint}:`, error.message);
+    }
+  }
+
+  return fallbackRate;
+};
+
 const verifyPassword = async (password, storedHash) => {
   if (storedHash?.startsWith('$2')) return bcrypt.compare(password, storedHash);
   const candidateHash = crypto.scryptSync(password, sessionSecret, 64).toString('hex');
@@ -192,7 +249,8 @@ app.get('/api/dashboard', async (req, res) => {
     if (paymentsError) throw paymentsError;
     if (documentsError) throw documentsError;
 
-    const payload = buildDashboardPayload({ participants: participants || [], payments: payments || [], documents: documents || [] });
+    const bcvRate = await fetchBcvRate();
+    const payload = buildDashboardPayload({ participants: participants || [], payments: payments || [], documents: documents || [], bcvRate });
     return res.json({ ok: true, ...payload });
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
