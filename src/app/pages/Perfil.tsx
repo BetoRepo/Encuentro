@@ -229,7 +229,6 @@ export function Perfil() {
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "48px 24px 80px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        
         <button type="button" onClick={() => navigate(-1)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.6)", fontSize: 14, fontWeight: 600, marginBottom: 22 }}>
           <ArrowLeft size={16} /> Volver
         </button>
@@ -244,7 +243,6 @@ export function Perfil() {
 
         <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
           <form style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            
             {/* FOTO DE PERFIL */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <label htmlFor="foto-upload" style={{ cursor: "pointer", position: "relative" }}>
