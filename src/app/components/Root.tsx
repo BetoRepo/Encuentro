@@ -9,7 +9,15 @@ const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
 function ScoutsLogo() {
-  return <img src={scoutLogoImage} alt="Scouts de Venezuela" width={36} height={36} style={{ objectFit: "contain" }} />;
+  return (
+    <img
+      src={scoutLogoImage}
+      alt="Scouts de Venezuela"
+      width={52}
+      height={52}
+      style={{ objectFit: "contain", display: "block" }}
+    />
+  );
 }
 
 export function Root() {

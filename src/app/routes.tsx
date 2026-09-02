@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Root } from './components/Root'
+import { PerfilPublico } from './components/PerfilPublico'
 import { Home, Inscripcion, Consultas, Perfil, Dashboard, ChangePassword } from './pages'
 import { Login } from './pages/Login' // <-- Ajusta esta ruta según donde esté Login.tsx
 
@@ -61,6 +62,11 @@ export const router = createBrowserRouter(
       // La ruta pública (Login) va separada para que no pida autenticación
       path: '/login',
       element: <Login />,
+    },
+    {
+      // Ruta pública del perfil QR, accesible sin sesión
+      path: '/scout/:id',
+      element: <PerfilPublico />,
     },
     {
       // Agrupamos todas las demás rutas dentro del Guardián
