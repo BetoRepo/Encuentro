@@ -100,6 +100,8 @@ const parseBcvRate = (payload) => {
 const fetchBcvRate = async () => {
   const fallbackRate = 39;
   const endpoints = [
+    'https://ve.dolarapi.com/v1/dolares/oficial',
+    'https://ve.dolarapi.com/v1/dolares',
     'https://api.bcv.org.ve/tasa-informativa',
     'https://api.bcv.org.ve/data/',
     'https://api.bcv.org.ve/tasa',
@@ -109,10 +111,14 @@ const fetchBcvRate = async () => {
     try {
       const response = await fetchWithTimeout(endpoint, { headers: { Accept: 'application/json' } });
       if (!response.ok) continue;
-      const rawText = await response.text();
-      const payload = rawText ? JSON.parse(rawText) : null;
+      const payload = await response.json();
+
       const parsed = parseBcvRate(payload);
       if (parsed) return parsed;
+
+      if (payload && typeof payload.promedio === 'number' && payload.promedio > 0) {
+        return payload.promedio;
+      }
     } catch (error) {
       console.warn(`BCV fetch falló para ${endpoint}:`, error.message);
     }

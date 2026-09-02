@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import { Calendar, Users, ChevronRight, Clock } from "lucide-react";
 import logoImage from "../../assets/logonacional.svg";
+import desafioGeneracionZ from "../../assets/DesafíoGeneraciónZ.svg";
+import redEnVivo from "../../assets/LaRedEnVivo.svg";
+import vitamina from "../../assets/Vitamina.svg";
+import churuata from "../../assets/LaChuruatadelEncuentro.svg";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -24,6 +28,8 @@ interface BloquePrograma {
   title: string;
   tagline: string;
   desc: string;
+  logo?: string;
+  logoAlt?: string;
 }
 
 export function ScoutsLogo({ size = 44 }: { size?: number }) {
@@ -54,22 +60,30 @@ export function Home() {
     {
       title: "Desafío Generación Z",
       tagline: "Aldea Global",
-      desc: "El mercado laboral evoluciona rápidamente y queremos que estés preparado para liderarlo. A través de nuestros talleres prácticos, desarrollarás las hard skills (habilidades técnicas) más demandadas hoy en día, asegurando que tu transición al mundo profesional sea un éxito rotundo."
+      desc: "El mercado laboral evoluciona rápidamente y queremos que estés preparado para liderarlo. A través de nuestros talleres prácticos, desarrollarás las hard skills (habilidades técnicas) más demandadas hoy en día, asegurando que tu transición al mundo profesional sea un éxito rotundo.",
+      logo: desafioGeneracionZ,
+      logoAlt: "Logo Desafío Generación Z"
     },
     {
       title: "La Red en Vivo",
       tagline: "Ciudadanía Activa",
-      desc: "Tu voz y tus ideas tienen el poder de transformar el Movimiento Scout. Desde la Red de Jóvenes (RDJ) se impulsan espacios formales de participación ciudadana donde podrás formar parte de procesos electorales, liderar mesas de trabajo y debatir propuestas."
+      desc: "Tu voz y tus ideas tienen el poder de transformar el Movimiento Scout. Desde la Red de Jóvenes (RDJ) se impulsan espacios formales de participación ciudadana donde podrás formar parte de procesos electorales, liderar mesas de trabajo y debatir propuestas.",
+      logo: redEnVivo,
+      logoAlt: "Logo La Red en Vivo"
     },
     {
       title: "Vitamina",
       tagline: "Bienestar y Autocuidado",
-      desc: "El éxito profesional y académico comienza con tu bienestar personal. Vitamina es un espacio formativo guiado por expertos de la salud para abordar de manera objetiva temas fundamentales en tu etapa de vida: nutrición balanceada, gestión de la salud mental y derechos sexuales y reproductivos. Te brindamos herramientas científicas y prácticas para tomar decisiones informadas y responsables."
+      desc: "El éxito profesional y académico comienza con tu bienestar personal. Vitamina es un espacio formativo guiado por expertos de la salud para abordar de manera objetiva temas fundamentales en tu etapa de vida: nutrición balanceada, gestión de la salud mental y derechos sexuales y reproductivos. Te brindamos herramientas científicas y prácticas para tomar decisiones informadas y responsables.",
+      logo: vitamina,
+      logoAlt: "Logo Vitamina"
     },
     {
       title: "La Churuata del Encuentro",
       tagline: "Espacios de Encuentro",
-      desc: "Todo ecosistema de alto rendimiento necesita un espacio para la desconexión y el balance. En La Churuata diseñamos dinámicas de integración, actividades recreativas de tiempo libre y el uso óptimo de instalaciones pensadas para el esparcimiento saludable. Un punto de encuentro ideal para despejar la mente, compartir ideas y fortalecer los lazos de comunidad en un ambiente distendido."
+      desc: "Todo ecosistema de alto rendimiento necesita un espacio para la desconexión y el balance. En La Churuata diseñamos dinámicas de integración, actividades recreativas de tiempo libre y el uso óptimo de instalaciones pensadas para el esparcimiento saludable. Un punto de encuentro ideal para despejar la mente, compartir ideas y fortalecer los lazos de comunidad en un ambiente distendido.",
+      logo: churuata,
+      logoAlt: "Logo La Churuata del Encuentro"
     }
   ];
 
@@ -248,11 +262,73 @@ export function Home() {
           <p style={{ color: "#666", fontSize: 15 }}>Descubre los grandes bloques de actividades preparados para ti</p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, marginBottom: 80 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 260px))",
+            gap: 24,
+            justifyContent: "center",
+            alignItems: "stretch",
+            marginBottom: 80
+          }}
+        >
           {bloques.map((b, idx) => (
-            <div key={idx} style={{ background: "white", padding: 24, borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", boxSizing: "border-box" }}>
+            <div
+              key={idx}
+              style={{
+                background: "white",
+                padding: 24,
+                borderRadius: 18,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
+                border: "1px solid #EAEFF8",
+                boxSizing: "border-box",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                minHeight: 330
+              }}
+            >
+              <div
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: 22,
+                  background: "linear-gradient(135deg, rgba(80,3,157,0.12), rgba(0,11,111,0.08))",
+                  display: "grid",
+                  placeItems: "center",
+                  marginBottom: 18,
+                  overflow: "hidden",
+                  border: "1px solid rgba(80,3,157,0.12)"
+                }}
+              >
+                {b.logo ? (
+                  <img
+                    src={b.logo}
+                    alt={b.logoAlt ?? b.title}
+                    style={{ width: "72%", height: "72%", objectFit: "contain", display: "block" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      background: ENJ_MAGENTA,
+                      color: "white",
+                      fontWeight: 800,
+                      fontSize: 18,
+                      display: "grid",
+                      placeItems: "center"
+                    }}
+                  >
+                    {b.title.charAt(0)}
+                  </div>
+                )}
+              </div>
+
               <span style={{ color: ENJ_MAGENTA, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>{b.tagline}</span>
-              <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 700, margin: "6px 0 12px" }}>{b.title}</h3>
+              <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 700, margin: "10px 0 12px" }}>{b.title}</h3>
               <p style={{ color: "#555", fontSize: 14, lineHeight: 1.6, margin: 0 }}>{b.desc}</p>
             </div>
           ))}
