@@ -116,14 +116,15 @@ export function Consultas() {
         <div style={{ textAlign: "center", marginBottom: 44 }}>
           <div style={{ display: "inline-block", marginBottom: 12 }}>
             <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 18px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-              Espacio de Consultas
+              Espacio de Consultas Juveniles
             </span>
           </div>
           <h1 style={{ margin: "0 0 10px", fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 900, color: ENJ_NAVY, letterSpacing: "-0.02em" }}>
-            Reporte de consultas juveniles
+            Rating Nacional: La Voz de la Juventud
           </h1>
           <p style={{ margin: "0 auto", color: "rgba(0,11,111,0.55)", fontSize: 16, maxWidth: 580, lineHeight: 1.7 }}>
-            ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
+            Toda gran producción necesita un guión sólido antes de salir al aire. Este espacio es la central de datos donde recopilamos la voz, las ideas y las propuestas de la juventud de todo el país. Como protagonistas y delegados electos de cada Distrito, ustedes tienen el control en sus manos. Su misión principal es cargar y subir aquí los resultados oficiales de las consultas juveniles realizadas en sus Ciclos Institucionales de Programa (Acuerdo de Waingunga, Juego Amplio Regional (JAR), Congreso de Comunidad de Caminantes y Congreso de Comunidad de Clan).
+¡Asegúrate de que la voz de tu Distrito esté en el guión de esta temporada!
           </p>
         </div>
 

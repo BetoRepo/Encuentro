@@ -35,6 +35,92 @@ export const scoutRegions: ScoutRegion[] = [
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
 const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "No lo sé"];
 
+const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
+
+1. Participación
+- Cada participante es el "protagonista" de su aprendizaje. Se espera una asistencia del 100% a las Mesas Técnicas y Plenarias.
+- Sesiones en línea (uso de plataformas y lenguaje): Durante las actividades virtuales, se debe utilizar un lenguaje formal y respetuoso. El uso de cámaras es obligatorio para fomentar la interacción, y los micrófonos deben permanecer silenciados mientras el facilitador o un compañero tenga el derecho de palabra. Está prohibido compartir enlaces de acceso con personas ajenas al evento.
+- El proceso electoral para el Núcleo Coordinador es sagrado. Se debe garantizar un ejercicio transparente, equitativo y respetuoso.
+- En los Paneles de Expertos y Masterclasses, se debe mantener el respeto hacia los facilitadores y especialistas que brindan su conocimiento.
+
+2. Instalaciones
+- Al llegar al campamento YAKON MALEIWA, cada participante debe formalizar su registro para recibir su kit y credencial, la cual es obligatoria para acceder a alimentación y actividades.
+- Queda prohibido cualquier daño a la infraestructura o al equipo de producción (materiales de talleres, sonido, etc.).
+- Alineados con los ODS 13 y 15, cada participante es responsable de mantener su área libre de desperdicios.
+- Se prohíbe correr, gritar o realizar dinámicas de grupo en los pasillos de las habitaciones en cualquier horario, para respetar la tranquilidad de otros participantes.
+- Se prohíbe dejar regletas o cargadores conectados sin supervisión en las habitaciones para evitar riesgos de cortocircuito.
+
+3. Bienestar y Seguridad
+- Entornos Seguros (Safe from Harm): Se aplicará de forma estricta la Política de Salvo del Peligro. Todo adulto y joven tiene el deber de velar por la integridad física y emocional de los demás. Cualquier sospecha de acoso, abuso o maltrato debe ser reportada de inmediato al equipo de bienestar para su intervención bajo los protocolos de la Asociación de Scouts de Venezuela.
+- Salud Sexual y Reproductiva: Se manejarán estos temas con madurez y respeto profesional. Las relaciones inadecuadas o la falta de consentimiento son motivo de expulsión inmediata.
+- El evento fomenta la tolerancia a la frustración y la gestión emocional. No se permiten conductas que estigmatizan trastornos o afecten la estabilidad emocional de otros.
+
+4. Comunicaciones y Privacidad
+- Solo se permite generar contenido que cuide la marca scout y la integridad de los participantes.
+- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es estrictamente privada.
+- El uso de IA y herramientas digitales (Canva, Excel) debe ser ético y orientado a los proyectos de impacto social del evento.
+- Mensajes en rrss (redes sociales): Las publicaciones en redes personales relacionadas con el ENJ deben alinearse con los valores scouts. Se prohíbe la difusión de imágenes que comprometan la seguridad de las instalaciones o la dignidad de los participantes.
+- Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restringido.
+
+5. Prohibiciones
+- Prohibido el alcohol, tabaco/vapeadores y drogas. El ENJ promueve la nutrición y el ejercicio como base del bienestar físico.
+- Cualquier acto de agresión física o verbal rompe el "Guión de Temporada" y resultará en la descalificación (expulsión) del participante.
+
+6. Emergencias y Gestión de Riesgo
+- Cualquier incidente debe reportarse inmediatamente al equipo de Gestión de Riesgos siguiendo la cadena de mando establecida en los talleres previos.
+- La pañoleta y la credencial del evento son obligatorios para ser identificado como miembro activo del evento.
+
+7. Horarios
+- El programa inicia a las 07:00 AM y finaliza a las 11:00 PM. La puntualidad es obligatoria para no retrasar las actividades y talleres.
+- A partir de las 11:00 PM se restringe la circulación por el campamento y el ruido en las áreas de pernocta para garantizar el descanso de los participantes y otros huéspedes del hotel.
+
+8. Alimentación
+- Se establecerán turnos por "Crews" para evitar aglomeraciones. El respeto al turno asignado es fundamental.
+- Solo se atenderán dietas especiales (alergias, celiaquía, vegetarianismo) que hayan sido reportadas previamente en la ficha médica.
+- Se prohíbe depositar residuos de comida en las áreas no dispuestas para ellos tales como áreas verdes.
+
+9. Aseo Personal y Uso de Baños
+- Los baños y duchas son compartidos. Se debe limitar el tiempo de ducha para garantizar que todos los participantes tengan acceso al agua y por respeto ambiental.
+- No se deben dejar artículos personales (shampoo, jabón, toallas) en los baños comunes. Cada participante es responsable de su kit de aseo.
+- Queda prohibido lavar ropa en los lavamanos o duchas del hotel.
+
+10. Salida del Sitio del Campamento (Perímetro Seguro)
+- El ENJ es un evento de régimen cerrado. Nadie puede salir de las instalaciones del campamento YAKON MALEIWA sin una autorización.
+- Para salir de las áreas de actividad hacia las habitaciones o áreas públicas del campamento, se debe informar a algún adulto/monitor de programa.
+- No se permiten visitas externas de familiares o amigos durante el evento para no interrumpir la dinámica de trabajo.
+
+11. Vestimenta e Imagen
+- Se usará la indumentaria scout para las actividades que se indique.
+- Solo se permite el uso de traje de baño en las horas y zonas designadas. Se exige decoro y respeto en la vestimenta dentro del campamento.
+- No se permite el uso de prendas con mensajes ofensivos, políticos o que promuevan el consumo de sustancias.
+
+12. Uso de la piscina
+- El uso de las piscinas estará sujeto a los horarios establecidos en el programa y siempre bajo la presencia de adultos/monitores.
+- Se deben acatar todas las normas internas del establecimiento (prohibido lanzarse de cabeza, no consumir alimentos dentro del agua, etc.).
+
+13. Normas de Traslados y Actividades Externas
+- Se realizará estrictamente bajo la supervisión del Staff. Nadie sube o baja de la unidad hasta que el encargado lo autorice.
+- Se debe permanecer sentado mientras la unidad esté en movimiento. Queda prohibido sacar extremidades o colgar implementos (pañoletas, banderas) por las ventanas.
+- La unidad de transporte debe quedar más limpia de lo que se encontró. Está prohibido dejar envoltorios, botellas o desechos en los asientos.
+- Durante las actividades externas, el uso de la franela oficial del ENJ es obligatorio y debe portarse de manera impecable.
+- El trato con las personas locales, autoridades o personal de las instituciones visitadas debe ser de extrema cortesía.
+- Si la actividad externa es en un parque, museo o institución pública, se acatarán estrictamente las reglas del lugar (silencio, no fotos en áreas restringidas, etc.).
+- Nadie se desplaza solo. Para cualquier movimiento, se debe ir en parejas o tríos y dar aviso al Staff encargado.
+- Al llegar a cualquier locación externa, el Staff identificará un "Punto de Encuentro" y una hora de reunión. La impuntualidad en estos puntos se considerará una falta grave a la seguridad del grupo.
+- Se realizarán conteos rápidos ("número") antes de cada salida y después de cada parada.
+- En las actividades de campo fuera del campamento, se aplicará de forma estricta la ética de "No Deje Rastro". Todo desecho generado debe ser retornado al hotel o depositado en contenedores adecuados.
+- Queda prohibido recolectar especies vegetales, molestar a la fauna local o intervenir monumentos naturales/históricos (grafitis, tallas en árboles, etc.).
+- Para las salidas, cada joven debe portar obligatoriamente su hidratación (termo lleno), gorra/sombrero y protector solar.
+
+14. Cuidado de las pertenencias
+- Cada participante es responsable de la custodia de sus artículos personales. Ni la Asociación de Scouts de Venezuela (ASV) ni el campamento se hacen responsables por la pérdida, extravío o daño de equipos electrónicos, cámaras, teléfonos o dinero dejados sin supervisión en áreas comunes, pasillos o habitaciones abiertas.
+
+15. Medicamentos
+- Todo medicamento que el participante traiga al evento debe estar obligatoriamente reflejado en su Ficha Médica.
+- Cualquier medicamento (recetado o de venta libre), anticonvulsivo, analgésicos, antipiréticos, antiespasmódico, antialérgicos, narcóticos, entre otros, que se encuentre en posesión de un participante y no esté debidamente registrado en su ficha médica, será retirado por el equipo de Gestión de Riesgos o el personal médico por medidas de seguridad.
+
+Al aceptar este acuerdo, confirmo que he leído y entiendo las normas del ENJ 2026 y me comprometo a cumplirlas en todas las actividades, instalaciones y traslados del evento.`;
+
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false, inputMode }: any) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -704,9 +790,18 @@ export function Inscripcion() {
                   </div>
                 </div>
 
+                <div style={{ background: "#F8FAFF", border: "1.5px solid rgba(0,11,111,0.12)", borderRadius: 14, padding: 16 }}>
+                  <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    Acuerdo de Convivencia ENJ 2026
+                  </p>
+                  <div style={{ maxHeight: 260, overflowY: "auto", background: "#fff", borderRadius: 10, padding: 16, border: "1px solid rgba(0,11,111,0.08)", whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.7, color: "rgba(0,11,111,0.82)" }}>
+                    {acuerdoConvivenciaEnj2026}
+                  </div>
+                </div>
+
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>
                   <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
-                  He leído y acepto los términos del Acuerdo de Convivencia.
+                  He leído, entiendo y acepto el Acuerdo de Convivencia.
                 </label>
 
                 <button type="submit" disabled={loading} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>

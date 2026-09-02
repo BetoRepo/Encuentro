@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, User, Phone, Mail, ChevronDown, Camera, FileText, QrCode, MapPin, Heart, Share2, Instagram 
+import {
+  ArrowLeft, User, Phone, Mail, ChevronDown, Camera, FileText, QrCode, MapPin, Heart, Share2, Instagram, ShieldCheck, MessageSquare, Send, Users
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
@@ -22,8 +22,14 @@ const scoutRegions = [
   { region: "ZULIA", districts: ["COQUIVACOA", "FRANCISCO POLANCO - PERIJA", "PEDRO HENRIQUEZ AMADO", "SAMUEL MARTINEZ", "SAN FRANCISCO", "ZULIA ORIENTAL"] },
 ];
 
-const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
-const opcionesGustos = ["Fogata", "Intercambio de Pañoletas", "Talleres", "Feria de Ramas", "Juegos Nocturnos", "Música / Canto", "Deportes", "Hacer Amigos"];
+const tiposRol = [
+  "Protagonista (Joven participante)",
+  "Equipo de Produccion (Adultos de Soporte)",
+  "Directores (Staff)"
+];
+
+const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
+const opcionesGustos = ["Fogata", "Intercambio de Pañoletas", "Talleres", "Feria de Ramas", "Juegos Nocturnos", "Música / Canto", "Deportes", "Hacer Amigos", "Logística", "Primeros Auxilios"];
 
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
   return (
@@ -110,6 +116,7 @@ export function Perfil() {
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [rolEvento, setRolEvento] = useState("Joven Participante");
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
@@ -122,6 +129,10 @@ export function Perfil() {
   const [foto, setFoto] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Estado local para interacción de inscritos (Muro/Comentarios)
+  const [comentarios, setComentarios] = useState<{ id: string; autor: string; mensaje: string; fecha: string }[]>([]);
+  const [nuevoMensaje, setNuevoMensaje] = useState("");
+
   useEffect(() => {
     const loadProfile = async () => {
       const user = JSON.parse(localStorage.getItem("enj_user") || "null");
@@ -129,12 +140,12 @@ export function Perfil() {
         setUserId(user.id);
         setCorreo(user.email || "");
 
-        // Consultar Supabase
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (data) {
           setNombre(data.nombre || "");
           setApellido(data.apellido || "");
           setBirthDate(data.birth_date || "");
+          setRolEvento(data.rol_evento || "Joven Participante");
           setSelectedRegion(data.selected_region || "");
           setSelectedDistrict(data.selected_district || "");
           setGrupoScout(data.grupo_scout || "");
@@ -175,6 +186,7 @@ export function Perfil() {
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         birth_date: birthDate,
+        rol_evento: rolEvento,
         selected_region: selectedRegion,
         selected_district: selectedDistrict,
         grupo_scout: grupoScout,
@@ -200,7 +212,18 @@ export function Perfil() {
     }
   };
 
-  // URL pública que se codificará en el QR
+  const handleEnviarMensajeMuro = () => {
+    if (!nuevoMensaje.trim()) return;
+    const nuevo = {
+      id: Date.now().toString(),
+      autor: nombre ? `${nombre} ${apellido}` : "Scout Elenco",
+      mensaje: nuevoMensaje.trim(),
+      fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setComentarios([nuevo, ...comentarios]);
+    setNuevoMensaje("");
+  };
+
   const qrPublicUrl = `${window.location.origin}/scout/${userId}`;
 
   return (
@@ -212,9 +235,11 @@ export function Perfil() {
         </button>
 
         <div style={{ marginBottom: 32, textAlign: "center" }}>
-          <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 16px", borderRadius: 100, textTransform: "uppercase" }}>Perfil Social & Inscripción</span>
-          <h1 style={{ margin: "16px 0 10px", fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 900, color: ENJ_NAVY }}>Tu Carnet Digital ENJ</h1>
-          <p style={{ margin: 0, color: "rgba(0,11,111,0.68)", fontSize: 15, lineHeight: 1.7 }}>Llena tus datos para la inscripción y comparte tus gustos con otros scouts via QR.</p>
+          <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 11, fontWeight: 700, padding: "5px 16px", borderRadius: 100, textTransform: "uppercase" }}>Perfil Social & Casting</span>
+          <h1 style={{ margin: "16px 0 10px", fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 900, color: ENJ_NAVY }}>Tu Credencial de Elenco</h1>
+          <p style={{ margin: 0, color: "rgba(0,11,111,0.68)", fontSize: 15, lineHeight: 1.7 }}>
+            Completa tus datos para confirmar tu casting y genera tu QR de acceso. Comparte tus intereses, habilidades y vibra con el resto del elenco en un solo escaneo.
+          </p>
         </div>
 
         <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
@@ -231,7 +256,7 @@ export function Perfil() {
                 </div>
               </label>
               <input id="foto-upload" type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
-              <span style={{ fontSize: 12, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>Toca para subir tu foto</span>
+              <span style={{ fontSize: 12, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>Toca para subir tu foto de elenco</span>
             </div>
 
             <SectionDivider title="Datos Básicos" icon={<User size={16} color={ENJ_NAVY} />} />
@@ -242,10 +267,10 @@ export function Perfil() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <InputField label="Fecha de nacimiento" type="date" value={birthDate} onChange={setBirthDate} />
-              <div />
+              <SelectField label="Rol en el Evento" options={tiposRol} value={rolEvento} onChange={setRolEvento} />
             </div>
 
-            <SectionDivider title="Ubicación Scout" icon={<MapPin size={16} color={ENJ_NAVY} />} />
+            <SectionDivider title="Ubicación y Estructura Scout" icon={<MapPin size={16} color={ENJ_NAVY} />} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <SelectField label="Región Scout" options={scoutRegions.map((r) => r.region)} value={selectedRegion} onChange={(v: string) => { setSelectedRegion(v); setSelectedDistrict(""); }} />
               <SelectField label="Distrito Scout" options={scoutRegions.find((r) => r.region === selectedRegion)?.districts || []} value={selectedDistrict} onChange={setSelectedDistrict} disabled={!selectedRegion} />
@@ -253,18 +278,18 @@ export function Perfil() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <InputField label="Grupo Scout" placeholder="Ej. Grupo 29" value={grupoScout} onChange={setGrupoScout} />
-              <SelectField label="Unidad / Rama" options={ramas} value={ramaScout} onChange={setRamaScout} />
+              <SelectField label="Unidad / Rama o Cargo" options={ramas} value={ramaScout} onChange={setRamaScout} />
             </div>
 
-            <SectionDivider title="Tu Perfil Social" icon={<Heart size={16} color={ENJ_NAVY} />} />
+            <SectionDivider title="Tu Perfil Social y Habilidades" icon={<Heart size={16} color={ENJ_NAVY} />} />
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>Breve Biografía / Lema</label>
-              <textarea placeholder="Escribe algo sobre ti..." value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", outline: "none", boxSizing: "border-box" }} />
+              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>Breve Biografía / Lema Scout</label>
+              <textarea placeholder="Cuéntanos sobre ti, tus talentos o lo que aportas al elenco..." value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", outline: "none", boxSizing: "border-box" }} />
             </div>
 
-            {/* SELECCIÓN DE GUSTOS */}
+            {/* SELECCIÓN DE GUSTOS Y HABILIDADES */}
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY, display: "block", marginBottom: 8 }}>Lo que más te llama la atención del evento:</label>
+              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY, display: "block", marginBottom: 8 }}>Tus intereses, habilidades y vibra Scout:</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {opcionesGustos.map((item) => {
                   const selected = gustos.includes(item);
@@ -279,27 +304,63 @@ export function Perfil() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <InputField label="Instagram (Opcional)" placeholder="ej. usuario" icon={<Instagram size={16} />} value={instagram} onChange={setInstagram} required={false} />
-              <InputField label="Teléfono" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} required={false} />
+              <InputField label="Teléfono / WhatsApp" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} required={false} />
             </div>
 
             {/* VISTA PREVIA Y QR PÚBLICO */}
             {userId && (
               <>
-                <SectionDivider title="Tu Código QR Público" icon={<QrCode size={16} color={ENJ_NAVY} />} />
+                <SectionDivider title="Tu Credencial QR de Elenco" icon={<QrCode size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FAFBFF", border: "1.5px dashed rgba(0,11,111,0.2)", borderRadius: 16, padding: 20, flexWrap: "wrap", gap: 16 }}>
                   <div>
-                    <h4 style={{ margin: "0 0 4px", fontSize: 16, color: ENJ_NAVY, fontWeight: 800 }}>Muestra este QR a otros Scouts</h4>
-                    <p style={{ margin: 0, fontSize: 12, color: "rgba(0,11,111,0.6)" }}>Al escanearlo verán tu biografía, gustos e Instagram.</p>
+                    <h4 style={{ margin: "0 0 4px", fontSize: 16, color: ENJ_NAVY, fontWeight: 800 }}>Muestra este QR al staff y elenco</h4>
+                    <p style={{ margin: 0, fontSize: 12, color: "rgba(0,11,111,0.6)" }}>Permite que escaneen tus habilidades, datos de contacto y confirmación de casting.</p>
                   </div>
                   <div style={{ background: "#fff", padding: 10, borderRadius: 12, border: "1px solid rgba(0,11,111,0.1)" }}>
                     <QRCodeSVG value={qrPublicUrl} size={100} fgColor={ENJ_NAVY} />
+                  </div>
+                </div>
+
+                {/* ESPACIO DE INTERACCIÓN DEL ELENCO */}
+                <SectionDivider title="Muro de Interacción del Elenco" icon={<Users size={16} color={ENJ_NAVY} />} />
+                <div style={{ background: "#F4F5FA", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 16, padding: 18 }}>
+                  <p style={{ fontSize: 13, color: ENJ_NAVY, margin: "0 0 12px", fontWeight: 600 }}>
+                    Espacio exclusivo para interactuar con otros miembros inscritos del ENJ 2026:
+                  </p>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                    <input
+                      type="text"
+                      placeholder="Escribe un saludo o mensaje para el elenco..."
+                      value={nuevoMensaje}
+                      onChange={(e) => setNuevoMensaje(e.target.value)}
+                      style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, outline: "none" }}
+                    />
+                    <button type="button" onClick={handleEnviarMensajeMuro} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Send size={16} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 180, overflowY: "auto" }}>
+                    {comentarios.length === 0 ? (
+                      <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>Aún no hay mensajes en el muro. ¡Sé el primero en saludar!</span>
+                    ) : (
+                      comentarios.map((c) => (
+                        <div key={c.id} style={{ background: "#fff", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.08)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                            <strong style={{ fontSize: 12, color: ENJ_NAVY }}>{c.autor}</strong>
+                            <span style={{ fontSize: 10, color: "rgba(0,11,111,0.4)" }}>{c.fecha}</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 13, color: "#333" }}>{c.mensaje}</p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </>
             )}
 
             <button type="button" onClick={handleSaveProfile} disabled={loading} style={{ alignSelf: "flex-start", padding: "14px 28px", borderRadius: 10, border: "none", background: ENJ_MAGENTA, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              {loading ? "Guardando..." : "Guardar Perfil"}
+              {loading ? "Guardando..." : "Guardar Credencial de Elenco"}
             </button>
           </form>
         </div>

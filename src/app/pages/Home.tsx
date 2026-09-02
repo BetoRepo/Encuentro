@@ -199,7 +199,7 @@ export function Home() {
           </div>
 
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.85)", maxWidth: 580, margin: "0 auto 36px", lineHeight: 1.6 }}>
-            El evento más importante del escultismo venezolano. Tres días de aventura, liderazgo y hermandad scout.
+            El show más grande del escultismo venezolano. Tres días donde tú eres el protagonista de la aventura, el liderazgo y la hermandad scout.
           </p>
 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
@@ -247,19 +247,32 @@ export function Home() {
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 16px", boxSizing: "border-box" }}>
         <div ref={infoRef} style={{ textAlign: "center", marginBottom: 70, paddingTop: "20px", boxSizing: "border-box" }}>
           <h2 style={{ color: "#000B6F", fontSize: "clamp(28px, 4.5vw, 36px)", fontWeight: 800, margin: "0 0 16px" }}>
-            ¿Qué es el ENJ?
+            ¡Bienvenidos al Set Principal!
           </h2>
           <p style={{ color: "#556080", fontSize: "18px", maxWidth: "750px", margin: "0 auto", lineHeight: "1.7" }}>
-            El Encuentro Nacional de Jóvenes 2026 es el espacio oficial de participación, empoderamiento y bienestar integral diseñado por y para la juventud de la Asociación de Scouts de Venezuela.
+            En esta temporada, la alfombra violeta se despliega para recibir a un elenco estelar que viene listo para enfrentar desafíos, ajustar su enfoque y potenciar su crecimiento. Aquí, cada participante deja de ser un espectador para convertirse en el protagonista de su propia historia.
             <br /><br />
-            Este evento no es solo un campamento o una reunión más; es una plataforma estratégica donde los jóvenes de todo el país se conectan para alzar su voz, compartir su cultura y desarrollar propuestas reales que impacten directamente en el rumbo de nuestra institución.
+            A través de este Guión de Temporada, vivirás una experiencia inmersiva. El éxito de esta producción depende de la conexión y de la capacidad de cada integrante para sintonizar con los objetivos estratégicos. En este escenario, las ideas fluyen en tiempo real, las decisiones se toman y la retroalimentación se vive en vivo.
+          </p>
+        </div>
+
+        <div style={{ textAlign: "center", marginBottom: 70, paddingTop: "20px", boxSizing: "border-box" }}>
+          <h2 style={{ color: "#4f006f", fontSize: "clamp(28px, 4.5vw, 36px)", fontWeight: 800, margin: "0 0 16px" }}>
+            El Clímax de la Temporada
+          </h2>
+          <p style={{ color: "#061e64", fontSize: "18px", maxWidth: "750px", margin: "0 auto", lineHeight: "1.7" }}>
+            Toda gran superproducción guarda su momento más esperado para el final. El clímax llegará cuando los reflectores se centren en la elección más importante: entre nuestro elenco, se elegirán a los dos nuevos Coordinadores Nacionales de la Red de Jóvenes, quienes asumirán el mando de la próxima temporada.
+            <br /><br />
+            Preparen sus posiciones, ajusten sus micrófonos y den su mejor actuación. El escenario está listo y el futuro está en sus manos.
+            <br /><br />
+            ¡Luces, cámara, particip-acción!
           </p>
         </div>
 
         {/* Ejes Temáticos */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Los 4 grandes Bloques de programa</h2>
-          <p style={{ color: "#666", fontSize: 15 }}>Descubre los grandes bloques de actividades preparados para ti</p>
+          <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>4 Realities, Una Sola Aventura</h2>
+          <p style={{ color: "#666", fontSize: 15 }}>Sintoniza las grandes experiencias que tenemos preparadas para ti</p>
         </div>
 
         <div
@@ -424,69 +437,65 @@ export function Home() {
 
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
           <div style={{ filter: "blur(7px)", pointerEvents: "none", userSelect: "none" }} aria-hidden="true">
-        {/* PROGRAMA DE ACTIVIDADES VIRTUALES CORREGIDO */}
-        <div style={{ marginBottom: 80 }}>
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Programa de Actividades Virtuales</h2>
-            <p style={{ color: "#666", fontSize: 15 }}>Sesiones previas de alineación y formación digital antes de vernos en Aguirre</p>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {agendaVirtual.map((day, dIdx) => (
-              <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
-                {/* Bloque Izquierdo Responsivo */}
-                <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="agenda-badge">
-                  <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
-                  <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.9, fontWeight: 600 }}>{day.date}</p>
-                </div>
-                {/* Bloque Eventos Responsivo */}
-                <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
-                  {day.events.map((ev, eIdx) => (
-                    <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
-                        <Clock size={14} style={{ color: day.color, flexShrink: 0 }} />
-                        <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
-                      </div>
-                      <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
-                    </div>
-                  ))}
-                </div>
+            {/* PROGRAMA DE ACTIVIDADES VIRTUALES CORREGIDO */}
+            <div style={{ marginBottom: 80 }}>
+              <div style={{ textAlign: "center", marginBottom: 40 }}>
+                <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Programa de Actividades Virtuales</h2>
+                <p style={{ color: "#666", fontSize: 15 }}>Sesiones previas de alineación y formación digital antes de vernos en Aguirre</p>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* CRONOGRAMA PRESENCIAL CORREGIDO */}
-        <div>
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma General</h2>
-            <p style={{ color: "#666", fontSize: 15 }}>La distribución oficial de bloques para los tres días de vivencia presencial</p>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {agendaPresencial.map((day, dIdx) => (
-              <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
-                {/* Bloque Izquierdo Responsivo */}
-                <div style={{ background: day.color, color: day.color === ENJ_YELLOW ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }}>
-                  <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
-                  <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.8, fontWeight: 600 }}>{day.date}</p>
-                </div>
-                {/* Bloque Eventos Responsivo */}
-                <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
-                  {day.events.map((ev, eIdx) => (
-                    <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
-                        <Clock size={14} style={{ color: ENJ_MAGENTA, flexShrink: 0 }} />
-                        <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
-                      </div>
-                      <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {agendaVirtual.map((day, dIdx) => (
+                  <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
+                    <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="agenda-badge">
+                      <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
+                      <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.9, fontWeight: 600 }}>{day.date}</p>
                     </div>
-                  ))}
-                </div>
+                    <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
+                      {day.events.map((ev, eIdx) => (
+                        <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
+                            <Clock size={14} style={{ color: day.color, flexShrink: 0 }} />
+                            <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
+                          </div>
+                          <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+
+            {/* CRONOGRAMA PRESENCIAL CORREGIDO */}
+            <div>
+              <div style={{ textAlign: "center", marginBottom: 40 }}>
+                <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma General</h2>
+                <p style={{ color: "#666", fontSize: 15 }}>La distribución oficial de bloques para los tres días de vivencia presencial</p>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {agendaPresencial.map((day, dIdx) => (
+                  <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
+                    <div style={{ background: day.color, color: day.color === ENJ_YELLOW ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }}>
+                      <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
+                      <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.8, fontWeight: 600 }}>{day.date}</p>
+                    </div>
+                    <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
+                      {day.events.map((ev, eIdx) => (
+                        <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
+                            <Clock size={14} style={{ color: ENJ_MAGENTA, flexShrink: 0 }} />
+                            <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
+                          </div>
+                          <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(245,247,251,0.28)" }}>
             <span style={{ color: ENJ_NAVY, background: "rgba(255,255,255,0.9)", padding: "14px 26px", borderRadius: 12, fontSize: "clamp(20px, 4vw, 30px)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", boxShadow: "0 8px 24px rgba(0,11,111,0.14)" }}>
