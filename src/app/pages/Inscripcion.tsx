@@ -153,7 +153,6 @@ export function Inscripcion() {
     async function comprobarRegistroExistente() {
       try {
         const user = JSON.parse(localStorage.getItem("enj_user") || "null");
-        
         if (user) {
           setCorreo(user.email || "");
 
