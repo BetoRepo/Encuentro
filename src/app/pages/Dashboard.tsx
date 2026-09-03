@@ -12,11 +12,12 @@ import {
   Mail, 
   Phone, 
   FileText, 
-  ExternalLink 
+  ExternalLink,
+  Compass
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
-// --- CONSTANTES DE IDENTIDAD VISUAL ENJ 2026 ---
+// --- IDENTIDAD VISUAL ENJ 2026 / ASV ---
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
 const TASA_BCV_FALLBACK = 36.5; 
@@ -76,11 +77,11 @@ export function Dashboard() {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
-  // Estado para modal de edición de perfil
-  const [editingProfile, setEditingProfile] = useState<DashboardParticipant | null>(null);
-  const [savingProfile, setSavingProfile] = useState(false);
+  // Estado para modal de edición de expediente
+  const [editingParticipant, setEditingParticipant] = useState<DashboardParticipant | null>(null);
+  const [savingParticipant, setSavingParticipant] = useState(false);
 
-  // --- CONSULTA DE TASA BCV OFICIAL ---
+  // --- CONSULTA TASA BCV ---
   const fetchBcvRate = async (): Promise<number> => {
     try {
       const response = await fetch("https://pydolarve.org/api/v1/dollar?page=bcv", {
@@ -90,12 +91,12 @@ export function Dashboard() {
       const result = await response.json();
       return Number(result?.monitors?.usd?.price) || TASA_BCV_FALLBACK;
     } catch {
-      console.warn("Tasa en tiempo real no disponible. Usando tasa de resguardo.");
+      console.warn("⚜️ Tasa BCV no disponible. Usando valor de resguardo.");
       return TASA_BCV_FALLBACK;
     }
   };
 
-  // --- CARGA DESACOPLADA Y OPTIMIZADA PARA EVITAR TIMEOUT ---
+  // --- CARGA DIRECTA DESDE 'PARTICIPANTES' (SIN JOINS PESADOS) ---
   const loadDashboardData = async () => {
     setLoading(true);
     setError("");
@@ -103,14 +104,14 @@ export function Dashboard() {
     try {
       const bcvRate = await fetchBcvRate();
 
-      // 1. Cargar únicamente la tabla participantes
+      // 1. Apuntar directamente a la tabla maestra 'participantes'
       const { data: rawParticipants, error: partError } = await supabase
         .from("participantes")
         .select("*");
 
       if (partError) throw partError;
 
-      // 2. Cargar relacionales por separado en paralelo para no forzar los JOINs de PostgreSQL
+      // 2. Consulta paralela de tablas hijas para evitar 'statement timeout'
       const [pagosRes, docsRes] = await Promise.all([
         supabase.from("pagos").select("*"),
         supabase.from("documentos_participante").select("*")
@@ -122,12 +123,11 @@ export function Dashboard() {
       const todosLosPagos: Pago[] = pagosRes.data || [];
       const todosLosDocumentos: Documento[] = docsRes.data || [];
 
-      // 3. Mapear y enlazar relaciones en memoria del cliente
+      // 3. Enlazado de relaciones por Cédula o ID en memoria
       const participants: DashboardParticipant[] = (rawParticipants || []).map((p: any) => {
         const idUsuario = p.id || p.id_usuario;
         const cedulaUsuario = p.cedula;
 
-        // Filtrar pagos y documentos por id o cédula
         const pagosRelacionados = todosLosPagos.filter((pago: any) => 
           (pago.cedula_participante && pago.cedula_participante === cedulaUsuario) ||
           (pago.participante_id && pago.participante_id === idUsuario)
@@ -155,12 +155,9 @@ export function Dashboard() {
         };
       });
 
-      setData({
-        bcvRate,
-        participants,
-      });
+      setData({ bcvRate, participants });
     } catch (err: any) {
-      setError(err.message || "Error al cargar la información del Dashboard.");
+      setError(err.message || "Error al cargar la lista de participantes del ENJ.");
     } finally {
       setLoading(false);
     }
@@ -170,16 +167,15 @@ export function Dashboard() {
     loadDashboardData();
   }, []);
 
-  // --- ELIMINAR CUOTA DUPLICADA ---
+  // --- ELIMINAR REGISTRO DE PAGO DUPLICADO ---
   const handleEliminarPago = async (pagoId?: string) => {
-    if (!pagoId) return alert("El registro de pago no tiene un ID válido.");
-    if (!confirm("¿Estás seguro de eliminar este pago duplicado? Esta acción no se puede deshacer.")) return;
+    if (!pagoId) return alert("ID de pago no válido.");
+    if (!confirm("¿Eliminar este registro de pago duplicado?")) return;
 
     setDeletingId(pagoId);
     try {
       const { error } = await supabase.from("pagos").delete().eq("id", pagoId);
       if (error) throw error;
-      alert("Pago eliminado exitosamente.");
       await loadDashboardData();
     } catch (err: any) {
       alert("Error al eliminar el pago: " + err.message);
@@ -188,41 +184,41 @@ export function Dashboard() {
     }
   };
 
-  // --- GUARDAR EDICIÓN EN LA TABLA CORRECTA (PARTICIPANTES) ---
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  // --- ACTUALIZACIÓN DIRECTA EN LA TABLA 'PARTICIPANTES' ---
+  const handleSaveParticipant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProfile) return;
+    if (!editingParticipant) return;
 
-    setSavingProfile(true);
+    setSavingParticipant(true);
     try {
       const { error } = await supabase
         .from("participantes")
         .update({
-          nombre: editingProfile.nombre,
-          apellido: editingProfile.apellido,
-          correo: editingProfile.correo,
-          telefono: editingProfile.telefono,
-          region: editingProfile.region,
-          distrito: editingProfile.distrito,
-          grupo_scout: editingProfile.grupo_scout,
-          rama: editingProfile.rama,
-          tipo_participante: editingProfile.tipo_participante,
+          nombre: editingParticipant.nombre,
+          apellido: editingParticipant.apellido,
+          correo: editingParticipant.correo,
+          telefono: editingParticipant.telefono,
+          region: editingParticipant.region,
+          distrito: editingParticipant.distrito,
+          grupo_scout: editingParticipant.grupo_scout,
+          rama: editingParticipant.rama,
+          tipo_participante: editingParticipant.tipo_participante,
         })
-        .eq("cedula", editingProfile.cedula);
+        .eq("cedula", editingParticipant.cedula);
 
       if (error) throw error;
 
-      alert("Perfil actualizado correctamente.");
-      setEditingProfile(null);
+      alert("⚜️ Expediente del participante actualizado con éxito.");
+      setEditingParticipant(null);
       await loadDashboardData();
     } catch (err: any) {
-      alert("Error al actualizar el perfil: " + err.message);
+      alert("Error al actualizar la información: " + err.message);
     } finally {
-      setSavingProfile(false);
+      setSavingParticipant(false);
     }
   };
 
-  // Guard de Autenticación Admin
+  // Guard de Autenticación
   const currentUser = JSON.parse(localStorage.getItem("enj_user") || "null");
   if (currentUser?.role !== "admin") return <Navigate to="/" replace />;
 
@@ -230,7 +226,7 @@ export function Dashboard() {
     return (
       <main style={{ padding: 48, color: ENJ_NAVY, textAlign: "center", minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600 }}>
-          <RefreshCw className="animate-spin" size={22} /> Cargando Dashboard del ENJ 2026...
+          <RefreshCw className="animate-spin" size={22} /> Sincronizando expedientes Scouts ENJ 2026...
         </p>
       </main>
     );
@@ -239,10 +235,10 @@ export function Dashboard() {
   if (error) {
     return (
       <main style={{ padding: 48, color: ENJ_MAGENTA, textAlign: "center", minHeight: "70vh" }}>
-        <h2>Error al conectar con el servidor</h2>
+        <h2>Error de conexión con la base de datos</h2>
         <p>{error}</p>
         <button onClick={loadDashboardData} style={{ background: ENJ_NAVY, color: "#fff", border: "none", padding: "10px 20px", borderRadius: 8, cursor: "pointer", marginTop: 12 }}>
-          Reintentar conexión
+          Reintentar Carga
         </button>
       </main>
     );
@@ -250,34 +246,36 @@ export function Dashboard() {
 
   if (!data) return null;
 
-  // Métricas globales
+  // Cálculo de Métricas Financieras
   const totalBsGlobal = data.participants.reduce((acc, part) => {
     return acc + part.pagos.reduce((pAcc, p) => pAcc + (Number(p.monto_bs) || 0), 0);
   }, 0);
   const totalUsdOficialBcv = totalBsGlobal / (data.bcvRate || 1);
 
   const cards = [
-    { label: "Personas inscritas", value: data.participants.length.toLocaleString("es-VE"), icon: <Users size={24} />, color: ENJ_NAVY },
-    { label: "Pagos registrados", value: data.participants.reduce((acc, p) => acc + p.pagos.length, 0).toLocaleString("es-VE"), icon: <Receipt size={24} />, color: ENJ_MAGENTA },
-    { label: "Total Recaudado (Convertido a BCV)", value: `${totalBsGlobal.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs / ${totalUsdOficialBcv.toLocaleString("es-VE", { minimumFractionDigits: 2 })} USD`, icon: <WalletCards size={24} />, color: "#157347" },
+    { label: "Participantes Registrados", value: data.participants.length.toLocaleString("es-VE"), icon: <Users size={24} />, color: ENJ_NAVY },
+    { label: "Transacciones Validadas", value: data.participants.reduce((acc, p) => acc + p.pagos.length, 0).toLocaleString("es-VE"), icon: <Receipt size={24} />, color: ENJ_MAGENTA },
+    { label: "Fondo Recaudado (Tasa BCV)", value: `${totalBsGlobal.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs / ${totalUsdOficialBcv.toLocaleString("es-VE", { minimumFractionDigits: 2 })} USD`, icon: <WalletCards size={24} />, color: "#157347" },
   ];
 
   return (
     <main style={{ background: "#F0F2FA", minHeight: "70vh", padding: "48px 24px 80px", position: "relative" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         
-        {/* ENCABEZADO */}
+        {/* ENCABEZADO SCOUT */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <p style={{ margin: 0, color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em" }}>Administración ENJ 2026</p>
-            <h1 style={{ margin: "10px 0 8px", color: ENJ_NAVY, fontSize: 34 }}>Dashboard de Inscripción y Expedientes</h1>
+            <p style={{ margin: 0, color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", display: "flex", alignItems: "center", gap: 6 }}>
+              <Compass size={14} /> Asociación de Scouts de Venezuela • ENJ 2026
+            </p>
+            <h1 style={{ margin: "10px 0 8px", color: ENJ_NAVY, fontSize: 34 }}>Panel de Control de Participantes</h1>
             <p style={{ margin: "0 0 30px", color: "rgba(0,11,111,0.62)" }}>Tasa BCV Oficial: <strong>{data.bcvRate.toFixed(2)} Bs/USD</strong></p>
           </div>
           <button 
             onClick={loadDashboardData} 
             style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.1)", color: ENJ_NAVY, padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 30 }}
           >
-            <RefreshCw size={14} /> Actualizar Datos
+            <RefreshCw size={14} /> Refrescar Datos
           </button>
         </div>
         
@@ -292,10 +290,10 @@ export function Dashboard() {
           ))}
         </section>
 
-        {/* LISTA DE PARTICIPANTES */}
+        {/* LISTADO DE PARTICIPANTES DESDE 'PARTICIPANTES' */}
         <section style={{ marginTop: 30, display: "grid", gap: 18 }}>
           {data.participants.length === 0 ? (
-            <div style={{ background: "#fff", borderRadius: 14, padding: 24, textAlign: "center", color: ENJ_NAVY }}>No hay participantes registrados aún.</div>
+            <div style={{ background: "#fff", borderRadius: 14, padding: 24, textAlign: "center", color: ENJ_NAVY }}>No se encontraron participantes registrados.</div>
           ) : (
             data.participants.map((participant) => {
               const esAdulto = participant.tipo_participante?.toLowerCase().includes("adulto") || 
@@ -315,24 +313,24 @@ export function Dashboard() {
               return (
                 <article key={participant.id} style={{ background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 4px 24px rgba(0,11,111,0.08)" }}>
                   
-                  {/* CABECERA PARTICIPANTE */}
+                  {/* DETALLES DEL PARTICIPANTE */}
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-start" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                         <h2 style={{ margin: 0, color: ENJ_NAVY, fontSize: 22 }}>{participant.nombre} {participant.apellido}</h2>
                         <span style={{ background: esAdulto ? "#E8F5E9" : "#E3F2FD", color: esAdulto ? "#2E7D32" : "#1565C0", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12 }}>
-                          {esAdulto ? "Adulto de Soporte ($100)" : "Joven ($145)"}
+                          {esAdulto ? "Adulto de Soporte ($100)" : "Joven Participante ($145)"}
                         </span>
                         
                         <button
-                          onClick={() => setEditingProfile({ ...participant })}
+                          onClick={() => setEditingParticipant({ ...participant })}
                           style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,11,111,0.05)", border: "none", color: ENJ_NAVY, padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                         >
-                          <Edit size={14} /> Gestionar Perfil
+                          <Edit size={14} /> Editar Expediente
                         </button>
                       </div>
                       <p style={{ margin: "6px 0 0", color: "rgba(0,11,111,0.6)", fontSize: 14 }}>
-                        CI: <strong>{participant.cedula}</strong> • {participant.region || "Sin región"} / {participant.distrito || "Sin distrito"}
+                        C.I.: <strong>{participant.cedula}</strong> • Región: {participant.region || "S/R"} • Distrito: {participant.distrito || "S/D"}
                       </p>
                     </div>
 
@@ -341,35 +339,35 @@ export function Dashboard() {
                         Abonado: <span style={{ color: "#157347" }}>{totalPagadoUsdReal.toLocaleString("es-VE", { minimumFractionDigits: 2 })} USD</span>
                       </div>
                       <div style={{ color: deudaUSD === 0 ? "#157347" : ENJ_MAGENTA, fontWeight: 800, fontSize: 15, marginTop: 4 }}>
-                        {deudaUSD === 0 ? "✓ Solvente Total" : `Debe: ${deudaUSD.toFixed(2)} USD (~${deudaEstimadaBs.toLocaleString("es-VE", { minimumFractionDigits: 0 })} Bs)`}
+                        {deudaUSD === 0 ? "✓ Solvente Total" : `Pendiente: ${deudaUSD.toFixed(2)} USD (~${deudaEstimadaBs.toLocaleString("es-VE", { minimumFractionDigits: 0 })} Bs)`}
                       </div>
                     </div>
                   </div>
 
-                  {/* SECCIONES DE DETALLES */}
+                  {/* BLOQUES DE INFORMACIÓN DE REGISTRO */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                     
-                    {/* 1. CONTACTO */}
+                    {/* CONTACTO */}
                     <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
-                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Datos de Contacto</strong>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Contacto</strong>
                       <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)", display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                        <Mail size={14} color={ENJ_MAGENTA} /> {participant.correo || "Sin correo"}
+                        <Mail size={14} color={ENJ_MAGENTA} /> {participant.correo || "No registrado"}
                       </div>
                       <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Phone size={14} color={ENJ_MAGENTA} /> {participant.telefono || "Sin teléfono"}
+                        <Phone size={14} color={ENJ_MAGENTA} /> {participant.telefono || "No registrado"}
                       </div>
                     </div>
 
-                    {/* 2. ESTRUCTURA SCOUT */}
+                    {/* ESTRUCTURA SCOUT */}
                     <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
                       <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Estructura Scout</strong>
                       <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)", marginBottom: 4 }}>Grupo: <strong>{participant.grupo_scout || "S/G"}</strong></div>
-                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)" }}>Rama/Rol: <strong>{participant.rama || "S/R"}</strong></div>
+                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)" }}>Rama/Función: <strong>{participant.rama || "S/R"}</strong></div>
                     </div>
 
-                    {/* 3. DOCUMENTOS DESCARGABLES */}
+                    {/* EXPEDIENTE DIGITAL Y DESCARGA DE DOCUMENTOS */}
                     <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
-                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Expediente Digital</strong>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Documentación / Permisos</strong>
                       {participant.documentos.length > 0 ? (
                         participant.documentos.map((doc, idx) => (
                           <div key={doc.id || idx} style={{ fontSize: 12, marginBottom: 6 }}>
@@ -385,13 +383,13 @@ export function Dashboard() {
                           </div>
                         ))
                       ) : (
-                        <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin documentos subidos</span>
+                        <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin documentos cargados</span>
                       )}
                     </div>
 
-                    {/* 4. HISTORIAL DE PAGOS Y BORRADO DE DUPLICADOS */}
+                    {/* CUOTAS Y GESTIÓN DE REGISTROS */}
                     <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
-                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Historial de Pagos</strong>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Cuotas Depositadas</strong>
                       {participant.pagos.length ? participant.pagos.map((payment, index) => {
                         const tasaAplicada = payment.tasa_cambio || 1;
                         const usdCalculado = payment.monto_usd || (payment.monto_bs / tasaAplicada);
@@ -402,13 +400,13 @@ export function Dashboard() {
                               <strong>{payment.numero_cuota}:</strong> {Number(payment.monto_bs).toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs 
                               <br />
                               <span style={{ color: "#157347", fontWeight: 600 }}>(${usdCalculado.toFixed(2)} USD)</span>
-                              <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}> • Ref: {payment.referencia || "S/R"}</span>
+                              <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}> • Ref: {payment.referencia || "N/A"}</span>
                             </div>
                             {payment.id && (
                               <button
                                 onClick={() => handleEliminarPago(payment.id)}
                                 disabled={deletingId === payment.id}
-                                title="Eliminar cuota o pago duplicado"
+                                title="Eliminar pago duplicado"
                                 style={{ background: "#FFEEEF", border: "none", color: ENJ_MAGENTA, padding: 6, borderRadius: 6, cursor: "pointer" }}
                               >
                                 <Trash2 size={14} />
@@ -416,7 +414,7 @@ export function Dashboard() {
                             )}
                           </div>
                         );
-                      }) : <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin pagos registrados</div>}
+                      }) : <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin cuotas abonadas</div>}
                     </div>
 
                   </div>
@@ -427,54 +425,54 @@ export function Dashboard() {
         </section>
       </div>
 
-      {/* --- MODAL DE EDICIÓN --- */}
-      {editingProfile && (
+      {/* --- MODAL PARA EDITAR INFORMACIÓN DE PARTICIPANTES --- */}
+      {editingParticipant && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,11,111,0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24, boxSizing: "border-box" }}>
           <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 40px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(0,11,111,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
               <h3 style={{ margin: 0, color: ENJ_NAVY, fontSize: 18, display: "flex", alignItems: "center", gap: 8 }}>
-                <Edit size={20} /> Editar Perfil: {editingProfile.nombre}
+                <Edit size={20} /> Editar Datos del Participante
               </h3>
-              <button onClick={() => setEditingProfile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.5)" }}>
+              <button onClick={() => setEditingParticipant(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.5)" }}>
                 <X size={24} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+            <form onSubmit={handleSaveParticipant} style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Nombre</label>
-                  <input required value={editingProfile.nombre} onChange={e => setEditingProfile({...editingProfile, nombre: e.target.value})} style={inputStyle} />
+                  <input required value={editingParticipant.nombre} onChange={e => setEditingParticipant({...editingParticipant, nombre: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Apellido</label>
-                  <input required value={editingProfile.apellido} onChange={e => setEditingProfile({...editingProfile, apellido: e.target.value})} style={inputStyle} />
+                  <input required value={editingParticipant.apellido} onChange={e => setEditingParticipant({...editingParticipant, apellido: e.target.value})} style={inputStyle} />
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Correo Electrónico</label>
-                  <input type="email" value={editingProfile.correo} onChange={e => setEditingProfile({...editingProfile, correo: e.target.value})} style={inputStyle} />
+                  <input type="email" value={editingParticipant.correo} onChange={e => setEditingParticipant({...editingParticipant, correo: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Teléfono</label>
-                  <input value={editingProfile.telefono} onChange={e => setEditingProfile({...editingProfile, telefono: e.target.value})} style={inputStyle} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Teléfono Contacto</label>
+                  <input value={editingParticipant.telefono} onChange={e => setEditingParticipant({...editingParticipant, telefono: e.target.value})} style={inputStyle} />
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rol en el Evento</label>
-                  <select value={editingProfile.tipo_participante} onChange={e => setEditingProfile({...editingProfile, tipo_participante: e.target.value})} style={inputStyle}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rol en el ENJ</label>
+                  <select value={editingParticipant.tipo_participante} onChange={e => setEditingParticipant({...editingParticipant, tipo_participante: e.target.value})} style={inputStyle}>
                     <option value="Joven Participante">Joven Participante</option>
                     <option value="Adulto de Soporte / Dirigente">Adulto de Soporte / Dirigente</option>
                     <option value="Equipo de Servicio / Staff">Equipo de Servicio / Staff</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rama</label>
-                  <select value={editingProfile.rama} onChange={e => setEditingProfile({...editingProfile, rama: e.target.value})} style={inputStyle}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rama Scout</label>
+                  <select value={editingParticipant.rama} onChange={e => setEditingParticipant({...editingParticipant, rama: e.target.value})} style={inputStyle}>
                     <option value="Comunidad (Caminante)">Comunidad (Caminante)</option>
                     <option value="Clan (Rover)">Clan (Rover)</option>
                     <option value="Dirigencia / Adulto de Soporte">Dirigencia / Adulto de Soporte</option>
@@ -485,25 +483,25 @@ export function Dashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Región</label>
-                  <input value={editingProfile.region} onChange={e => setEditingProfile({...editingProfile, region: e.target.value})} style={inputStyle} />
+                  <input value={editingParticipant.region} onChange={e => setEditingParticipant({...editingParticipant, region: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Distrito</label>
-                  <input value={editingProfile.distrito} onChange={e => setEditingProfile({...editingProfile, distrito: e.target.value})} style={inputStyle} />
+                  <input value={editingParticipant.distrito} onChange={e => setEditingParticipant({...editingParticipant, distrito: e.target.value})} style={inputStyle} />
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Grupo Scout</label>
-                <input value={editingProfile.grupo_scout} onChange={e => setEditingProfile({...editingProfile, grupo_scout: e.target.value})} style={inputStyle} />
+                <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Nombre del Grupo Scout</label>
+                <input value={editingParticipant.grupo_scout} onChange={e => setEditingParticipant({...editingParticipant, grupo_scout: e.target.value})} style={inputStyle} />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 10 }}>
-                <button type="button" onClick={() => setEditingProfile(null)} style={{ padding: "10px 20px", borderRadius: 8, border: "none", background: "#F4F5FA", color: ENJ_NAVY, fontWeight: 600, cursor: "cursor" }}>
+                <button type="button" onClick={() => setEditingParticipant(null)} style={{ padding: "10px 20px", borderRadius: 8, border: "none", background: "#F4F5FA", color: ENJ_NAVY, fontWeight: 600, cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={savingProfile} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 8, border: "none", background: ENJ_MAGENTA, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
-                  <Save size={16} /> {savingProfile ? "Guardando..." : "Guardar Cambios"}
+                <button type="submit" disabled={savingParticipant} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 8, border: "none", background: ENJ_MAGENTA, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+                  <Save size={16} /> {savingParticipant ? "Guardando..." : "Guardar Registro"}
                 </button>
               </div>
             </form>
