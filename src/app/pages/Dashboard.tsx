@@ -42,7 +42,7 @@ type Documento = {
 };
 
 type DashboardParticipant = {
-  id: string; // UUID de la tabla profiles / participantes
+  id: string;
   cedula: string;
   nombre: string;
   apellido: string;
@@ -70,7 +70,6 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-// --- COMPONENTE PRINCIPAL ---
 export function Dashboard() {
   const [data, setData] = useState<{ bcvRate: number; participants: DashboardParticipant[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +95,7 @@ export function Dashboard() {
     }
   };
 
-  // --- CARGA INTEGRADA DESDE SUPABASE ---
+  // --- CARGA DESACOPLADA Y OPTIMIZADA PARA EVITAR TIMEOUT ---
   const loadDashboardData = async () => {
     setLoading(true);
     setError("");
@@ -104,32 +103,57 @@ export function Dashboard() {
     try {
       const bcvRate = await fetchBcvRate();
 
-      // Consulta real del esquema ENJ: participantes + pagos + documentos relacionados por cedula_participante.
-      const { data: participantsData, error: dbError } = await supabase
+      // 1. Cargar únicamente la tabla participantes
+      const { data: rawParticipants, error: partError } = await supabase
         .from("participantes")
-        .select(`
-          *,
-          pagos (*),
-          documentos_participante (*)
-        `);
+        .select("*");
 
-      if (dbError) throw dbError;
+      if (partError) throw partError;
 
-      const participants: DashboardParticipant[] = (participantsData || []).map((p: any) => ({
-        id: p.id_usuario || p.cedula || crypto.randomUUID(),
-        cedula: p.cedula || "Sin Cédula",
-        nombre: p.nombre || "Sin Nombre",
-        apellido: p.apellido || "",
-        correo: p.correo || "",
-        telefono: p.telefono || "",
-        region: p.region || p.selected_region || "",
-        distrito: p.distrito || p.selected_district || "",
-        grupo_scout: p.grupo_scout || "",
-        rama: p.rama || p.rama_scout || "",
-        tipo_participante: p.tipo_participante || p.rol_evento || "Joven Participante",
-        pagos: p.pagos || [],
-        documentos: p.documentos_participante || []
-      }));
+      // 2. Cargar relacionales por separado en paralelo para no forzar los JOINs de PostgreSQL
+      const [pagosRes, docsRes] = await Promise.all([
+        supabase.from("pagos").select("*"),
+        supabase.from("documentos_participante").select("*")
+      ]);
+
+      if (pagosRes.error) throw pagosRes.error;
+      if (docsRes.error) throw docsRes.error;
+
+      const todosLosPagos: Pago[] = pagosRes.data || [];
+      const todosLosDocumentos: Documento[] = docsRes.data || [];
+
+      // 3. Mapear y enlazar relaciones en memoria del cliente
+      const participants: DashboardParticipant[] = (rawParticipants || []).map((p: any) => {
+        const idUsuario = p.id || p.id_usuario;
+        const cedulaUsuario = p.cedula;
+
+        // Filtrar pagos y documentos por id o cédula
+        const pagosRelacionados = todosLosPagos.filter((pago: any) => 
+          (pago.cedula_participante && pago.cedula_participante === cedulaUsuario) ||
+          (pago.participante_id && pago.participante_id === idUsuario)
+        );
+
+        const docsRelacionados = todosLosDocumentos.filter((doc: any) => 
+          (doc.cedula_participante && doc.cedula_participante === cedulaUsuario) ||
+          (doc.participante_id && doc.participante_id === idUsuario)
+        );
+
+        return {
+          id: idUsuario || cedulaUsuario || crypto.randomUUID(),
+          cedula: p.cedula || "Sin Cédula",
+          nombre: p.nombre || "Sin Nombre",
+          apellido: p.apellido || "",
+          correo: p.correo || "",
+          telefono: p.telefono || "",
+          region: p.region || p.selected_region || "",
+          distrito: p.distrito || p.selected_district || "",
+          grupo_scout: p.grupo_scout || "",
+          rama: p.rama || p.rama_scout || "",
+          tipo_participante: p.tipo_participante || p.rol_evento || "Joven Participante",
+          pagos: pagosRelacionados,
+          documentos: docsRelacionados
+        };
+      });
 
       setData({
         bcvRate,
@@ -146,7 +170,7 @@ export function Dashboard() {
     loadDashboardData();
   }, []);
 
-  // --- ACCIÓN: ELIMINAR PAGO DUPLICADO ---
+  // --- ELIMINAR CUOTA DUPLICADA ---
   const handleEliminarPago = async (pagoId?: string) => {
     if (!pagoId) return alert("El registro de pago no tiene un ID válido.");
     if (!confirm("¿Estás seguro de eliminar este pago duplicado? Esta acción no se puede deshacer.")) return;
@@ -164,7 +188,7 @@ export function Dashboard() {
     }
   };
 
-  // --- ACCIÓN: GUARDAR EDICIÓN DE PERFIL ---
+  // --- GUARDAR EDICIÓN EN LA TABLA CORRECTA (PARTICIPANTES) ---
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProfile) return;
@@ -172,20 +196,19 @@ export function Dashboard() {
     setSavingProfile(true);
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("participantes")
         .update({
           nombre: editingProfile.nombre,
           apellido: editingProfile.apellido,
           correo: editingProfile.correo,
           telefono: editingProfile.telefono,
-          selected_region: editingProfile.region,
-          selected_district: editingProfile.distrito,
+          region: editingProfile.region,
+          distrito: editingProfile.distrito,
           grupo_scout: editingProfile.grupo_scout,
-          rama_scout: editingProfile.rama,
-          rol_evento: editingProfile.tipo_participante,
-          updated_at: new Date().toISOString(),
+          rama: editingProfile.rama,
+          tipo_participante: editingProfile.tipo_participante,
         })
-        .eq("id", editingProfile.id);
+        .eq("cedula", editingProfile.cedula);
 
       if (error) throw error;
 
@@ -227,7 +250,7 @@ export function Dashboard() {
 
   if (!data) return null;
 
-  // Cálculos consolidados globales
+  // Métricas globales
   const totalBsGlobal = data.participants.reduce((acc, part) => {
     return acc + part.pagos.reduce((pAcc, p) => pAcc + (Number(p.monto_bs) || 0), 0);
   }, 0);
@@ -281,8 +304,8 @@ export function Dashboard() {
               const costoTotalUSD = esAdulto ? 100 : 145;
 
               const totalPagadoUsdReal = participant.pagos.reduce((acc, p) => {
-                const tasaIndividual = p.tasa_cambio && p.tasa_cambio > 0 ? p.tasa_cambio : 1;
-                const usdCalculado = p.monto_usd && p.monto_usd > 0 ? p.monto_usd : (p.monto_bs / tasaIndividual);
+                const tasaAplicada = p.tasa_cambio && p.tasa_cambio > 0 ? p.tasa_cambio : 1;
+                const usdCalculado = p.monto_usd && p.monto_usd > 0 ? p.monto_usd : (p.monto_bs / tasaAplicada);
                 return acc + usdCalculado;
               }, 0);
 
@@ -323,7 +346,7 @@ export function Dashboard() {
                     </div>
                   </div>
 
-                  {/* GRID DE DETALLES DEL PARTICIPANTE */}
+                  {/* SECCIONES DE DETALLES */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                     
                     {/* 1. CONTACTO */}
@@ -344,7 +367,7 @@ export function Dashboard() {
                       <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)" }}>Rama/Rol: <strong>{participant.rama || "S/R"}</strong></div>
                     </div>
 
-                    {/* 3. DOCUMENTOS STORAGE */}
+                    {/* 3. DOCUMENTOS DESCARGABLES */}
                     <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
                       <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Expediente Digital</strong>
                       {participant.documentos.length > 0 ? (
@@ -352,6 +375,7 @@ export function Dashboard() {
                           <div key={doc.id || idx} style={{ fontSize: 12, marginBottom: 6 }}>
                             <a 
                               href={doc.url_archivo} 
+                              download
                               target="_blank" 
                               rel="noopener noreferrer" 
                               style={{ color: ENJ_MAGENTA, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
@@ -361,11 +385,11 @@ export function Dashboard() {
                           </div>
                         ))
                       ) : (
-                        <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin documentos en storage</span>
+                        <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin documentos subidos</span>
                       )}
                     </div>
 
-                    {/* 4. HISTORIAL DE PAGOS */}
+                    {/* 4. HISTORIAL DE PAGOS Y BORRADO DE DUPLICADOS */}
                     <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
                       <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Historial de Pagos</strong>
                       {participant.pagos.length ? participant.pagos.map((payment, index) => {
@@ -377,13 +401,14 @@ export function Dashboard() {
                             <div>
                               <strong>{payment.numero_cuota}:</strong> {Number(payment.monto_bs).toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs 
                               <br />
-                              <span style={{ color: "#157347", fontWeight: 600 }}>(${usdCalculado.toFixed(2)} USD)</span> • Tasa: <em>{tasaAplicada.toFixed(2)}</em>
+                              <span style={{ color: "#157347", fontWeight: 600 }}>(${usdCalculado.toFixed(2)} USD)</span>
+                              <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}> • Ref: {payment.referencia || "S/R"}</span>
                             </div>
                             {payment.id && (
                               <button
                                 onClick={() => handleEliminarPago(payment.id)}
                                 disabled={deletingId === payment.id}
-                                title="Eliminar pago duplicado"
+                                title="Eliminar cuota o pago duplicado"
                                 style={{ background: "#FFEEEF", border: "none", color: ENJ_MAGENTA, padding: 6, borderRadius: 6, cursor: "pointer" }}
                               >
                                 <Trash2 size={14} />
@@ -402,13 +427,13 @@ export function Dashboard() {
         </section>
       </div>
 
-      {/* --- MODAL PARA EDITAR PERFIL --- */}
+      {/* --- MODAL DE EDICIÓN --- */}
       {editingProfile && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,11,111,0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24, boxSizing: "border-box" }}>
           <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 40px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(0,11,111,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
               <h3 style={{ margin: 0, color: ENJ_NAVY, fontSize: 18, display: "flex", alignItems: "center", gap: 8 }}>
-                <Edit size={20} /> Gestionar Perfil: {editingProfile.nombre}
+                <Edit size={20} /> Editar Perfil: {editingProfile.nombre}
               </h3>
               <button onClick={() => setEditingProfile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.5)" }}>
                 <X size={24} />
@@ -474,7 +499,7 @@ export function Dashboard() {
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 10 }}>
-                <button type="button" onClick={() => setEditingProfile(null)} style={{ padding: "10px 20px", borderRadius: 8, border: "none", background: "#F4F5FA", color: ENJ_NAVY, fontWeight: 600, cursor: "pointer" }}>
+                <button type="button" onClick={() => setEditingProfile(null)} style={{ padding: "10px 20px", borderRadius: 8, border: "none", background: "#F4F5FA", color: ENJ_NAVY, fontWeight: 600, cursor: "cursor" }}>
                   Cancelar
                 </button>
                 <button type="submit" disabled={savingProfile} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 8, border: "none", background: ENJ_MAGENTA, color: "#fff", fontWeight: 700, cursor: "pointer" }}>
