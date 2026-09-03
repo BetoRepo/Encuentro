@@ -8,12 +8,11 @@ import {
   ChevronRight, 
   Eye, 
   X, 
-  Filter, 
   FileText, 
-  CheckCircle2, 
   AlertCircle,
-  ExternalLink,
-  Building
+  Download,
+  Building,
+  DollarSign
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -57,7 +56,7 @@ interface Documento {
   cedula_participante: string;
   tipo_documento: string;
   nombre_archivo: string;
-  url_archivo: string;
+  url_archivo?: string;
   archivo_base64?: string;
   created_at?: string;
 }
@@ -74,8 +73,13 @@ export function Dashboard() {
 
   // FILTROS
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>("");
   const [selectedTipoFilter, setSelectedTipoFilter] = useState<string>("");
+
+  // METRICAS RÁPIDAS Y FINANCIERAS
+  const [totalJovenes, setTotalJovenes] = useState<number>(0);
+  const [totalAdultos, setTotalAdultos] = useState<number>(0);
+  const [totalBsRecaudado, setTotalBsRecaudado] = useState<number>(0);
+  const [totalUsdRecaudado, setTotalUsdRecaudado] = useState<number>(0);
 
   // MODAL DE EXPEDIENTE
   const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null);
@@ -83,11 +87,7 @@ export function Dashboard() {
   const [modalDocs, setModalDocs] = useState<Documento[]>([]);
   const [loadingModal, setLoadingModal] = useState<boolean>(false);
 
-  // METRICAS RÁPIDAS
-  const [totalJovenes, setTotalJovenes] = useState<number>(0);
-  const [totalAdultos, setTotalAdultos] = useState<number>(0);
-
-  // 1. CARGA OPTIMIZADA DE PARTICIPANTES (SIN JOINS PESADOS)
+  // 1. CARGA OPTIMIZADA DE PARTICIPANTES
   const loadParticipantes = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
@@ -100,14 +100,9 @@ export function Dashboard() {
         .from("participantes")
         .select("*", { count: "planned" });
 
-      // Filtros del servidor
       if (searchTerm.trim() !== "") {
         const cleanSearch = searchTerm.trim();
         query = query.or(`cedula.ilike.%${cleanSearch}%,nombre.ilike.%${cleanSearch}%,apellido.ilike.%${cleanSearch}%`);
-      }
-
-      if (selectedRegionFilter) {
-        query = query.eq("region", selectedRegionFilter);
       }
 
       if (selectedTipoFilter) {
@@ -128,11 +123,12 @@ export function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchTerm, selectedRegionFilter, selectedTipoFilter]);
+  }, [page, searchTerm, selectedTipoFilter]);
 
-  // CARGA DE MÉTRICAS GENERALES
-  const loadMetrics = async () => {
+  // 2. CARGA DE MÉTRICAS GENERALES Y RECAUDACIÓN EN BS Y USD
+  const loadMetricsAndFinances = async () => {
     try {
+      // Conteo de Jóvenes y Adultos
       const { count: jovenesCount } = await supabase
         .from("participantes")
         .select("cedula", { count: "planned", head: true })
@@ -145,8 +141,28 @@ export function Dashboard() {
 
       setTotalJovenes(jovenesCount || 0);
       setTotalAdultos(adultosCount || 0);
+
+      // Sumatoria Financiera Ligera
+      const { data: pagosData, error: pagosErr } = await supabase
+        .from("pagos")
+        .select("monto_bs, tasa_cambio");
+
+      if (!pagosErr && pagosData) {
+        let bsSum = 0;
+        let usdSum = 0;
+
+        pagosData.forEach((pago) => {
+          const bs = Number(pago.monto_bs) || 0;
+          const tasa = Number(pago.tasa_cambio) || 1;
+          bsSum += bs;
+          usdSum += tasa > 0 ? bs / tasa : 0;
+        });
+
+        setTotalBsRecaudado(bsSum);
+        setTotalUsdRecaudado(usdSum);
+      }
     } catch (e) {
-      console.warn("No se pudieron obtener métricas secundarias:", e);
+      console.warn("No se pudieron actualizar las métricas financieras:", e);
     }
   };
 
@@ -155,10 +171,10 @@ export function Dashboard() {
   }, [loadParticipantes]);
 
   useEffect(() => {
-    loadMetrics();
+    loadMetricsAndFinances();
   }, []);
 
-  // 2. CARGA DEL EXPEDIENTE INDIVIDUAL (ON-DEMAND)
+  // 3. EXPEDIENTE INDIVIDUAL (CARGA BAJO DEMANDA)
   const openExpediente = async (participante: Participante) => {
     setSelectedParticipante(participante);
     setLoadingModal(true);
@@ -168,14 +184,10 @@ export function Dashboard() {
     try {
       const cleanCedula = participante.cedula.replace(/\D/g, "").trim();
 
-      // Peticiones paralelas livianas por Cédula exacta
       const [pagosRes, docsRes] = await Promise.all([
         supabase.from("pagos").select("*").eq("cedula_participante", cleanCedula).order("created_at", { ascending: true }),
         supabase.from("documentos_participante").select("*").eq("cedula_participante", cleanCedula)
       ]);
-
-      if (pagosRes.error) console.warn("Error leyendo pagos:", pagosRes.error);
-      if (docsRes.error) console.warn("Error leyendo documentos:", docsRes.error);
 
       setModalPagos(pagosRes.data || []);
       setModalDocs(docsRes.data || []);
@@ -186,59 +198,114 @@ export function Dashboard() {
     }
   };
 
+  // 4. FUNCIÓN PARA MANEJAR LA DESCARGA DE ARCHIVOS (URL O BASE64)
+  const handleDownloadFile = (doc: Documento) => {
+    try {
+      if (doc.url_archivo) {
+        window.open(doc.url_archivo, "_blank");
+        return;
+      }
+
+      if (doc.archivo_base64) {
+        const link = document.createElement("a");
+        const isFullDataUrl = doc.archivo_base64.startsWith("data:");
+        
+        link.href = isFullDataUrl ? doc.archivo_base64 : `data:application/octet-stream;base64,${doc.archivo_base64}`;
+        link.download = doc.nombre_archivo || `documento_${doc.tipo_documento}`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert("El archivo no posee un formato válido de descarga.");
+      }
+    } catch (e) {
+      console.error("Error intentando descargar el archivo:", e);
+      alert("No se pudo iniciar la descarga del archivo.");
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+  // CÁLCULOS DEL PARTICIPANTE SELECCIONADO EN EL MODAL
+  const modalTotalBs = modalPagos.reduce((acc, p) => acc + (Number(p.monto_bs) || 0), 0);
+  const modalTotalUsd = modalPagos.reduce((acc, p) => {
+    const bs = Number(p.monto_bs) || 0;
+    const tasa = Number(p.tasa_cambio) || 1;
+    return acc + (tasa > 0 ? bs / tasa : 0);
+  }, 0);
 
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "32px 24px 60px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         
-        {/* ENCABEZADO Y ACCIONES GENERALES */}
+        {/* ENCABEZADO Y BOTÓN DE REFRESCO */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, flexWrap: "wrap", gap: 16 }}>
           <div>
             <span style={{ background: ENJ_NAVY, color: ENJ_YELLOW, fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 100, letterSpacing: "0.08em" }}>
               PANEL GENERAL ENJ 2026
             </span>
             <h1 style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_NAVY }}>
-              Control de Inscripciones
+              Control de Inscripciones y Pagos
             </h1>
           </div>
 
           <button
-            onClick={() => { loadParticipantes(); loadMetrics(); }}
+            onClick={() => { loadParticipantes(); loadMetricsAndFinances(); }}
             style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid rgba(0,11,111,0.15)", borderRadius: 10, padding: "10px 18px", color: ENJ_NAVY, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
           >
             <RefreshCw size={15} /> Actualizar Datos
           </button>
         </div>
 
-        {/* TARJETAS DE RESUMEN RÁPIDO */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
-          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", boxShadow: "0 2px 12px rgba(0,0,0,0.03)" }}>
+        {/* TARJETAS DE MÉTRICAS GENERALES Y CONTADORES FINANCIEROS */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,11,111,0.6)" }}>Total Registrados</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,11,111,0.6)" }}>Inscritos</span>
               <Users size={20} color={ENJ_NAVY} />
             </div>
-            <p style={{ margin: "12px 0 0", fontSize: 30, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
+            <p style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
           </div>
 
-          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", boxShadow: "0 2px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,11,111,0.6)" }}>Jóvenes</span>
               <Users size={20} color={ENJ_MAGENTA} />
             </div>
-            <p style={{ margin: "12px 0 0", fontSize: 30, fontWeight: 900, color: ENJ_MAGENTA }}>{totalJovenes}</p>
+            <p style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_MAGENTA }}>{totalJovenes}</p>
           </div>
 
-          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", boxShadow: "0 2px 12px rgba(0,0,0,0.03)" }}>
+          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,11,111,0.6)" }}>Adultos / Staff</span>
               <Building size={20} color={ENJ_NAVY} />
             </div>
-            <p style={{ margin: "12px 0 0", fontSize: 30, fontWeight: 900, color: ENJ_NAVY }}>{totalAdultos}</p>
+            <p style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_NAVY }}>{totalAdultos}</p>
+          </div>
+
+          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,11,111,0.6)" }}>Total Recaudado (Bs)</span>
+              <CreditCard size={20} color={ENJ_NAVY} />
+            </div>
+            <p style={{ margin: "12px 0 0", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
+              Bs. {totalBsRecaudado.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+
+          <div style={{ background: "linear-gradient(135deg, #000B6F 0%, #0015B8 100%)", padding: 20, borderRadius: 16, color: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: ENJ_YELLOW }}>Total Recaudado ($)</span>
+              <DollarSign size={20} color={ENJ_YELLOW} />
+            </div>
+            <p style={{ margin: "12px 0 0", fontSize: 24, fontWeight: 900, color: "#fff" }}>
+              $ {totalUsdRecaudado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+            </p>
           </div>
         </div>
 
-        {/* BARRA DE BÚSQUEDA Y FILTROS */}
+        {/* BÚSQUEDA Y FILTROS */}
         <div style={{ background: "#fff", padding: 20, borderRadius: 16, marginBottom: 20, border: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ flex: 1, minWidth: 260, position: "relative" }}>
             <Search size={16} color="rgba(0,11,111,0.4)" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
@@ -251,20 +318,18 @@ export function Dashboard() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <select
-              value={selectedTipoFilter}
-              onChange={(e) => { setSelectedTipoFilter(e.target.value); setPage(0); }}
-              style={{ padding: "10px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 13, color: ENJ_NAVY, background: "#FAFBFF", cursor: "pointer", outline: "none" }}
-            >
-              <option value="">Todos los Tipos</option>
-              <option value="joven">Jóvenes</option>
-              <option value="adulto">Adultos</option>
-            </select>
-          </div>
+          <select
+            value={selectedTipoFilter}
+            onChange={(e) => { setSelectedTipoFilter(e.target.value); setPage(0); }}
+            style={{ padding: "10px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 13, color: ENJ_NAVY, background: "#FAFBFF", cursor: "pointer", outline: "none" }}
+          >
+            <option value="">Todos los Tipos</option>
+            <option value="joven">Jóvenes</option>
+            <option value="adulto">Adultos</option>
+          </select>
         </div>
 
-        {/* VISTA DE ERROR */}
+        {/* MENSAJE DE ERROR */}
         {errorMsg && (
           <div style={{ background: "#FDF2F4", border: `1.5px solid ${ENJ_MAGENTA}`, borderRadius: 16, padding: 24, textAlign: "center", marginBottom: 20 }}>
             <AlertCircle size={36} color={ENJ_MAGENTA} style={{ margin: "0 auto 10px" }} />
@@ -279,7 +344,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* TABLA PRINCIPAL DE PARTICIPANTES */}
+        {/* TABLA PRINCIPAL */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,11,111,0.05)" }}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontFamily: "Inter, sans-serif" }}>
@@ -288,9 +353,9 @@ export function Dashboard() {
                   <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Participante</th>
                   <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Cédula</th>
                   <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Región / Distrito</th>
-                  <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Unidad / Rama</th>
+                  <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Rama</th>
                   <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Tipo</th>
-                  <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase", textAlign: "right" }}>Acciones</th>
+                  <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase", textAlign: "right" }}>Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -298,13 +363,13 @@ export function Dashboard() {
                   <tr>
                     <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)", fontSize: 14 }}>
                       <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 10px", display: "block" }} />
-                      Cargando participantes...
+                      Cargando lista de inscritos...
                     </td>
                   </tr>
                 ) : participantes.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)", fontSize: 14 }}>
-                      No se encontraron registros de participantes.
+                      No se encontraron registros.
                     </td>
                   </tr>
                 ) : (
@@ -350,10 +415,10 @@ export function Dashboard() {
             </table>
           </div>
 
-          {/* PAGINACIÓN */}
+          {/* CONTROLES DE PAGINACIÓN */}
           <div style={{ padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
-              Página {page + 1} de {totalPages} ({totalCount} participantes en total)
+              Página {page + 1} de {totalPages} ({totalCount} registros)
             </span>
 
             <div style={{ display: "flex", gap: 8 }}>
@@ -375,12 +440,11 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* MODAL DETALLE DEL EXPEDIENTE */}
+        {/* MODAL DETALLE DE EXPEDIENTE */}
         {selectedParticipante && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 800, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.2)", position: "relative", padding: 32 }}>
+            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 850, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.2)", position: "relative", padding: 32 }}>
               
-              {/* BOTÓN CERRAR */}
               <button
                 onClick={() => setSelectedParticipante(null)}
                 style={{ position: "absolute", right: 20, top: 20, background: "#F4F5FA", border: "none", borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: ENJ_NAVY }}
@@ -388,7 +452,7 @@ export function Dashboard() {
                 <X size={18} />
               </button>
 
-              {/* ENCABEZADO EXPEDIENTE */}
+              {/* DATO GENERAL SCOUT */}
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, borderBottom: "1px solid rgba(0,11,111,0.1)", paddingBottom: 20 }}>
                 <div style={{ width: 60, height: 60, borderRadius: "50%", background: ENJ_NAVY, color: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900 }}>
                   {selectedParticipante.nombre.charAt(0)}{selectedParticipante.apellido.charAt(0)}
@@ -398,7 +462,7 @@ export function Dashboard() {
                     {selectedParticipante.nombre} {selectedParticipante.apellido}
                   </h2>
                   <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
-                    Cédula: {selectedParticipante.cedula} | {selectedParticipante.region} - {selectedParticipante.distrito}
+                    Cédula: {selectedParticipante.cedula} | Región: {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"}
                   </p>
                 </div>
               </div>
@@ -406,71 +470,90 @@ export function Dashboard() {
               {loadingModal ? (
                 <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.6)" }}>
                   <RefreshCw size={28} style={{ animation: "spin 1s linear infinite", margin: "0 auto 12px", display: "block" }} />
-                  Cargando pagos y documentos adjuntos...
+                  Cargando expediente, pagos y archivos...
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                   
-                  {/* DETALLES GENERALES */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, background: "#F8FAFF", padding: 16, borderRadius: 12 }}>
+                  {/* RESUMEN DE FICHA SCOUT */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, background: "#F8FAFF", padding: 16, borderRadius: 12, fontSize: 13 }}>
                     <div><strong>Correo:</strong> {selectedParticipante.correo || "N/A"}</div>
                     <div><strong>Teléfono:</strong> {selectedParticipante.telefono || "N/A"}</div>
-                    <div><strong>Grupo Scout:</strong> {selectedParticipante.grupo_scout || "N/A"}</div>
-                    <div><strong>Unidad:</strong> {selectedParticipante.rama || "N/A"}</div>
-                    <div><strong>Talla:</strong> {selectedParticipante.talla_uniforme || "N/A"}</div>
+                    <div><strong>Grupo:</strong> {selectedParticipante.grupo_scout || "N/A"}</div>
+                    <div><strong>Unidad/Rama:</strong> {selectedParticipante.rama || "N/A"}</div>
+                    <div><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</div>
                     <div><strong>Tipo Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</div>
                   </div>
 
-                  {/* HISTORIAL DE PAGOS */}
+                  {/* PAGOS REGISTRADOS CON CONVERSIÓN EN DÓLARES */}
                   <div>
-                    <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 8 }}>
-                      <CreditCard size={18} color={ENJ_MAGENTA} /> Historial de Pagos Reportados
-                    </h3>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 8 }}>
+                        <CreditCard size={18} color={ENJ_MAGENTA} /> Pagos Reportados
+                      </h3>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: ENJ_NAVY }}>
+                        Total Pagado: <span style={{ color: ENJ_MAGENTA }}>Bs. {modalTotalBs.toLocaleString('es-VE')}</span> (~ ${modalTotalUsd.toFixed(2)} USD)
+                      </div>
+                    </div>
+
                     {modalPagos.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No hay registros de pago vinculados.</p>
+                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No registra pagos ingresados.</p>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {modalPagos.map((pago, idx) => (
-                          <div key={idx} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 10, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 14 }}>{pago.numero_cuota}</div>
-                              <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Ref: {pago.referencia} | Fecha: {pago.fecha_pago}</div>
+                        {modalPagos.map((pago, idx) => {
+                          const bs = Number(pago.monto_bs) || 0;
+                          const tasa = Number(pago.tasa_cambio) || 1;
+                          const usd = tasa > 0 ? bs / tasa : 0;
+
+                          return (
+                            <div key={idx} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 10, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div>
+                                <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 14 }}>{pago.numero_cuota}</div>
+                                <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>
+                                  Ref: <strong>{pago.referencia}</strong> | Fecha: {pago.fecha_pago}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontWeight: 800, color: ENJ_MAGENTA, fontSize: 15 }}>
+                                  Bs. {bs.toLocaleString('es-VE')}
+                                </div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>
+                                  $ {usd.toFixed(2)} USD <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)", fontWeight: 400 }}>(Tasa: {tasa})</span>
+                                </div>
+                              </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ fontWeight: 800, color: ENJ_MAGENTA, fontSize: 15 }}>Bs. {pago.monto_bs.toLocaleString('es-VE')}</div>
-                              <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>Tasa: {pago.tasa_cambio}</div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
 
-                  {/* DOCUMENTOS ADJUNTOS */}
+                  {/* DOCUMENTOS ADJUNTOS CON DESCARGA PROBADA */}
                   <div>
                     <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileText size={18} color={ENJ_NAVY} /> Documentos y Comprobantes
+                      <FileText size={18} color={ENJ_NAVY} /> Documentos Adjuntos
                     </h3>
                     {modalDocs.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No hay archivos adjuntos en el expediente.</p>
+                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No hay documentos adjuntos en este expediente.</p>
                     ) : (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
                         {modalDocs.map((doc, idx) => (
                           <div key={idx} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 13, textTransform: "capitalize" }}>{doc.tipo_documento.replace('_', ' ')}</div>
-                              <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.nombre_archivo}</div>
+                            <div style={{ overflow: "hidden" }}>
+                              <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 13, textTransform: "capitalize" }}>
+                                {doc.tipo_documento.replace('_', ' ')}
+                              </div>
+                              <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                                {doc.nombre_archivo || "Documento sin nombre"}
+                              </div>
                             </div>
-                            {doc.url_archivo && (
-                              <a
-                                href={doc.url_archivo}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(0,11,111,0.06)", color: ENJ_NAVY, padding: "6px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-                              >
-                                Ver <ExternalLink size={12} />
-                              </a>
-                            )}
+
+                            <button
+                              onClick={() => handleDownloadFile(doc)}
+                              style={{ display: "flex", alignItems: "center", gap: 6, background: ENJ_NAVY, color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+                            >
+                              <Download size={14} /> Descargar
+                            </button>
                           </div>
                         ))}
                       </div>
