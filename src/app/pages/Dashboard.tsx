@@ -1,15 +1,27 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Users, WalletCards, Receipt, Trash2, Edit, X, Save, RefreshCw } from "lucide-react";
+import { 
+  Users, 
+  WalletCards, 
+  Receipt, 
+  Trash2, 
+  Edit, 
+  X, 
+  Save, 
+  RefreshCw, 
+  Mail, 
+  Phone, 
+  FileText, 
+  ExternalLink 
+} from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
+// --- CONSTANTES DE IDENTIDAD VISUAL ENJ 2026 ---
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
-
-// Tasa BCV por defecto por si falla el API externo
 const TASA_BCV_FALLBACK = 36.5; 
 
-// --- TIPOS ---
+// --- TIPOS DE DATOS ---
 type Pago = {
   id?: string;
   numero_cuota: string;
@@ -21,8 +33,16 @@ type Pago = {
   estado: string;
 };
 
+type Documento = {
+  id?: string;
+  tipo_documento: string;
+  nombre_archivo: string;
+  url_archivo?: string;
+  created_at?: string;
+};
+
 type DashboardParticipant = {
-  id: string; // UUID del usuario en Supabase (auth.users / profiles)
+  id: string; // UUID de la tabla profiles / participantes
   cedula: string;
   nombre: string;
   apellido: string;
@@ -32,9 +52,22 @@ type DashboardParticipant = {
   distrito: string;
   grupo_scout: string;
   rama: string;
-  tipo_participante: string; // Puede ser el rol_evento
+  tipo_participante: string;
   pagos: Pago[];
-  documentos: Array<{ tipo_documento: string; nombre_archivo: string; url_archivo?: string }>;
+  documentos: Documento[];
+};
+
+// --- ESTILOS REUTILIZABLES ---
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 14px",
+  borderRadius: 8,
+  border: "1px solid rgba(0,11,111,0.2)",
+  outline: "none",
+  fontFamily: "Inter, sans-serif",
+  fontSize: 14,
+  color: "#0D0D2B",
+  boxSizing: "border-box",
 };
 
 // --- COMPONENTE PRINCIPAL ---
@@ -44,35 +77,34 @@ export function Dashboard() {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
-  // Estado para la gestión de edición de perfil
+  // Estado para modal de edición de perfil
   const [editingProfile, setEditingProfile] = useState<DashboardParticipant | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // --- OBTENCIÓN DE TASA BCV ---
+  // --- CONSULTA DE TASA BCV OFICIAL ---
   const fetchBcvRate = async (): Promise<number> => {
     try {
       const response = await fetch("https://pydolarve.org/api/v1/dollar?page=bcv", {
-        signal: AbortSignal.timeout(3000) // Timeout de 3 segundos para no bloquear el dashboard
+        signal: AbortSignal.timeout(3000)
       });
       if (!response.ok) throw new Error("Error obteniendo tasa del BCV");
       const result = await response.json();
       return Number(result?.monitors?.usd?.price) || TASA_BCV_FALLBACK;
     } catch {
-      console.warn("No se pudo obtener la tasa en tiempo real. Usando tasa de resguardo.");
+      console.warn("Tasa en tiempo real no disponible. Usando tasa de resguardo.");
       return TASA_BCV_FALLBACK;
     }
   };
 
-  // --- CARGA DIRECTA DESDE SUPABASE ---
+  // --- CARGA INTEGRADA DESDE SUPABASE ---
   const loadDashboardData = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // 1. Obtención de tasa oficial sin bloquear la app
       const bcvRate = await fetchBcvRate();
 
-      // 2. Consulta directa e integrada a Supabase (Evita Timeout en Vercel)
+      // Consulta relacional: Obtiene perfiles con sus pagos y documentos adjuntos
       const { data: profiles, error: dbError } = await supabase
         .from("profiles")
         .select(`
@@ -83,7 +115,6 @@ export function Dashboard() {
 
       if (dbError) throw dbError;
 
-      // 3. Mapeo estructurado para el estado del frontend
       const participants: DashboardParticipant[] = (profiles || []).map((p: any) => ({
         id: p.id,
         cedula: p.cedula || "Sin Cédula",
@@ -115,7 +146,7 @@ export function Dashboard() {
     loadDashboardData();
   }, []);
 
-  // --- ELIMINAR PAGO DUPLICADO ---
+  // --- ACCIÓN: ELIMINAR PAGO DUPLICADO ---
   const handleEliminarPago = async (pagoId?: string) => {
     if (!pagoId) return alert("El registro de pago no tiene un ID válido.");
     if (!confirm("¿Estás seguro de eliminar este pago duplicado? Esta acción no se puede deshacer.")) return;
@@ -133,7 +164,7 @@ export function Dashboard() {
     }
   };
 
-  // --- GUARDAR CAMBIOS DEL PERFIL ---
+  // --- ACCIÓN: GUARDAR EDICIÓN DE PERFIL ---
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProfile) return;
@@ -145,6 +176,7 @@ export function Dashboard() {
         .update({
           nombre: editingProfile.nombre,
           apellido: editingProfile.apellido,
+          correo: editingProfile.correo,
           telefono: editingProfile.telefono,
           selected_region: editingProfile.region,
           selected_district: editingProfile.distrito,
@@ -167,6 +199,7 @@ export function Dashboard() {
     }
   };
 
+  // Guard de Autenticación Admin
   const currentUser = JSON.parse(localStorage.getItem("enj_user") || "null");
   if (currentUser?.role !== "admin") return <Navigate to="/" replace />;
 
@@ -194,7 +227,7 @@ export function Dashboard() {
 
   if (!data) return null;
 
-  // Cálculo global con Tasa BCV
+  // Cálculos consolidados globales
   const totalBsGlobal = data.participants.reduce((acc, part) => {
     return acc + part.pagos.reduce((pAcc, p) => pAcc + (Number(p.monto_bs) || 0), 0);
   }, 0);
@@ -208,11 +241,13 @@ export function Dashboard() {
 
   return (
     <main style={{ background: "#F0F2FA", minHeight: "70vh", padding: "48px 24px 80px", position: "relative" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        
+        {/* ENCABEZADO */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
           <div>
             <p style={{ margin: 0, color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em" }}>Administración ENJ 2026</p>
-            <h1 style={{ margin: "10px 0 8px", color: ENJ_NAVY, fontSize: 34 }}>Dashboard de Inscripción y Perfiles</h1>
+            <h1 style={{ margin: "10px 0 8px", color: ENJ_NAVY, fontSize: 34 }}>Dashboard de Inscripción y Expedientes</h1>
             <p style={{ margin: "0 0 30px", color: "rgba(0,11,111,0.62)" }}>Tasa BCV Oficial: <strong>{data.bcvRate.toFixed(2)} Bs/USD</strong></p>
           </div>
           <button 
@@ -224,7 +259,7 @@ export function Dashboard() {
         </div>
         
         {/* TARJETAS DE MÉTRICAS */}
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18 }}>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18 }}>
           {cards.map((card) => (
             <article key={card.label} style={{ background: "#fff", borderRadius: 14, padding: 24, boxShadow: "0 4px 24px rgba(0,11,111,0.08)" }}>
               <div style={{ color: card.color, marginBottom: 18 }}>{card.icon}</div>
@@ -237,7 +272,7 @@ export function Dashboard() {
         {/* LISTA DE PARTICIPANTES */}
         <section style={{ marginTop: 30, display: "grid", gap: 18 }}>
           {data.participants.length === 0 ? (
-            <div style={{ background: "#fff", borderRadius: 14, padding: 24 }}>No hay participantes registrados aún.</div>
+            <div style={{ background: "#fff", borderRadius: 14, padding: 24, textAlign: "center", color: ENJ_NAVY }}>No hay participantes registrados aún.</div>
           ) : (
             data.participants.map((participant) => {
               const esAdulto = participant.tipo_participante?.toLowerCase().includes("adulto") || 
@@ -256,9 +291,11 @@ export function Dashboard() {
 
               return (
                 <article key={participant.id} style={{ background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 4px 24px rgba(0,11,111,0.08)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "flex-start" }}>
+                  
+                  {/* CABECERA PARTICIPANTE */}
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-start" }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                         <h2 style={{ margin: 0, color: ENJ_NAVY, fontSize: 22 }}>{participant.nombre} {participant.apellido}</h2>
                         <span style={{ background: esAdulto ? "#E8F5E9" : "#E3F2FD", color: esAdulto ? "#2E7D32" : "#1565C0", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 12 }}>
                           {esAdulto ? "Adulto de Soporte ($100)" : "Joven ($145)"}
@@ -272,7 +309,7 @@ export function Dashboard() {
                         </button>
                       </div>
                       <p style={{ margin: "6px 0 0", color: "rgba(0,11,111,0.6)", fontSize: 14 }}>
-                        CI: {participant.cedula} • {participant.region || "Sin región"} / {participant.distrito || "Sin distrito"}
+                        CI: <strong>{participant.cedula}</strong> • {participant.region || "Sin región"} / {participant.distrito || "Sin distrito"}
                       </p>
                     </div>
 
@@ -286,15 +323,51 @@ export function Dashboard() {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 14 }}>
-                    <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 12 }}>
-                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8 }}>Estructura Scout</strong>
-                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)" }}>Grupo: {participant.grupo_scout || "S/G"}</div>
-                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)" }}>Rama/Rol: {participant.rama || "S/R"}</div>
+                  {/* GRID DE DETALLES DEL PARTICIPANTE */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                    
+                    {/* 1. CONTACTO */}
+                    <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Datos de Contacto</strong>
+                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)", display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <Mail size={14} color={ENJ_MAGENTA} /> {participant.correo || "Sin correo"}
+                      </div>
+                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Phone size={14} color={ENJ_MAGENTA} /> {participant.telefono || "Sin teléfono"}
+                      </div>
                     </div>
 
-                    <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 12 }}>
-                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8 }}>Historial de Pagos</strong>
+                    {/* 2. ESTRUCTURA SCOUT */}
+                    <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Estructura Scout</strong>
+                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)", marginBottom: 4 }}>Grupo: <strong>{participant.grupo_scout || "S/G"}</strong></div>
+                      <div style={{ fontSize: 13, color: "rgba(0,11,111,0.7)" }}>Rama/Rol: <strong>{participant.rama || "S/R"}</strong></div>
+                    </div>
+
+                    {/* 3. DOCUMENTOS STORAGE */}
+                    <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Expediente Digital</strong>
+                      {participant.documentos.length > 0 ? (
+                        participant.documentos.map((doc, idx) => (
+                          <div key={doc.id || idx} style={{ fontSize: 12, marginBottom: 6 }}>
+                            <a 
+                              href={doc.url_archivo} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              style={{ color: ENJ_MAGENTA, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
+                            >
+                              <FileText size={13} /> {doc.tipo_documento || doc.nombre_archivo} <ExternalLink size={11} />
+                            </a>
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin documentos en storage</span>
+                      )}
+                    </div>
+
+                    {/* 4. HISTORIAL DE PAGOS */}
+                    <div style={{ background: "#F8F9FF", borderRadius: 12, padding: 14 }}>
+                      <strong style={{ display: "block", color: ENJ_NAVY, marginBottom: 8, fontSize: 13 }}>Historial de Pagos</strong>
                       {participant.pagos.length ? participant.pagos.map((payment, index) => {
                         const tasaAplicada = payment.tasa_cambio || 1;
                         const usdCalculado = payment.monto_usd || (payment.monto_bs / tasaAplicada);
@@ -318,8 +391,9 @@ export function Dashboard() {
                             )}
                           </div>
                         );
-                      }) : <div style={{ fontSize: 12, color: "rgba(0,11,111,0.7)" }}>Sin pagos registrados</div>}
+                      }) : <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>Sin pagos registrados</div>}
                     </div>
+
                   </div>
                 </article>
               );
@@ -355,15 +429,30 @@ export function Dashboard() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Correo Electrónico</label>
+                  <input type="email" value={editingProfile.correo} onChange={e => setEditingProfile({...editingProfile, correo: e.target.value})} style={inputStyle} />
+                </div>
+                <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Teléfono</label>
                   <input value={editingProfile.telefono} onChange={e => setEditingProfile({...editingProfile, telefono: e.target.value})} style={inputStyle} />
                 </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rol en el Evento</label>
                   <select value={editingProfile.tipo_participante} onChange={e => setEditingProfile({...editingProfile, tipo_participante: e.target.value})} style={inputStyle}>
                     <option value="Joven Participante">Joven Participante</option>
                     <option value="Adulto de Soporte / Dirigente">Adulto de Soporte / Dirigente</option>
                     <option value="Equipo de Servicio / Staff">Equipo de Servicio / Staff</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rama</label>
+                  <select value={editingProfile.rama} onChange={e => setEditingProfile({...editingProfile, rama: e.target.value})} style={inputStyle}>
+                    <option value="Comunidad (Caminante)">Comunidad (Caminante)</option>
+                    <option value="Clan (Rover)">Clan (Rover)</option>
+                    <option value="Dirigencia / Adulto de Soporte">Dirigencia / Adulto de Soporte</option>
                   </select>
                 </div>
               </div>
@@ -379,19 +468,9 @@ export function Dashboard() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Grupo Scout</label>
-                  <input value={editingProfile.grupo_scout} onChange={e => setEditingProfile({...editingProfile, grupo_scout: e.target.value})} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Rama</label>
-                  <select value={editingProfile.rama} onChange={e => setEditingProfile({...editingProfile, rama: e.target.value})} style={inputStyle}>
-                    <option value="Comunidad (Caminante)">Comunidad (Caminante)</option>
-                    <option value="Clan (Rover)">Clan (Rover)</option>
-                    <option value="Dirigencia / Adulto de Soporte">Dirigencia / Adulto de Soporte</option>
-                  </select>
-                </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4, display: "block" }}>Grupo Scout</label>
+                <input value={editingProfile.grupo_scout} onChange={e => setEditingProfile({...editingProfile, grupo_scout: e.target.value})} style={inputStyle} />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 10 }}>
@@ -409,15 +488,3 @@ export function Dashboard() {
     </main>
   );
 }
-
-const inputStyle = {
-  width: "100%",
-  padding: "10px 14px",
-  borderRadius: 8,
-  border: "1px solid rgba(0,11,111,0.2)",
-  outline: "none",
-  fontFamily: "Inter, sans-serif",
-  fontSize: 14,
-  color: "#0D0D2B",
-  boxSizing: "border-box" as const,
-};

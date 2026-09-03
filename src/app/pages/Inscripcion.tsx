@@ -2,9 +2,22 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
 import { GoogleDriveIcon } from "../components/GoogleDriveIcon";
-import { CheckCircle2, User, Shield, CreditCard, Phone, Mail, MapPin, Hash, ChevronDown, ArrowLeft, HeartPulse, Building } from "lucide-react";
+import { 
+  CheckCircle2, 
+  User, 
+  Shield, 
+  CreditCard, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Hash, 
+  ChevronDown, 
+  ArrowLeft, 
+  HeartPulse, 
+  Building 
+} from "lucide-react";
 
-// 🚀 RUTA CORREGIDA: Subimos dos niveles hasta 'src/' y apuntamos a 'supabaseClient'
+// RUTA RELATIVA AL CLIENTE SUPABASE
 import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
@@ -57,7 +70,7 @@ const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
 
 4. Comunicaciones y Privacidad
 - Solo se permite generar contenido que cuide la marca scout y la integridad de los participantes.
-- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es estrictamente privada.
+- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es strictly privada.
 - El uso de IA y herramientas digitales (Canva, Excel) debe ser ético y orientado a los proyectos de impacto social del evento.
 - Mensajes en rrss (redes sociales): Las publicaciones en redes personales relacionadas con el ENJ deben alinearse con los valores scouts. Se prohíbe la difusión de imágenes que comprometan la seguridad de las instalaciones o la dignidad de los participantes.
 - Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restringido.
@@ -129,7 +142,16 @@ function InputField({ label, placeholder, type = "text", icon, required = true, 
       </label>
       <div style={{ position: "relative" }}>
         {icon && <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)", display: "flex", pointerEvents: "none" }}>{icon}</div>}
-        <input type={type} inputMode={inputMode} placeholder={placeholder} value={value} onChange={(e) => onChange?.(e.currentTarget.value)} disabled={disabled} required={required} style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} />
+        <input 
+          type={type} 
+          inputMode={inputMode} 
+          placeholder={placeholder} 
+          value={value} 
+          onChange={(e) => onChange?.(e.currentTarget.value)} 
+          disabled={disabled} 
+          required={required} 
+          style={{ width: "100%", padding: icon ? "11px 14px 11px 40px" : "11px 14px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", background: disabled ? "#F4F5FA" : "#FAFBFF", fontFamily: "Inter, sans-serif", fontSize: 14, color: disabled ? "rgba(0,11,111,0.5)" : "#0D0D2B", outline: "none", boxSizing: "border-box" }} 
+        />
       </div>
     </div>
   );
@@ -173,8 +195,7 @@ function BankDetailsCard() {
         <div style={{ gridColumn: "1 / -1" }}>J-00066665-2</div>
         <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>(Pago en Bolívares)</strong></div>
         <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga Cash Asv</strong></div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga</strong></div>
-        <div style={{ gridColumn: "1 / -1" }}><strong>Banco Universal</strong></div>
+        <div style={{ gridColumn: "1 / -1" }}><strong>Bancamiga Banco Universal</strong></div>
         <div style={{ gridColumn: "1 / -1" }}>0172 0111 55 1118053857</div>
         <div><strong>RIF:</strong> J-00066665-2</div>
         <div style={{ gridColumn: "1 / -1", color: ENJ_NAVY }}><strong>(Pago en divisas)</strong></div>
@@ -222,7 +243,7 @@ export function Inscripcion() {
   const [tasa, setTasa] = useState("");
   const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
-  // Campos manuales para la pestaña de cuotas si no está logueado
+  // Campos manuales para la pestaña de cuotas si no hay perfil precargado
   const [nombreDirecto, setNombreDirecto] = useState("");
   const [cedulaDirecta, setCedulaDirecta] = useState("");
 
@@ -277,7 +298,6 @@ export function Inscripcion() {
           setGrupoScout(data.grupoScout || "");
           setRamaScout(data.ramaScout || "");
           setParticipantType(data.participantType || "joven");
-          setViewMode("cuotas");
         }
       } catch (error) {
         console.warn("Error leyendo el registro local:", error);
@@ -367,7 +387,7 @@ export function Inscripcion() {
     type: "foto" | "ficha_medica" | "comprobante_inicial" | "comprobante_cuota";
     label: string;
   }) => {
-    const cleanCedula = cedulaParticipante.trim();
+    const cleanCedula = cedulaParticipante.replace(/\D/g, "").trim();
     const safeName = `${type}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const storagePath = `${cleanCedula}/${safeName}`;
     let publicUrl = "";
@@ -404,11 +424,12 @@ export function Inscripcion() {
   };
 
   async function saveRegistrationLocally() {
-    if (!cedula) return;
+    const cleanCedula = (cedula || cedulaDirecta).replace(/\D/g, "").trim();
+    if (!cleanCedula) return;
     const payload = {
-      nombre,
+      nombre: nombre || nombreDirecto,
       apellido,
-      cedula,
+      cedula: cleanCedula,
       correo,
       telefono,
       selectedRegion,
@@ -449,24 +470,6 @@ export function Inscripcion() {
     }
   }
 
-  async function sendDriveFailureEmail(message: string) {
-    if (!DRIVE_FAILURE_EMAILS.length) return;
-
-    try {
-      await fetch("/api/notify-drive-failure", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipients: DRIVE_FAILURE_EMAILS,
-          subject: "ENJ - Error al crear carpeta en Drive",
-          body: message,
-        }),
-      });
-    } catch (err) {
-      console.warn("No se pudo notificar por correo la falla en Drive:", err);
-    }
-  }
-
   async function handleInscriptionSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!acceptTerms) return alert("Debe leer y aceptar el acuerdo de convivencia.");
@@ -474,6 +477,9 @@ export function Inscripcion() {
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Debe adjuntar el comprobante de la cuota inicial de forma válida.");
     
+    const cleanCedula = cedula.replace(/\D/g, "").trim();
+    if (!cleanCedula) return alert("Ingrese un número de cédula válido.");
+
     setLoading(true);
 
     try {
@@ -482,7 +488,7 @@ export function Inscripcion() {
       const { error: partError } = await supabase
         .from("participantes")
         .upsert([{
-          cedula: cedula.trim(),
+          cedula: cleanCedula,
           nombre: nombre.trim(),
           apellido: apellido.trim(),
           fecha_nacimiento: birthDate,
@@ -508,7 +514,7 @@ export function Inscripcion() {
       const { error: pagoError } = await supabase
         .from("pagos")
         .insert([{
-          cedula_participante: cedula.trim(),
+          cedula_participante: cleanCedula,
           numero_cuota: "Cuota Inicial",
           monto_bs: parseMontoBsValue(montoBs),
           referencia: referenciaPago.trim(),
@@ -518,13 +524,11 @@ export function Inscripcion() {
 
       if (pagoError) throw new Error(`Error guardando pago inicial: ${pagoError.message}`);
 
-      await saveRegistrationLocally();
-
       const cleanFoto = extractNativeFile(fotoParticipante);
 
       if (cleanFoto) {
         await uploadParticipantDocument({
-          cedulaParticipante: cedula.trim(),
+          cedulaParticipante: cleanCedula,
           file: cleanFoto,
           type: "foto",
           label: "la foto del participante",
@@ -532,7 +536,7 @@ export function Inscripcion() {
       }
 
       await uploadParticipantDocument({
-        cedulaParticipante: cedula.trim(),
+        cedulaParticipante: cleanCedula,
         file: cleanPago,
         type: "comprobante_inicial",
         label: "el comprobante de cuota inicial",
@@ -559,8 +563,10 @@ export function Inscripcion() {
     const cleanPago = extractNativeFile(comprobantePago);
     if (!cleanPago) return alert("Por favor, adjunta el comprobante de esta cuota de forma válida.");
 
-    const finalCedula = (cedula || cedulaDirecta || "").trim();
-    if (!finalCedula) return alert("Por favor, introduce tu número de cédula de identidad.");
+    const rawCedula = cedula || cedulaDirecta || "";
+    const cleanCedula = rawCedula.replace(/\D/g, "").trim();
+
+    if (!cleanCedula) return alert("Por favor, introduce tu número de cédula de identidad.");
 
     setLoading(true);
 
@@ -568,7 +574,7 @@ export function Inscripcion() {
       const { data: partData } = await supabase
         .from("participantes")
         .select("cedula")
-        .eq("cedula", finalCedula)
+        .eq("cedula", cleanCedula)
         .maybeSingle();
 
       if (!partData) {
@@ -578,7 +584,7 @@ export function Inscripcion() {
       const { error: pagoExtraError } = await supabase
         .from("pagos")
         .insert([{
-          cedula_participante: finalCedula,
+          cedula_participante: cleanCedula,
           numero_cuota: numCuota,
           monto_bs: parseMontoBsValue(montoBs),
           referencia: referenciaPago.trim(),
@@ -589,7 +595,7 @@ export function Inscripcion() {
       if (pagoExtraError) throw new Error(`Error registrando cuota en base de datos: ${pagoExtraError.message}`);
 
       await uploadParticipantDocument({
-        cedulaParticipante: finalCedula,
+        cedulaParticipante: cleanCedula,
         file: cleanPago,
         type: "comprobante_cuota",
         label: "el comprobante de cuota",
@@ -612,7 +618,7 @@ export function Inscripcion() {
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(215,0,126,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
             <span style={{ fontSize: 32, color: ENJ_MAGENTA, fontWeight: "bold" }}>⚠️</span>
           </div>
-          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>Error de Configuración</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>Error en la Operación</h2>
           <div style={{ background: "#FDF2F4", border: `1px solid ${ENJ_MAGENTA}`, borderRadius: 10, padding: 16, margin: "16px 0 24px", textAlign: "left" }}>
             <p style={{ margin: 0, color: "#9F1239", fontSize: 14, fontFamily: "monospace", wordBreak: "break-word" }}>{errorMessageStr}</p>
           </div>
@@ -685,7 +691,6 @@ export function Inscripcion() {
           </button>
         )}
 
-
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
           <button type="button" onClick={() => viewMode === "cuotas" ? setViewMode("inscripcion") : navigate("/")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "rgba(0,11,111,0.6)", fontSize: 14, fontWeight: 600 }}>
             <ArrowLeft size={16} /> {viewMode === "cuotas" ? "Regresar al formulario principal" : "Volver al inicio"}
@@ -738,7 +743,7 @@ export function Inscripcion() {
 
                 <SectionDivider title="Datos de Contacto" icon={<Phone size={16} color={ENJ_NAVY} />} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Correo Electrónico" type="email" icon={<Mail size={16} />} value={correo} onChange={setCorreo} disabled={true} />
+                  <InputField label="Correo Electrónico" type="email" icon={<Mail size={16} />} value={correo} onChange={setCorreo} />
                   <InputField label="Teléfono (WhatsApp)" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} />
                 </div>
 
@@ -774,7 +779,7 @@ export function Inscripcion() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                   <InputField label="Nro. Referencia (6 dígitos)" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
-                  <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="El decimal debe ir con Coma y no Punto ejemplo: 15.520,20" />
+                  <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="Ej: 15.520,20" />
                   <InputField label="Tasa de cambio aplicada" type="number" value={tasa} onChange={setTasa} />
                 </div>
 
@@ -815,13 +820,15 @@ export function Inscripcion() {
         {viewMode === "cuotas" && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "clamp(24px, 4vw, 40px)", boxShadow: "0 4px 40px rgba(0,11,111,0.10)" }}>
             <form onSubmit={handleCuotasSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <>
-                <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Nombre Completo" placeholder="Ej. María González" value={nombreDirecto} onChange={setNombreDirecto} />
-                  <InputField label="Cédula de Identidad" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
-                </div>
-              </>
+              {!cedula && (
+                <>
+                  <SectionDivider title="Identificación del Expediente" icon={<User size={16} color={ENJ_NAVY} />} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <InputField label="Nombre Completo" placeholder="Ej. María González" value={nombreDirecto} onChange={setNombreDirecto} />
+                    <InputField label="Cédula de Identidad" placeholder="Ej. V-12345678" value={cedulaDirecta} onChange={setCedulaDirecta} />
+                  </div>
+                </>
+              )}
 
               <SectionDivider title="Registrar Siguiente Cuota" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
               <BankDetailsCard />
@@ -831,7 +838,7 @@ export function Inscripcion() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />
                 <InputField label="Nro. Referencia" icon={<Hash size={16} />} value={referenciaPago} onChange={setReferenciaPago} />
-                <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="Ej: 1250,50 o 1250.50" />
+                <InputField label="Monto transferido (Bs)" type="text" inputMode="decimal" value={montoBs} onChange={setMontoBs} placeholder="Ej: 1250,50" />
                 <InputField label="Tasa de cambio" type="number" value={tasa} onChange={setTasa} />
               </div>
 
