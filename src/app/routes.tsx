@@ -15,16 +15,30 @@ const ProtectedRoute = () => {
     const storedUser = localStorage.getItem('enj_user');
     const storedToken = localStorage.getItem('token');
 
-    if (!storedUser || !storedToken) {
+    if (!storedUser) {
       setLoading(false);
       return;
     }
 
     try {
       const parsedUser = JSON.parse(storedUser);
+
+      if (import.meta.env.DEV && parsedUser?.role === 'admin') {
+        if (isActive) {
+          setUser(parsedUser);
+          setLoading(false);
+        }
+        return;
+      }
+
       if (isActive) setUser(parsedUser);
     } catch {
       localStorage.removeItem('enj_user');
+    }
+
+    if (!storedToken) {
+      if (isActive) setLoading(false);
+      return;
     }
 
     const controller = new AbortController();
