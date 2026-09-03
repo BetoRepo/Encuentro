@@ -11,35 +11,62 @@ const ProtectedRoute = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isActive = true;
     const storedUser = localStorage.getItem('enj_user');
     const storedToken = localStorage.getItem('token');
+
     if (!storedUser || !storedToken) {
       setLoading(false);
       return;
     }
+
     try {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      if (isActive) setUser(parsedUser);
     } catch {
       localStorage.removeItem('enj_user');
     }
+
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${storedToken}` }, signal: controller.signal })
+
+    fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${storedToken}` },
+      signal: controller.signal,
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error('Sesión inválida');
         const result = await response.json();
+        if (!isActive) return;
         setUser(result.user);
         localStorage.setItem('enj_user', JSON.stringify(result.user));
       })
-      .catch(() => {
+      .catch((error) => {
+        if (!isActive) return;
+
+        const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+        if (isAbortError) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('enj_user');
+          setUser(null);
+          return;
+        }
+
         localStorage.removeItem('token');
         localStorage.removeItem('enj_user');
         setUser(null);
       })
       .finally(() => {
+        if (!isActive) return;
         window.clearTimeout(timeoutId);
         setLoading(false);
       });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   if (loading) {

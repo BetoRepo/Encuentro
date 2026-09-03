@@ -100,7 +100,12 @@ export function Login() {
       setConfirmation("");
       setChangePasswordOpen(false);
     } catch (error: any) {
-      alert(error.name === "AbortError" ? "El servidor tardó demasiado en responder. Revisa la configuración de Supabase en Vercel." : error.message || "No se pudo cambiar la contraseña.");
+      const isAbortError = error instanceof DOMException && error.name === "AbortError";
+      alert(
+        isAbortError
+          ? "El servidor tardó demasiado en responder. Revisa la configuración de Supabase en Vercel."
+          : error?.message || "No se pudo cambiar la contraseña."
+      );
     } finally {
       window.clearTimeout(timeoutId);
       setChangePasswordLoading(false);
