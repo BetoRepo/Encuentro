@@ -104,31 +104,31 @@ export function Dashboard() {
     try {
       const bcvRate = await fetchBcvRate();
 
-      // Consulta relacional: Obtiene perfiles con sus pagos y documentos adjuntos
-      const { data: profiles, error: dbError } = await supabase
-        .from("profiles")
+      // Consulta real del esquema ENJ: participantes + pagos + documentos relacionados por cedula_participante.
+      const { data: participantsData, error: dbError } = await supabase
+        .from("participantes")
         .select(`
           *,
           pagos (*),
-          documentos (*)
+          documentos_participante (*)
         `);
 
       if (dbError) throw dbError;
 
-      const participants: DashboardParticipant[] = (profiles || []).map((p: any) => ({
-        id: p.id,
+      const participants: DashboardParticipant[] = (participantsData || []).map((p: any) => ({
+        id: p.id_usuario || p.cedula || crypto.randomUUID(),
         cedula: p.cedula || "Sin Cédula",
         nombre: p.nombre || "Sin Nombre",
         apellido: p.apellido || "",
         correo: p.correo || "",
         telefono: p.telefono || "",
-        region: p.selected_region || p.region || "",
-        distrito: p.selected_district || p.distrito || "",
+        region: p.region || p.selected_region || "",
+        distrito: p.distrito || p.selected_district || "",
         grupo_scout: p.grupo_scout || "",
-        rama: p.rama_scout || p.rama || "",
-        tipo_participante: p.rol_evento || p.tipo_participante || "Joven Participante",
+        rama: p.rama || p.rama_scout || "",
+        tipo_participante: p.tipo_participante || p.rol_evento || "Joven Participante",
         pagos: p.pagos || [],
-        documentos: p.documentos || []
+        documentos: p.documentos_participante || []
       }));
 
       setData({
