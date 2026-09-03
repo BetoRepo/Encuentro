@@ -20,7 +20,7 @@ import { supabase } from "../../supabaseClient";
 // --- IDENTIDAD VISUAL ENJ 2026 / ASV ---
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
-const TASA_BCV_FALLBACK = 36.5; 
+const TASA_BCV_FALLBACK = 804.81; // Actualizado a la tasa del día
 
 // --- TIPOS DE DATOS ---
 type Pago = {
@@ -81,22 +81,38 @@ export function Dashboard() {
   const [editingParticipant, setEditingParticipant] = useState<DashboardParticipant | null>(null);
   const [savingParticipant, setSavingParticipant] = useState(false);
 
-  // --- CONSULTA TASA BCV ---
+  // --- CONSULTA TASA BCV OPTIMIZADA ---
   const fetchBcvRate = async (): Promise<number> => {
     try {
-      const response = await fetch("https://pydolarve.org/api/v1/dollar?page=bcv", {
+      // Intentamos con dolarapi.com (muy rápida y sin bloqueo de CORS)
+      const res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial", {
+        signal: AbortSignal.timeout(4000)
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body?.promedio && Number(body.promedio) > 0) {
+          return Number(body.promedio);
+        }
+      }
+
+      // Reintento secundario por si falla la primera
+      const resSecundarias = await fetch("https://pydolarve.org/api/v1/dollar?page=bcv", {
         signal: AbortSignal.timeout(3000)
       });
-      if (!response.ok) throw new Error("Error obteniendo tasa del BCV");
-      const result = await response.json();
-      return Number(result?.monitors?.usd?.price) || TASA_BCV_FALLBACK;
-    } catch {
-      console.warn("⚜️ Tasa BCV no disponible. Usando valor de resguardo.");
+      if (resSecundarias.ok) {
+        const bodySec = await resSecundarias.json();
+        const price = Number(bodySec?.monitors?.usd?.price);
+        if (price > 0) return price;
+      }
+
+      throw new Error("No se pudo obtener respuesta de las API de tasa");
+    } catch (err) {
+      console.warn("⚜️ Tasa BCV en vivo no disponible. Usando valor de resguardo:", TASA_BCV_FALLBACK);
       return TASA_BCV_FALLBACK;
     }
   };
 
-  // --- CARGA DIRECTA DESDE 'PARTICIPANTES' (SIN JOINS PESADOS) ---
+  // --- CARGA DIRECTA Y OPTIMIZADA (SIN STATEMENT TIMEOUT) ---
   const loadDashboardData = async () => {
     setLoading(true);
     setError("");
@@ -104,39 +120,21 @@ export function Dashboard() {
     try {
       const bcvRate = await fetchBcvRate();
 
-      // 1. Apuntar directamente a la tabla maestra 'participantes'
+      // Consulta relacional directa aprovechando los índices de la BD
       const { data: rawParticipants, error: partError } = await supabase
         .from("participantes")
-        .select("*");
+        .select(`
+          *,
+          pagos (*),
+          documentos_participante (*)
+        `);
 
       if (partError) throw partError;
 
-      // 2. Consulta paralela de tablas hijas para evitar 'statement timeout'
-      const [pagosRes, docsRes] = await Promise.all([
-        supabase.from("pagos").select("*"),
-        supabase.from("documentos_participante").select("*")
-      ]);
-
-      if (pagosRes.error) throw pagosRes.error;
-      if (docsRes.error) throw docsRes.error;
-
-      const todosLosPagos: Pago[] = pagosRes.data || [];
-      const todosLosDocumentos: Documento[] = docsRes.data || [];
-
-      // 3. Enlazado de relaciones por Cédula o ID en memoria
+      // Mapeo limpio usando los datos anidados de Supabase
       const participants: DashboardParticipant[] = (rawParticipants || []).map((p: any) => {
         const idUsuario = p.id || p.id_usuario;
         const cedulaUsuario = p.cedula;
-
-        const pagosRelacionados = todosLosPagos.filter((pago: any) => 
-          (pago.cedula_participante && pago.cedula_participante === cedulaUsuario) ||
-          (pago.participante_id && pago.participante_id === idUsuario)
-        );
-
-        const docsRelacionados = todosLosDocumentos.filter((doc: any) => 
-          (doc.cedula_participante && doc.cedula_participante === cedulaUsuario) ||
-          (doc.participante_id && doc.participante_id === idUsuario)
-        );
 
         return {
           id: idUsuario || cedulaUsuario || crypto.randomUUID(),
@@ -150,8 +148,8 @@ export function Dashboard() {
           grupo_scout: p.grupo_scout || "",
           rama: p.rama || p.rama_scout || "",
           tipo_participante: p.tipo_participante || p.rol_evento || "Joven Participante",
-          pagos: pagosRelacionados,
-          documentos: docsRelacionados
+          pagos: p.pagos || [],
+          documentos: p.documentos_participante || []
         };
       });
 
@@ -290,7 +288,7 @@ export function Dashboard() {
           ))}
         </section>
 
-        {/* LISTADO DE PARTICIPANTES DESDE 'PARTICIPANTES' */}
+        {/* LISTADO DE PARTICIPANTES */}
         <section style={{ marginTop: 30, display: "grid", gap: 18 }}>
           {data.participants.length === 0 ? (
             <div style={{ background: "#fff", borderRadius: 14, padding: 24, textAlign: "center", color: ENJ_NAVY }}>No se encontraron participantes registrados.</div>

@@ -17,7 +17,7 @@ import {
   Building 
 } from "lucide-react";
 
-// RUTA RELATIVA AL CLIENTE SUPABASE
+// CLIENTE SUPABASE
 import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
@@ -27,7 +27,6 @@ const ENJ_MAGENTA = "#D7007E";
 const LOCAL_REGISTRATION_KEY = "enj_registration";
 const LOCAL_PROFILE_KEY = "enj_profile";
 const ALERT_AUTHORIZED_EMAILS = ["admin@enj.org", "coordinador@enj.org"];
-const DRIVE_FAILURE_EMAILS = ["admin@enj.org", "coordinador@enj.org", "operaciones@enj.org"];
 
 type ScoutDistrict = { district: string };
 type ScoutRegion = { region: string; districts: ScoutDistrict[] };
@@ -70,9 +69,9 @@ const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
 
 4. Comunicaciones y Privacidad
 - Solo se permite generar contenido que cuide la marca scout y la integridad de los participantes.
-- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es strictly privada.
+- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es estrictamente privada.
 - El uso de IA y herramientas digitales (Canva, Excel) debe ser ético y orientado a los proyectos de impacto social del evento.
-- Mensajes en rrss (redes sociales): Las publicaciones en redes personales relacionadas con el ENJ deben alinearse con los valores scouts. Se prohíbe la difusión de imágenes que comprometan la seguridad de las instalaciones o la dignidad de los participantes.
+- Mensajes en redes sociales: Las publicaciones en redes personales relacionadas con el ENJ deben alinearse con los valores scouts. Se prohíbe la difusión de imágenes que comprometan la seguridad de las instalaciones o la dignidad de los participantes.
 - Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restringido.
 
 5. Prohibiciones
@@ -112,27 +111,26 @@ const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
 - Se deben acatar todas las normas internas del establecimiento (prohibido lanzarse de cabeza, no consumir alimentos dentro del agua, etc.).
 
 13. Normas de Traslados y Actividades Externas
-- Se realizará estrictamente bajo la supervisión del Staff. Nadie sube o baja de la unidad hasta que el encargado lo autorice.
+- Se realizará strictly bajo la supervisión del Staff. Nadie sube o baja de la unidad hasta que el encargado lo autorice.
 - Se debe permanecer sentado mientras la unidad esté en movimiento. Queda prohibido sacar extremidades o colgar implementos (pañoletas, banderas) por las ventanas.
 - La unidad de transporte debe quedar más limpia de lo que se encontró. Está prohibido dejar envoltorios, botellas o desechos en los asientos.
 - Durante las actividades externas, el uso de la franela oficial del ENJ es obligatorio y debe portarse de manera impecable.
 - El trato con las personas locales, autoridades o personal de las instituciones visitadas debe ser de extrema cortesía.
-- Si la actividad externa es en un parque, museo o institución pública, se acatarán estrictamente las reglas del lugar (silencio, no fotos en áreas restringidas, etc.).
+- Si la actividad externa es en un parque, museo o institución pública, se acatarán estrictamente las reglas del lugar.
 - Nadie se desplaza solo. Para cualquier movimiento, se debe ir en parejas o tríos y dar aviso al Staff encargado.
-- Al llegar a cualquier locación externa, el Staff identificará un "Punto de Encuentro" y una hora de reunión. La impuntualidad en estos puntos se considerará una falta grave a la seguridad del grupo.
+- Al llegar a cualquier locación externa, el Staff identificará un "Punto de Encuentro" y una hora de reunión.
 - Se realizarán conteos rápidos ("número") antes de cada salida y después de cada parada.
-- En las actividades de campo fuera del campamento, se aplicará de forma estricta la ética de "No Deje Rastro". Todo desecho generado debe ser retornado al hotel o depositado en contenedores adecuados.
-- Queda prohibido recolectar especies vegetales, molestar a la fauna local o intervenir monumentos naturales/históricos (grafitis, tallas en árboles, etc.).
-- Para las salidas, cada joven debe portar obligatoriamente su hidratación (termo lleno), gorra/sombrero y protector solar.
+- En las actividades de campo fuera del campamento, se aplicará de forma estricta la ética de "No Deje Rastro".
+- Queda prohibido recolectar especies vegetales, molestar a la fauna local o intervenir monumentos naturales/históricos.
+- Para las salidas, cada joven debe portar obligatoriamente su hidratación, gorra/sombrero y protector solar.
 
 14. Cuidado de las pertenencias
-- Cada participante es responsable de la custodia de sus artículos personales. Ni la Asociación de Scouts de Venezuela (ASV) ni el campamento se hacen responsables por la pérdida, extravío o daño de equipos electrónicos, cámaras, teléfonos o dinero dejados sin supervisión en áreas comunes, pasillos o habitaciones abiertas.
+- Cada participante es responsable de la custodia de sus artículos personales. La ASV o el campamento no se hacen responsables por pérdidas de equipos o dinero no custodiado.
 
 15. Medicamentos
-- Todo medicamento que el participante traiga al evento debe estar obligatoriamente reflejado en su Ficha Médica.
-- Cualquier medicamento (recetado o de venta libre), anticonvulsivo, analgésicos, antipiréticos, antiespasmódico, antialérgicos, narcóticos, entre otros, que se encuentre en posesión de un participante y no esté debidamente registrado en su ficha médica, será retirado por el equipo de Gestión de Riesgos o el personal médico por medidas de seguridad.
+- Todo medicamento traído debe estar registrado obligatoriamente en la Ficha Médica. Cualquier medicamento no registrado será retenido por el equipo de Gestión de Riesgos por seguridad.
 
-Al aceptar este acuerdo, confirmo que he leído y entiendo las normas del ENJ 2026 y me comprometo a cumplirlas en todas las actividades, instalaciones y traslados del evento.`;
+Al aceptar este acuerdo, confirmo que he leído y entiendo las normas del ENJ 2026 y me comprometo a cumplirlas.`;
 
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false, inputMode }: any) {
   return (
@@ -210,7 +208,7 @@ export function Inscripcion() {
   const [viewMode, setViewMode] = useState<"inscripcion" | "cuotas" | "exito" | "inscripcion_exito" | "error_pantalla">("inscripcion");
   const [errorMessageStr, setErrorMessageStr] = useState("");
   const [participantType, setParticipantType] = useState<"joven" | "adulto">("joven");
-  const [registrationExists, setRegistrationExists] = useState(false);
+  const [, setRegistrationExists] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
@@ -243,7 +241,6 @@ export function Inscripcion() {
   const [tasa, setTasa] = useState("");
   const [numCuota, setNumCuota] = useState("Segunda Cuota");
 
-  // Campos manuales para la pestaña de cuotas si no hay perfil precargado
   const [nombreDirecto, setNombreDirecto] = useState("");
   const [cedulaDirecta, setCedulaDirecta] = useState("");
 
@@ -253,9 +250,7 @@ export function Inscripcion() {
 
   const [loading, setLoading] = useState(false);
 
-  // ==========================================
-  // AUTO-RECONOCIMIENTO DEL USUARIO LOGUEADO
-  // ==========================================
+  // AUTO-RECONOCIMIENTO DEL USUARIO EN SESIÓN
   useEffect(() => {
     async function comprobarRegistroExistente() {
       try {
@@ -376,6 +371,7 @@ export function Inscripcion() {
     return Number(normalized);
   };
 
+  // ENVÍO DE DOCUMENTOS Y COMPROBANTES AL BUCKET 'documentos-enj'
   const uploadParticipantDocument = async ({
     cedulaParticipante,
     file,
@@ -394,15 +390,18 @@ export function Inscripcion() {
     let base64Data = "";
 
     try {
-      const { error: uploadError } = await supabase.storage.from("inscripciones").upload(storagePath, file, {
+      // BUCKET CONFIGURADO: 'documentos-enj'
+      const { error: uploadError } = await supabase.storage.from("documentos-enj").upload(storagePath, file, {
         upsert: true,
         contentType: file.type || 'application/octet-stream',
       });
 
       if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("inscripciones").getPublicUrl(storagePath);
+
+      const { data } = supabase.storage.from("documentos-enj").getPublicUrl(storagePath);
       publicUrl = data?.publicUrl || "";
     } catch (storageError) {
+      console.warn(`Almacenamiento directo en bucket sin respuesta. Aplicando resguardo en Base64 para ${label}:`, storageError);
       base64Data = await fileToBase64(file);
     }
 
@@ -466,7 +465,7 @@ export function Inscripcion() {
         body: JSON.stringify({ email: correo, message: "Alarma de usuario autorizado" }),
       });
     } catch (err) {
-      console.warn("No se pudo enviar la alarma remota (endpoint no configurado aún):", err);
+      console.warn("Servicio de alerta temporalmente no disponible:", err);
     }
   }
 
@@ -677,8 +676,8 @@ export function Inscripcion() {
               right: 24,
               bottom: 88,
               zIndex: 200,
-              background: "#F7BF16",
-              color: "#000B6F",
+              background: ENJ_YELLOW,
+              color: ENJ_NAVY,
               border: "none",
               borderRadius: 999,
               padding: "14px 20px",
