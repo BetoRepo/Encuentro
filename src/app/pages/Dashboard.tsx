@@ -176,7 +176,7 @@ export function Dashboard() {
 
       const { data: pagosData, error: pagosErr } = await supabase
         .from("pagos")
-        .select("monto_bs, tasa_cambio, estatus_validacion");
+        .select("monto_bs, tasa_cambio, estado");
 
       if (!pagosErr && pagosData) {
         let bsSum = 0;
@@ -193,10 +193,12 @@ export function Dashboard() {
           bsSum += bs;
           usdSum += usd;
 
-          if (pago.estatus_validacion === "Validado") {
+          const estadoLower = (pago.estado || "").toLowerCase();
+
+          if (estadoLower === "validado") {
             bsVal += bs;
             usdVal += usd;
-          } else if (!pago.estatus_validacion || pago.estatus_validacion === "Pendiente") {
+          } else if (!pago.estado || estadoLower === "pendiente") {
             pendientesCount++;
           }
         });
@@ -272,29 +274,30 @@ export function Dashboard() {
   };
 
   // 5. CAMBIAR ESTATUS DE PAGO (VALIDAR / RECHAZAR)
-const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' | 'rechazado') => {
-  setActionLoading(pagoId);
-  try {
-    // CAMBIO CLAVE: Usamos 'estado' en lugar de 'estatus_validacion'
-    const { error } = await supabase
-      .from("pagos")
-      .update({ estado: nuevoEstado })
-      .eq("id", pagoId);
+  const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' | 'rechazado') => {
+    setActionLoading(pagoId);
+    try {
+      // Enviamos 'validado' o 'rechazado' en minúsculas para cumplir el constraint "pagos_estado_check"
+      const { error } = await supabase
+        .from("pagos")
+        .update({ estado: nuevoEstado })
+        .eq("id", pagoId);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Actualizamos el estado local en el modal sin recargar
-    setModalPagos((prev) =>
-      prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p))
-    );
-    // Recargamos las métricas globales de finanzas
-    loadMetricsAndFinances();
-  } catch (err: any) {
-    alert("Error al actualizar pago: " + err.message);
-  } finally {
-    setActionLoading(null);
-  }
-};
+      // Actualizamos el estado local en el modal sin recargar la página
+      setModalPagos((prev) =>
+        prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p))
+      );
+      // Recargamos las métricas globales de finanzas
+      loadMetricsAndFinances();
+    } catch (err: any) {
+      alert("Error al actualizar pago: " + err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // 6. ELIMINAR COMUNICADO
   const handleDeleteAnuncio = async (id: string) => {
     if (!confirm("¿Deseas eliminar este anuncio oficial?")) return;
@@ -767,9 +770,9 @@ const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' |
                           const bs = Number(pago.monto_bs) || 0;
                           const tasa = Number(pago.tasa_cambio) || 1;
                           const usd = tasa > 0 ? bs / tasa : 0;
-                          const estatus = pago.estado || "Pendiente";
-                          const isValidado = estatus === "Validado";
-                          const isRechazado = estatus === "Rechazado";
+                          const estatus = (pago.estado || "pendiente").toLowerCase();
+                          const isValidado = estatus === "validado";
+                          const isRechazado = estatus === "rechazado";
 
                           return (
                             <div key={pago.id || pago.referencia} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -785,7 +788,8 @@ const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' |
                                     color: isValidado ? "#166534" : isRechazado ? "#991B1B" : "#92400E",
                                     display: "inline-flex",
                                     alignItems: "center",
-                                    gap: 4
+                                    gap: 4,
+                                    textTransform: "capitalize"
                                   }}>
                                     {isValidado && <CheckCircle size={12} />}
                                     {isRechazado && <XCircle size={12} />}
@@ -813,7 +817,7 @@ const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' |
                                   <div style={{ display: "flex", gap: 6 }}>
                                     <button
                                       disabled={actionLoading === pago.id || isValidado}
-                                      onClick={() => handleUpdateEstatusPago(pago.id!, "Validado")}
+                                      onClick={() => handleUpdateEstatusPago(pago.id!, "validado")}
                                       style={{ background: isValidado ? "#E2E8F0" : "#16A34A", color: isValidado ? "#94A3B8" : "#fff", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: isValidado ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}
                                     >
                                       <CheckCircle size={14} /> Validar
@@ -821,7 +825,7 @@ const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' |
 
                                     <button
                                       disabled={actionLoading === pago.id || isRechazado}
-                                      onClick={() => handleUpdateEstatusPago(pago.id!, "Rechazado")}
+                                      onClick={() => handleUpdateEstatusPago(pago.id!, "rechazado")}
                                       style={{ background: isRechazado ? "#E2E8F0" : "#DC2626", color: isRechazado ? "#94A3B8" : "#fff", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: isRechazado ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}
                                     >
                                       <XCircle size={14} /> Rechazar
