@@ -272,28 +272,29 @@ export function Dashboard() {
   };
 
   // 5. CAMBIAR ESTATUS DE PAGO (VALIDAR / RECHAZAR)
-  const handleUpdateEstatusPago = async (pagoId: string, nuevoEstatus: string) => {
-    setActionLoading(pagoId);
-    try {
-      const { error } = await supabase
-        .from("pagos")
-        .update({ estatus_validacion: nuevoEstatus })
-        .eq("id", pagoId);
+const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' | 'rechazado') => {
+  setActionLoading(pagoId);
+  try {
+    // CAMBIO CLAVE: Usamos 'estado' en lugar de 'estatus_validacion'
+    const { error } = await supabase
+      .from("pagos")
+      .update({ estado: nuevoEstado })
+      .eq("id", pagoId);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      setModalPagos((prev) =>
-        prev.map((p) => (p.id === pagoId ? { ...p, estatus_validacion: nuevoEstatus } : p))
-      );
-
-      loadMetricsAndFinances();
-    } catch (err: any) {
-      alert("Error al actualizar pago: " + err.message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
+    // Actualizamos el estado local en el modal sin recargar
+    setModalPagos((prev) =>
+      prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p))
+    );
+    // Recargamos las métricas globales de finanzas
+    loadMetricsAndFinances();
+  } catch (err: any) {
+    alert("Error al actualizar pago: " + err.message);
+  } finally {
+    setActionLoading(null);
+  }
+};
   // 6. ELIMINAR COMUNICADO
   const handleDeleteAnuncio = async (id: string) => {
     if (!confirm("¿Deseas eliminar este anuncio oficial?")) return;
