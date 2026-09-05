@@ -56,7 +56,7 @@ interface Pago {
   referencia: string;
   fecha_pago: string;
   tasa_cambio: number;
-  estatus_validacion?: string;
+  estado?: string;
   created_at?: string;
 }
 
@@ -766,7 +766,7 @@ export function Dashboard() {
                           const bs = Number(pago.monto_bs) || 0;
                           const tasa = Number(pago.tasa_cambio) || 1;
                           const usd = tasa > 0 ? bs / tasa : 0;
-                          const estatus = pago.estatus_validacion || "Pendiente";
+                          const estatus = pago.estado || "Pendiente";
                           const isValidado = estatus === "Validado";
                           const isRechazado = estatus === "Rechazado";
 
