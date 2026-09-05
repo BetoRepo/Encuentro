@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, User, Phone, Mail, ChevronDown, Camera, FileText, QrCode, MapPin, Heart, Share2, Instagram, ShieldCheck, MessageSquare, Send, Users
+  ArrowLeft, User, Phone, ChevronDown, Camera, QrCode, MapPin, Heart, Instagram, ShieldCheck, Send, Users, CheckCircle, Clock, AlertCircle
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
@@ -129,17 +129,23 @@ export function Perfil() {
   const [foto, setFoto] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Estado local para interacción de inscritos (Muro/Comentarios)
-  const [comentarios, setComentarios] = useState<{ id: string; autor: string; mensaje: string; fecha: string }[]>([]);
+  // Muro Social & Pagos Privados
+  const [comentarios, setComentarios] = useState<any[]>([]);
   const [nuevoMensaje, setNuevoMensaje] = useState("");
+  const [misPagos, setMisPagos] = useState<any[]>([]);
+
+  // Comprobar si el usuario conectado es el dueño del perfil
+  const currentUser = JSON.parse(localStorage.getItem("enj_user") || "null");
+  const isOwnProfile = currentUser && currentUser.id === userId;
 
   useEffect(() => {
-    const loadProfile = async () => {
+    const loadProfileAndData = async () => {
       const user = JSON.parse(localStorage.getItem("enj_user") || "null");
       if (user) {
         setUserId(user.id);
         setCorreo(user.email || "");
 
+        // 1. Cargar datos del perfil
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (data) {
           setNombre(data.nombre || "");
@@ -156,9 +162,42 @@ export function Perfil() {
           setGustos(data.gustos_evento || []);
           setFoto(data.foto || "");
         }
+
+        // 2. Cargar pagos privados del usuario conectado
+        const { data: pagosData } = await supabase
+          .from("pagos")
+          .select("*")
+          .eq("usuario_id", user.id)
+          .order("fecha_pago", { ascending: false });
+        if (pagosData) setMisPagos(pagosData);
       }
+
+      // 3. Cargar publicaciones del Muro Social
+      const { data: muroData } = await supabase
+        .from("muro_social")
+        .select("*")
+        .order("fecha", { ascending: false })
+        .limit(50);
+      if (muroData) setComentarios(muroData);
     };
-    loadProfile();
+
+    loadProfileAndData();
+
+    // 4. Suscripción en Tiempo Real al Muro Social
+    const channel = supabase
+      .channel("muro_realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "muro_social" },
+        (payload) => {
+          setComentarios((prev) => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const toggleGusto = (item: string) => {
@@ -212,16 +251,24 @@ export function Perfil() {
     }
   };
 
-  const handleEnviarMensajeMuro = () => {
+  const handleEnviarMensajeMuro = async () => {
     if (!nuevoMensaje.trim()) return;
-    const nuevo = {
-      id: Date.now().toString(),
-      autor: nombre ? `${nombre} ${apellido}` : "Scout Elenco",
-      mensaje: nuevoMensaje.trim(),
-      fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setComentarios([nuevo, ...comentarios]);
-    setNuevoMensaje("");
+    const autorNombre = nombre ? `${nombre} ${apellido}` : "Scout Elenco";
+
+    const { error } = await supabase.from("muro_social").insert([
+      {
+        autor: autorNombre,
+        autor_id: userId,
+        mensaje: nuevoMensaje.trim(),
+        fecha: new Date().toISOString()
+      }
+    ]);
+
+    if (error) {
+      alert("Error al publicar mensaje: " + error.message);
+    } else {
+      setNuevoMensaje("");
+    }
   };
 
   const qrPublicUrl = `${window.location.origin}/scout/${userId}`;
@@ -305,6 +352,46 @@ export function Perfil() {
               <InputField label="Teléfono / WhatsApp" type="tel" icon={<Phone size={16} />} value={telefono} onChange={setTelefono} required={false} />
             </div>
 
+            {/* ESTADO PRIVADO DE CUOTAS (SOLO VISIBLE PARA EL PROPIO SCOUT) */}
+            {isOwnProfile && (
+              <>
+                <SectionDivider title="Estado de Cuotas ENJ 2026 (Privado)" icon={<ShieldCheck size={16} color={ENJ_NAVY} />} />
+                <div style={{ background: "#EFF6FF", border: "1.5px solid #60A5FA", borderRadius: 16, padding: 18 }}>
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>
+                    🔒 Esta información es privada y solo la puedes ver tú:
+                  </p>
+                  {misPagos.length === 0 ? (
+                    <div style={{ fontSize: 13, color: "rgba(0,11,111,0.6)", fontStyle: "italic" }}>
+                      No se registraron cuotas reportadas aún.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {misPagos.map((pago) => {
+                        const isValidado = pago.estatus_validacion === "Validado";
+                        const isRechazado = pago.estatus_validacion === "Rechazado";
+                        return (
+                          <div key={pago.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(0,11,111,0.1)" }}>
+                            <div>
+                              <strong style={{ fontSize: 13, color: ENJ_NAVY, display: "block" }}>{pago.concepto || "Cuota ENJ 2026"}</strong>
+                              <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>
+                                {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString("es-VE") : "Sin fecha"}
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: isValidado ? "#16A34A" : isRechazado ? "#DC2626" : "#D97706" }}>
+                              {isValidado && <CheckCircle size={15} />}
+                              {isRechazado && <AlertCircle size={15} />}
+                              {!isValidado && !isRechazado && <Clock size={15} />}
+                              {pago.estatus_validacion || "Pendiente"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* VISTA PREVIA Y QR PÚBLICO */}
             {userId && (
               <>
@@ -319,7 +406,7 @@ export function Perfil() {
                   </div>
                 </div>
 
-                {/* ESPACIO DE INTERACCIÓN DEL ELENCO */}
+                {/* ESPACIO DE INTERACCIÓN DEL ELENCO (MURO SOCIAL) */}
                 <SectionDivider title="Muro de Interacción del Elenco" icon={<Users size={16} color={ENJ_NAVY} />} />
                 <div style={{ background: "#F4F5FA", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 16, padding: 18 }}>
                   <p style={{ fontSize: 13, color: ENJ_NAVY, margin: "0 0 12px", fontWeight: 600 }}>
@@ -331,6 +418,7 @@ export function Perfil() {
                       placeholder="Escribe un saludo o mensaje para el elenco..."
                       value={nuevoMensaje}
                       onChange={(e) => setNuevoMensaje(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleEnviarMensajeMuro())}
                       style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, outline: "none" }}
                     />
                     <button type="button" onClick={handleEnviarMensajeMuro} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -338,15 +426,17 @@ export function Perfil() {
                     </button>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 180, overflowY: "auto" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 220, overflowY: "auto" }}>
                     {comentarios.length === 0 ? (
                       <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>Aún no hay mensajes en el muro. ¡Sé el primero en saludar!</span>
                     ) : (
-                      comentarios.map((c) => (
-                        <div key={c.id} style={{ background: "#fff", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.08)" }}>
+                      comentarios.map((c, idx) => (
+                        <div key={c.id || idx} style={{ background: "#fff", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.08)" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                             <strong style={{ fontSize: 12, color: ENJ_NAVY }}>{c.autor}</strong>
-                            <span style={{ fontSize: 10, color: "rgba(0,11,111,0.4)" }}>{c.fecha}</span>
+                            <span style={{ fontSize: 10, color: "rgba(0,11,111,0.4)" }}>
+                              {c.fecha ? new Date(c.fecha).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                            </span>
                           </div>
                           <p style={{ margin: 0, fontSize: 13, color: "#333" }}>{c.mensaje}</p>
                         </div>
