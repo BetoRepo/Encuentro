@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
 
-// 1. IMPORTACIÓN DE IMÁGENES (Rutas relativas corregidas)
+// Importación de assets
 import bgImage from "../../assets/background.png";
 import logoImage from "../../assets/logonacional.svg";
 
@@ -58,7 +58,6 @@ export function Login() {
         localStorage.setItem("token", result.token);
         localStorage.setItem("enj_user", JSON.stringify(result.user));
 
-        // Separar el nombre en Nombre y Apellido para pre-guardar en LocalStorage
         const nameParts = name.trim().split(" ");
         const firstName = nameParts[0] || "";
         const lastName = nameParts.slice(1).join(" ") || "";
@@ -70,7 +69,6 @@ export function Login() {
         };
         localStorage.setItem("enj_profile", JSON.stringify(initialProfile));
 
-        // Redirigir al formulario de perfil
         navigate("/perfil");
       }
     } catch (err: any) {
@@ -130,10 +128,9 @@ export function Login() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        // Fondo con degradado e imagen corregida
-        backgroundImage: `linear-gradient(rgba(233,240,255,0.65), rgba(248,245,255,0.65)), url(${bgImage})`,
+        backgroundImage: `linear-gradient(rgba(240, 244, 255, 0.82), rgba(240, 244, 255, 0.82)), url(${bgImage})`,
         backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundPosition: "center 20%",
         backgroundRepeat: "no-repeat",
         padding: "24px",
         position: "relative",
@@ -143,19 +140,19 @@ export function Login() {
       <div
         style={{
           position: "relative",
-          background: "rgba(255,255,255,0.96)",
+          background: "rgba(255, 255, 255, 0.98)",
           borderRadius: 24,
-          padding: "48px 32px",
+          padding: "40px 32px",
           maxWidth: 400,
           width: "100%",
           textAlign: "center",
-          boxShadow: "0 20px 50px rgba(0,11,111,0.12)",
-          backdropFilter: "blur(16px)",
+          boxShadow: "0 25px 50px -12px rgba(0, 11, 111, 0.25)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255, 255, 255, 0.6)",
           zIndex: 1,
         }}
       >
         <div style={{ marginBottom: 18, minHeight: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {/* Logo cargado mediante variable importada */}
           <img
             src={logoImage}
             alt="ENJ 2026"
@@ -192,7 +189,6 @@ export function Login() {
             <input style={inputStyle} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
-
           <button
             disabled={loading}
             style={{
@@ -219,6 +215,7 @@ export function Login() {
         >
           {isLogin ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión"}
         </button>
+
         <button
           type="button"
           onClick={() => setChangePasswordOpen(true)}

@@ -92,10 +92,10 @@ const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
 
 4. Comunicaciones y Privacidad
 - Solo se permite generar contenido que cuide la marca scout y la integridad de los participantes.
-- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es estrictamente privada.
+- La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es strictly privada.
 - El uso de IA y herramientas digitales (Canva, Excel) debe ser ético y orientado a los proyectos de impacto social del evento.
 - Mensajes en redes sociales: Las publicaciones en redes personales relacionadas con el ENJ deben alinearse con los valores scouts. Se prohíbe la difusión de imágenes que comprometan la seguridad de las instalaciones o la dignidad de los participantes.
-- Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restricted.
+- Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restringido.
 
 5. Prohibiciones
 - Prohibido el alcohol, tabaco/vapeadores y drogas. El ENJ promueve la nutrición y el ejercicio como base del bienestar físico.
@@ -134,7 +134,7 @@ const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
 - Se deben acatar todas las normas internas del establecimiento (prohibido lanzarse de cabeza, no consumir alimentos dentro del agua, etc.).
 
 13. Normas de Traslados y Actividades Externas
-- Se realizará strictly bajo la supervisión del Staff. Nadie sube o baja de la unidad hasta que el encargado lo autorice.
+- Se realizará estrictamente bajo la supervisión del Staff. Nadie sube o baja de la unidad hasta que el encargado lo autorice.
 - Se debe permanecer sentado mientras la unidad esté en movimiento. Queda prohibido sacar extremidades o colgar implementos (pañoletas, banderas) por las ventanas.
 - La unidad de transporte debe quedar más limpia de lo que se encontró. Está prohibido dejar envoltorios, botellas o desechos en los asientos.
 - Durante las actividades externas, el uso de la franela oficial del ENJ es obligatorio y debe portarse de manera impecable.
@@ -250,8 +250,7 @@ export function Inscripcion() {
   const [medicamentos, setMedicamentos] = useState("");
   const [contactoEmergencia, setContactoEmergencia] = useState("");
 
-  // Estructura Scout & Cargo Nacional
-  const [isCargoNacional, setIsCargoNacional] = useState(false);
+  // Estructura Scout
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
@@ -313,7 +312,6 @@ export function Inscripcion() {
           setCedula(data.cedula || "");
           setCorreo(data.correo || "");
           setTelefono(data.telefono || "");
-          setIsCargoNacional(Boolean(data.isCargoNacional));
           setSelectedRegion(data.selectedRegion || "");
           setSelectedDistrict(data.selectedDistrict || "");
           setGrupoScout(data.grupoScout || "");
@@ -336,7 +334,6 @@ export function Inscripcion() {
         setTelefono((current) => current || data.telefono || "");
         setBirthDate((current) => current || data.birthDate || "");
         setAge((current) => current || data.age || (data.birthDate ? calculateAge(data.birthDate) : null));
-        setIsCargoNacional((current) => current || Boolean(data.es_cargo_nacional));
         setSelectedRegion((current) => current || data.selected_region || data.selectedRegion || "");
         setSelectedDistrict((current) => current || data.selected_district || data.selectedDistrict || "");
         setGrupoScout((current) => current || data.grupo_scout || data.grupoScout || "");
@@ -359,19 +356,6 @@ export function Inscripcion() {
     if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) years -= 1;
     return years >= 0 ? years : null;
   }
-
-  const handleCargoNacionalToggle = (checked: boolean) => {
-    setIsCargoNacional(checked);
-    if (checked) {
-      setSelectedRegion("ESTRUCTURA NACIONAL / OSN");
-      setSelectedDistrict("OFICINA SCOUT NACIONAL");
-      setGrupoScout("Oficina Scout Nacional (OSN)");
-    } else {
-      setSelectedRegion("");
-      setSelectedDistrict("");
-      setGrupoScout("");
-    }
-  };
 
   const extractNativeFile = (fileValue: any): File | null => {
     if (!fileValue) return null;
@@ -469,7 +453,6 @@ export function Inscripcion() {
       cedula: cleanCedula,
       correo,
       telefono,
-      isCargoNacional,
       selectedRegion,
       selectedDistrict,
       grupoScout,
@@ -539,7 +522,6 @@ export function Inscripcion() {
           enfermedades: enfermedades,
           medicamentos: medicamentos,
           contacto_emergencia: contactoEmergencia,
-          es_cargo_nacional: isCargoNacional,
           region: selectedRegion,
           distrito: selectedDistrict,
           grupo_scout: grupoScout,
@@ -796,43 +778,20 @@ export function Inscripcion() {
                 <InputField label="Contacto de Emergencia" value={contactoEmergencia} onChange={setContactoEmergencia} />
 
                 <SectionDivider title="Credenciales Scouts" icon={<Shield size={16} color={ENJ_NAVY} />} />
-                
-                {/* OBLIGATORIO: CHECKBOX DE ESTRUCTURA NACIONAL */}
-                <div style={{
-                  background: "rgba(0,11,111,0.03)",
-                  border: "1px solid rgba(0,11,111,0.12)",
-                  borderRadius: 10,
-                  padding: "12px 16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12
-                }}>
-                  <input
-                    type="checkbox"
-                    id="cargoNacionalCheckInscripcion"
-                    checked={isCargoNacional}
-                    onChange={(e) => handleCargoNacionalToggle(e.target.checked)}
-                    style={{ width: 18, height: 18, accentColor: ENJ_MAGENTA, cursor: "pointer" }}
-                  />
-                  <label htmlFor="cargoNacionalCheckInscripcion" style={{ fontSize: 13, fontWeight: 700, color: ENJ_NAVY, cursor: "pointer" }}>
-                    Tengo un Cargo Institucional / Estructura Nacional (OSN / Consejo / Directorio)
-                  </label>
-                </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <SelectField 
                     label="Región Scout" 
                     options={scoutRegions.map(r => r.region)} 
                     value={selectedRegion} 
-                    disabled={isCargoNacional} 
                     onChange={(val: string) => { setSelectedRegion(val); setSelectedDistrict(""); }} 
                   />
                   <SelectField 
                     label="Distrito Scout" 
-                    options={isCargoNacional ? scoutRegions[0].districts.map(d => d.district) : (selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : [])} 
+                    options={selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : []} 
                     value={selectedDistrict} 
                     onChange={setSelectedDistrict} 
-                    disabled={!selectedRegion || isCargoNacional} 
+                    disabled={!selectedRegion} 
                   />
                 </div>
                 
@@ -842,9 +801,8 @@ export function Inscripcion() {
                     placeholder="Ej. San Jorge 12 / OSN" 
                     icon={<Building size={16} />} 
                     value={grupoScout} 
-                    disabled={isCargoNacional} 
                     onChange={setGrupoScout} 
-                    required={!isCargoNacional} 
+                    required={true} 
                   />
                   <SelectField label="Unidad / Rama Scout" options={ramas} value={ramaScout} onChange={setRamaScout} />
                 </div>

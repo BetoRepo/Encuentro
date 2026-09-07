@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, User, Phone, ChevronDown, Camera, MapPin, Heart, Instagram,
   ShieldCheck, Send, Users, CheckCircle, Clock, AlertCircle, Edit3, Share2,
-  Sparkles, HeartPulse, ShieldAlert, Award
+  Sparkles, ShieldAlert, Award
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
@@ -58,9 +58,7 @@ const tiposRol = [
 ];
 
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
-const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
-const opcionesAlimentacion = ["Sin Restricción", "Vegetariano", "Vegano", "Celíaco (Sin Gluten)", "Intolerante a Lactosa"];
-const opcionesGustos = ["Fogata", "Intercambio de Pañoletas", "Talleres", "Feria de Ramas", "Juegos Nocturnos", "Música / Canto", "Deportes", "Hacer Amigos", "Logística", "Primeros Auxilios"];
+const opcionesGustos = ["RDJ", "Herramientas digitales", "Marca personal",  "Comunicación y negociación", "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", "A Salvo del Peligro", "Gobernanza", "Ciudadanía activa", "Salud mental", "Nutrición", "Derechos sexuales y reproductivos", "Intercambio cultural", "Hacer amigos", "Intercambiar pañoletas", "Música/Canto", "Deportes", "Aldea Global"];
 
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
   return (
@@ -170,13 +168,7 @@ export function Perfil() {
   const [contactoEmergencia, setContactoEmergencia] = useState("");
   const [telefonoEmergencia, setTelefonoEmergencia] = useState("");
 
-  // 4. Ficha Médica y Alimentación
-  const [tipoSangre, setTipoSangre] = useState("");
-  const [alergias, setAlergias] = useState("");
-  const [alimentacion, setAlimentacion] = useState("Sin Restricción");
-  const [condicionesMedicas, setCondicionesMedicas] = useState("");
-
-  // 5. Redes y Perfil Público
+  // 4. Redes y Perfil Público
   const [descripcion, setDescripcion] = useState("");
   const [instagram, setInstagram] = useState("");
   const [gustos, setGustos] = useState<string[]>([]);
@@ -211,10 +203,6 @@ export function Perfil() {
         setCorreo(data.correo || "");
         setContactoEmergencia(data.contacto_emergencia || "");
         setTelefonoEmergencia(data.telefono_emergencia || "");
-        setTipoSangre(data.tipo_sangre || "");
-        setAlergias(data.alergias || "");
-        setAlimentacion(data.alimentacion || "Sin Restricción");
-        setCondicionesMedicas(data.condiciones_medicas || "");
         setDescripcion(data.descripcion || "");
         setInstagram(data.instagram || "");
         setGustos(data.gustos_evento || []);
@@ -322,10 +310,6 @@ export function Perfil() {
         correo: correo.trim() || currentUser?.email,
         contacto_emergencia: contactoEmergencia.trim(),
         telefono_emergencia: telefonoEmergencia.trim(),
-        tipo_sangre: tipoSangre,
-        alergias: alergias.trim(),
-        alimentacion,
-        condiciones_medicas: condicionesMedicas.trim(),
         descripcion: descripcion.trim(),
         instagram: instagram.trim().replace("@", ""),
         gustos_evento: gustos,
@@ -491,22 +475,8 @@ export function Perfil() {
                 <InputField label="Teléfono de Emergencia" type="tel" placeholder="0414-0000000" value={telefonoEmergencia} onChange={setTelefonoEmergencia} required={false} />
               </div>
 
-              {/* SECCIÓN 4: FICHA MÉDICA Y ALIMENTACIÓN */}
-              <SectionDivider title="4. Ficha Médica y Alimentación" icon={<HeartPulse size={15} color={ENJ_NAVY} />} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <SelectField label="Tipo de Sangre" options={tiposSangre} value={tipoSangre} onChange={setTipoSangre} required={false} />
-                <SelectField label="Régimen Alimenticio" options={opcionesAlimentacion} value={alimentacion} onChange={setAlimentacion} required={false} />
-              </div>
-
-              <InputField label="Alergias o Medicamentos Continuos" placeholder="Ej. Penicilina, polen, AINEs..." value={alergias} onChange={setAlergias} required={false} />
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>Condiciones Médicas Importantes</label>
-                <textarea placeholder="Detalla cualquier información de salud relevante para la atención médica del evento..." value={condicionesMedicas} onChange={(e) => setCondicionesMedicas(e.target.value)} rows={2} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", outline: "none", boxSizing: "border-box", fontSize: 13 }} />
-              </div>
-
-              {/* SECCIÓN 5: REDES E INTERESES */}
-              <SectionDivider title="5. Social & Redes ENJ" icon={<Heart size={15} color={ENJ_NAVY} />} />
+              {/* SECCIÓN 4: REDES E INTERESES */}
+              <SectionDivider title="4. Social & Redes ENJ" icon={<Heart size={15} color={ENJ_NAVY} />} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>Biografía / Lema Scout</label>
                 <textarea placeholder="Cuéntanos tus expectativas para el ENJ 2026..." value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", outline: "none", boxSizing: "border-box", fontSize: 13 }} />
@@ -555,7 +525,7 @@ export function Perfil() {
               </div>
 
               {/* CUERPO DEL PERFIL */}
-              <div style={{ padding: "0 24px 28px", marginTop: -48, textAlign: "center" }}>
+              <div style={{ padding: "0 24px 28px", marginTop: -48, textAlign: "center", position: "relative", zIndex: 1 }}>
                 {/* AVATAR */}
                 <div style={{ width: 96, height: 96, borderRadius: "50%", border: "4px solid #fff", background: "#EAEFFF", margin: "0 auto", overflow: "hidden", boxShadow: "0 4px 14px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {foto ? <img src={foto} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={46} color={ENJ_NAVY} />}
