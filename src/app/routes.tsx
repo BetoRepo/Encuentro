@@ -1,129 +1,71 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { Root } from './components/Root'
-import { PerfilPublico } from './components/PerfilPublico'
-import { Home, Inscripcion, Consultas, Perfil, Dashboard, ChangePassword } from './pages'
-import { Login } from './pages/Login' // <-- Ajusta esta ruta según donde esté Login.tsx
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { Root } from './components/Root';
+import { PerfilPublico } from './components/PerfilPublico';
+import { Home, Inscripcion, Consultas, Perfil, Dashboard } from './pages';
+import { Login } from './pages/Login';
 
-// 1. CREAMOS EL GUARDIÁN DE RUTAS (PROTECTED ROUTE)
+// GUARDIÁN DE AUTENTICACIÓN GENERAL
 const ProtectedRoute = () => {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isActive = true;
-    const storedUser = localStorage.getItem('enj_user');
-    const storedToken = localStorage.getItem('token');
-
-    if (!storedUser) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const parsedUser = JSON.parse(storedUser);
-
-      if (import.meta.env.DEV && parsedUser?.role === 'admin') {
-        if (isActive) {
-          setUser(parsedUser);
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (isActive) setUser(parsedUser);
-    } catch {
-      localStorage.removeItem('enj_user');
-    }
-
-    if (!storedToken) {
-      if (isActive) setLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-
-    fetch('/api/auth/me', {
-      headers: { Authorization: `Bearer ${storedToken}` },
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Sesión inválida');
-        const result = await response.json();
-        if (!isActive) return;
-        setUser(result.user);
-        localStorage.setItem('enj_user', JSON.stringify(result.user));
-      })
-      .catch((error) => {
-        if (!isActive) return;
-
-        const isAbortError = error instanceof DOMException && error.name === 'AbortError';
-        if (isAbortError) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('enj_user');
-          setUser(null);
-          return;
-        }
-
-        localStorage.removeItem('token');
-        localStorage.removeItem('enj_user');
-        setUser(null);
-      })
-      .finally(() => {
-        if (!isActive) return;
-        window.clearTimeout(timeoutId);
-        setLoading(false);
-      });
-
-    return () => {
-      isActive = false;
-      controller.abort();
-      window.clearTimeout(timeoutId);
-    };
-  }, []);
-
-  if (loading) {
-    // Pantalla de carga mientras Supabase verifica la sesión
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#000B6F' }}>
-        <h2>Verificando sesión...</h2>
-      </div>
-    );
-  }
-
-  // Si hay sesión, muestra las páginas. Si no, lo manda a /login.
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  const storedUser = localStorage.getItem('enj_user');
+  if (!storedUser) return <Navigate to="/login" replace />;
+  return <Outlet />;
 };
 
-// 2. CONFIGURACIÓN DEL ENRUTADOR
+// GUARDIÁN DE ROLES
+const RoleGuard = ({ allowedRoles, children }: { allowedRoles: string[]; children: React.ReactNode }) => {
+  const storedUser = localStorage.getItem('enj_user');
+
+  if (!storedUser) return <Navigate to="/login" replace />;
+
+  try {
+    const user = JSON.parse(storedUser);
+    if (!allowedRoles.includes(user.role)) {
+      return <Navigate to="/" replace />; // Redirige al Home si el participante intenta colarse por URL
+    }
+  } catch {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export const router = createBrowserRouter(
   [
     {
-      // La ruta pública (Login) va separada para que no pida autenticación
       path: '/login',
       element: <Login />,
     },
     {
-      // Ruta pública del perfil QR, accesible sin sesión
       path: '/scout/:id',
       element: <PerfilPublico />,
     },
     {
-      // Agrupamos todas las demás rutas dentro del Guardián
       path: '/',
       element: <ProtectedRoute />,
       children: [
         {
           path: '/',
-          element: <Root />, // Root manejará el Layout (Menú lateral/Navbar)
+          element: <Root />, 
           children: [
             { index: true, element: <Home /> },
-            { path: 'consultas', element: <Consultas /> },
             { path: 'inscripcion', element: <Inscripcion /> },
             { path: 'perfil', element: <Perfil /> },
-            { path: 'dashboard', element: <Dashboard /> },
-            { path: 'cambiar-contrasena', element: <ChangePassword /> },
+            { 
+              path: 'consultas', 
+              element: (
+                <RoleGuard allowedRoles={['admin', 'programa']}>
+                  <Consultas />
+                </RoleGuard>
+              ) 
+            },
+            { 
+              path: 'dashboard', 
+              element: (
+                <RoleGuard allowedRoles={['admin']}>
+                  <Dashboard />
+                </RoleGuard>
+              ) 
+            },
           ],
         },
       ],
@@ -132,4 +74,4 @@ export const router = createBrowserRouter(
   {
     basename: '/',
   }
-)
+);

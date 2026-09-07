@@ -28,23 +28,46 @@ const LOCAL_REGISTRATION_KEY = "enj_registration";
 const LOCAL_PROFILE_KEY = "enj_profile";
 const ALERT_AUTHORIZED_EMAILS = ["admin@enj.org", "coordinador@enj.org"];
 
-type ScoutDistrict = { district: string };
-type ScoutRegion = { region: string; districts: ScoutDistrict[] };
+export type ScoutDistrict = { district: string };
+export type ScoutRegion = { region: string; districts: ScoutDistrict[] };
 
 export const scoutRegions: ScoutRegion[] = [
-  { region: "ARAGUA", districts: [{ district: "Guarico" }, { district: "HENRI PITTIER" }, { district: "JOSE FELIX RIBAS" }, { district: "MANUEL ATANASIO GIRARDOT" }, { district: "SANTIAGO MARIÑO" }, { district: "SUCRE ZAMORA" }] },
+  {
+    region: "ESTRUCTURA NACIONAL / OSN",
+    districts: [
+      { district: "CONSEJO SCOUT NACIONAL" },
+      { district: "DIRECTORIO NACIONAL" },
+      { district: "EQUIPO NACIONAL" },
+      { district: "OFICINA SCOUT NACIONAL" },
+      { district: "ESTRUCTURA INSTITUCIONAL" }
+    ]
+  },
+  { region: "ANZOÁTEGUI", districts: [{ district: "EL TIGRE" }, { district: "PUERTO LA CRUZ" }, { district: "BARCELONA" }] },
+  { region: "APURE", districts: [{ district: "SAN FERNANDO" }] },
+  { region: "ARAGUA", districts: [{ district: "GUARICO" }, { district: "HENRI PITTIER" }, { district: "JOSE FELIX RIBAS" }, { district: "MANUEL ATANASIO GIRARDOT" }, { district: "SANTIAGO MARIÑO" }, { district: "SUCRE ZAMORA" }] },
   { region: "ATENDIDOS POR LA OSN", districts: [{ district: "BOLIVAR" }, { district: "COJEDES" }, { district: "FALCON" }, { district: "GUARAPICHE" }, { district: "PORTUGUESA" }, { district: "PUERTO LA CRUZ" }, { district: "TRUJILLO" }, { district: "YARACUY" }] },
+  { region: "BARINAS", districts: [{ district: "BARINAS CENTRO" }] },
+  { region: "BOLÍVAR", districts: [{ district: "CARONÍ" }, { district: "ANGOSTURA" }, { district: "UPATA" }] },
   { region: "CARABOBO", districts: [{ district: "GUACARA" }, { district: "SAN ESTEBAN" }, { district: "VALENCIA NORTE" }, { district: "VALENCIA SUR" }] },
+  { region: "COJEDES", districts: [{ district: "SAN CARLOS" }] },
   { region: "DISTRITO CAPITAL", districts: [{ district: "AVILA" }, { district: "CARICUAO" }, { district: "JOSE ANTONIO PAEZ" }, { district: "LOS PROCERES" }, { district: "MARISCAL SUCRE" }, { district: "SANTIAGO DE LEON" }] },
+  { region: "FALCÓN", districts: [{ district: "CORO" }, { district: "PARAGUANÁ" }] },
+  { region: "GUÁRICO", districts: [{ district: "VALLE DE LA PASCUA" }, { district: "SAN JUAN DE LOS MORROS" }] },
   { region: "LARA", districts: [{ district: "ANDRES ELOY BLANCO" }, { district: "CATEDRAL" }, { district: "CREPUSCULAR" }, { district: "PALAVECINO" }] },
-  { region: "MERIDA", districts: [{ district: "CARI" }, { district: "LIBERTADOR" }, { district: "NO APLICA" }] },
+  { region: "MÉRIDA", districts: [{ district: "CARI" }, { district: "LIBERTADOR" }, { district: "NO APLICA" }] },
   { region: "METROPOLITANA", districts: [{ district: "BARUTA" }, { district: "CHACAO" }, { district: "SUCRE NORTE" }, { district: "SUCRE SUR" }] },
   { region: "MIRANDA", districts: [{ district: "ALTOS MIRANDINOS" }, { district: "GUARENAS GUATIRE" }, { district: "VALLES DEL TUY" }] },
-  { region: "TACHIRA", districts: [{ district: "RIO TORBES" }, { district: "SAN CRISTOBAL ESTE" }, { district: "SAN CRISTOBAL OESTE" }] },
+  { region: "MONAGAS", districts: [{ district: "MATURÍN" }] },
+  { region: "NUEVA ESPARTA", districts: [{ district: "PORLAMAR" }, { district: "MARGARITA" }] },
+  { region: "PORTUGUESA", districts: [{ district: "ACARIGUA" }, { district: "GUANARE" }] },
+  { region: "SUCRE", districts: [{ district: "CUMANÁ" }, { district: "CARÚPANO" }] },
+  { region: "TÁCHIRA", districts: [{ district: "RIO TORBES" }, { district: "SAN CRISTOBAL ESTE" }, { district: "SAN CRISTOBAL OESTE" }] },
+  { region: "TRUJILLO", districts: [{ district: "VALERA" }, { district: "TRUJILLO" }] },
+  { region: "YARACUY", districts: [{ district: "SAN FELIPE" }] },
   { region: "ZULIA", districts: [{ district: "COQUIVACOA" }, { district: "FRANCISCO POLANCO - PERIJA" }, { district: "PEDRO HENRIQUEZ AMADO" }, { district: "SAMUEL MARTINEZ" }, { district: "SAN FRANCISCO" }, { district: "ZULIA ORIENTAL" }] },
 ];
 
-const ramas = ["Comunidad (Caminante)", "Clan (Rover)"];
+const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
 const tiposSangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "No lo sé"];
 
 const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
@@ -72,7 +95,7 @@ const acuerdoConvivenciaEnj2026 = `ACUERDO DE CONVIVENCIA Y NORMAS - ENJ 2026
 - La información compartida en el "Confesionario Abierto" o en dinámicas de salud mental es estrictamente privada.
 - El uso de IA y herramientas digitales (Canva, Excel) debe ser ético y orientado a los proyectos de impacto social del evento.
 - Mensajes en redes sociales: Las publicaciones en redes personales relacionadas con el ENJ deben alinearse con los valores scouts. Se prohíbe la difusión de imágenes que comprometan la seguridad de las instalaciones o la dignidad de los participantes.
-- Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restringido.
+- Uso adecuado de la tecnología: Los dispositivos electrónicos son herramientas de trabajo. Su uso en plenarias y talleres se limita a la toma de notas, investigación o actividades indicadas por los facilitadores. El uso recreativo (juegos o redes sociales) durante las sesiones de aprendizaje está restricted.
 
 5. Prohibiciones
 - Prohibido el alcohol, tabaco/vapeadores y drogas. El ENJ promueve la nutrición y el ejercicio como base del bienestar físico.
@@ -227,6 +250,8 @@ export function Inscripcion() {
   const [medicamentos, setMedicamentos] = useState("");
   const [contactoEmergencia, setContactoEmergencia] = useState("");
 
+  // Estructura Scout & Cargo Nacional
+  const [isCargoNacional, setIsCargoNacional] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
@@ -288,6 +313,7 @@ export function Inscripcion() {
           setCedula(data.cedula || "");
           setCorreo(data.correo || "");
           setTelefono(data.telefono || "");
+          setIsCargoNacional(Boolean(data.isCargoNacional));
           setSelectedRegion(data.selectedRegion || "");
           setSelectedDistrict(data.selectedDistrict || "");
           setGrupoScout(data.grupoScout || "");
@@ -310,10 +336,11 @@ export function Inscripcion() {
         setTelefono((current) => current || data.telefono || "");
         setBirthDate((current) => current || data.birthDate || "");
         setAge((current) => current || data.age || (data.birthDate ? calculateAge(data.birthDate) : null));
-        setSelectedRegion((current) => current || data.selectedRegion || "");
-        setSelectedDistrict((current) => current || data.selectedDistrict || "");
-        setGrupoScout((current) => current || data.grupoScout || "");
-        setRamaScout((current) => current || data.ramaScout || "");
+        setIsCargoNacional((current) => current || Boolean(data.es_cargo_nacional));
+        setSelectedRegion((current) => current || data.selected_region || data.selectedRegion || "");
+        setSelectedDistrict((current) => current || data.selected_district || data.selectedDistrict || "");
+        setGrupoScout((current) => current || data.grupo_scout || data.grupoScout || "");
+        setRamaScout((current) => current || data.rama_scout || data.ramaScout || "");
       } catch (error) {
         console.warn("Error leyendo el perfil local:", error);
       }
@@ -332,6 +359,19 @@ export function Inscripcion() {
     if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) years -= 1;
     return years >= 0 ? years : null;
   }
+
+  const handleCargoNacionalToggle = (checked: boolean) => {
+    setIsCargoNacional(checked);
+    if (checked) {
+      setSelectedRegion("ESTRUCTURA NACIONAL / OSN");
+      setSelectedDistrict("OFICINA SCOUT NACIONAL");
+      setGrupoScout("Oficina Scout Nacional (OSN)");
+    } else {
+      setSelectedRegion("");
+      setSelectedDistrict("");
+      setGrupoScout("");
+    }
+  };
 
   const extractNativeFile = (fileValue: any): File | null => {
     if (!fileValue) return null;
@@ -371,7 +411,6 @@ export function Inscripcion() {
     return Number(normalized);
   };
 
-  // ENVÍO DE DOCUMENTOS Y COMPROBANTES AL BUCKET 'documentos-enj'
   const uploadParticipantDocument = async ({
     cedulaParticipante,
     file,
@@ -390,7 +429,6 @@ export function Inscripcion() {
     let base64Data = "";
 
     try {
-      // BUCKET CONFIGURADO: 'documentos-enj'
       const { error: uploadError } = await supabase.storage.from("documentos-enj").upload(storagePath, file, {
         upsert: true,
         contentType: file.type || 'application/octet-stream',
@@ -431,6 +469,7 @@ export function Inscripcion() {
       cedula: cleanCedula,
       correo,
       telefono,
+      isCargoNacional,
       selectedRegion,
       selectedDistrict,
       grupoScout,
@@ -500,6 +539,7 @@ export function Inscripcion() {
           enfermedades: enfermedades,
           medicamentos: medicamentos,
           contacto_emergencia: contactoEmergencia,
+          es_cargo_nacional: isCargoNacional,
           region: selectedRegion,
           distrito: selectedDistrict,
           grupo_scout: grupoScout,
@@ -756,13 +796,57 @@ export function Inscripcion() {
                 <InputField label="Contacto de Emergencia" value={contactoEmergencia} onChange={setContactoEmergencia} />
 
                 <SectionDivider title="Credenciales Scouts" icon={<Shield size={16} color={ENJ_NAVY} />} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <SelectField label="Región Scout" options={scoutRegions.map(r => r.region)} value={selectedRegion} onChange={(val: string) => { setSelectedRegion(val); setSelectedDistrict(""); }} />
-                  <SelectField label="Distrito Scout" options={selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : []} value={selectedDistrict} onChange={setSelectedDistrict} disabled={!selectedRegion} />
+                
+                {/* OBLIGATORIO: CHECKBOX DE ESTRUCTURA NACIONAL */}
+                <div style={{
+                  background: "rgba(0,11,111,0.03)",
+                  border: "1px solid rgba(0,11,111,0.12)",
+                  borderRadius: 10,
+                  padding: "12px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12
+                }}>
+                  <input
+                    type="checkbox"
+                    id="cargoNacionalCheckInscripcion"
+                    checked={isCargoNacional}
+                    onChange={(e) => handleCargoNacionalToggle(e.target.checked)}
+                    style={{ width: 18, height: 18, accentColor: ENJ_MAGENTA, cursor: "pointer" }}
+                  />
+                  <label htmlFor="cargoNacionalCheckInscripcion" style={{ fontSize: 13, fontWeight: 700, color: ENJ_NAVY, cursor: "pointer" }}>
+                    Tengo un Cargo Institucional / Estructura Nacional (OSN / Consejo / Directorio)
+                  </label>
                 </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <InputField label="Grupo Scout" placeholder="Ej. Mafeking" icon={<Building size={16} />} value={grupoScout} onChange={setGrupoScout} />
-                  <SelectField label="Unidad Scout" options={ramas} value={ramaScout} onChange={setRamaScout} />
+                  <SelectField 
+                    label="Región Scout" 
+                    options={scoutRegions.map(r => r.region)} 
+                    value={selectedRegion} 
+                    disabled={isCargoNacional} 
+                    onChange={(val: string) => { setSelectedRegion(val); setSelectedDistrict(""); }} 
+                  />
+                  <SelectField 
+                    label="Distrito Scout" 
+                    options={isCargoNacional ? scoutRegions[0].districts.map(d => d.district) : (selectedRegion ? scoutRegions.find(r => r.region === selectedRegion)?.districts.map(d => d.district) ?? [] : [])} 
+                    value={selectedDistrict} 
+                    onChange={setSelectedDistrict} 
+                    disabled={!selectedRegion || isCargoNacional} 
+                  />
+                </div>
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <InputField 
+                    label="Grupo Scout / Instancia" 
+                    placeholder="Ej. San Jorge 12 / OSN" 
+                    icon={<Building size={16} />} 
+                    value={grupoScout} 
+                    disabled={isCargoNacional} 
+                    onChange={setGrupoScout} 
+                    required={!isCargoNacional} 
+                  />
+                  <SelectField label="Unidad / Rama Scout" options={ramas} value={ramaScout} onChange={setRamaScout} />
                 </div>
                 {participantType === "joven" ? (
                   <InputField label="Adulto de Unidad" value={adultoUnidad} onChange={setAdultoUnidad} />

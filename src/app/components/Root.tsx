@@ -59,13 +59,12 @@ export function Root() {
     }
   };
 
-  // Nueva función para cerrar sesión
   const handleLogout = async () => {
     try {
       localStorage.removeItem("token");
       localStorage.removeItem("enj_user");
       setUser(null);
-      setMobileOpen(false); // Cierra el menú móvil si estaba abierto
+      setMobileOpen(false);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }
@@ -150,21 +149,26 @@ export function Root() {
             >
               Inicio
             </NavLink>
-            <NavLink
-              to="/consultas"
-              style={({ isActive }) => ({
-                padding: "7px 16px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontSize: 14,
-                fontWeight: 600,
-                color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
-                background: isActive ? "rgba(215,0,126,0.28)" : "transparent",
-                transition: "all 0.15s",
-              })}
-            >
-              Consultas
-            </NavLink>
+
+            {/* Oculto para participantes: Visible únicamente para admin y programa */}
+            {['admin', 'programa'].includes(user?.role || '') && (
+              <NavLink
+                to="/consultas"
+                style={({ isActive }) => ({
+                  padding: "7px 16px",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
+                  background: isActive ? "rgba(215,0,126,0.28)" : "transparent",
+                  transition: "all 0.15s",
+                })}
+              >
+                Consultas
+              </NavLink>
+            )}
+
             <NavLink
               to="/inscripcion"
               style={({ isActive }) => ({
@@ -195,9 +199,24 @@ export function Root() {
             >
               Perfil
             </NavLink>
-            {user?.role === "admin" && <NavLink to="/dashboard" style={({ isActive }) => ({ padding: "7px 16px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, color: "#fff", background: isActive ? ENJ_MAGENTA : "transparent" })}>Dashboard</NavLink>}
+            {user?.role === "admin" && (
+              <NavLink 
+                to="/dashboard" 
+                style={({ isActive }) => ({ 
+                  padding: "7px 16px", 
+                  borderRadius: 8, 
+                  textDecoration: "none", 
+                  fontSize: 14, 
+                  fontWeight: 600, 
+                  color: "#fff", 
+                  background: isActive ? ENJ_MAGENTA : "transparent" 
+                })}
+              >
+                Dashboard
+              </NavLink>
+            )}
             
-            {/* Botón de Cerrar Sesión Desktop (solo si hay usuario) */}
+            {/* Botón de Cerrar Sesión Desktop */}
             {user && (
               <button
                 onClick={handleLogout}
@@ -269,21 +288,26 @@ export function Root() {
             >
               Inicio
             </NavLink>
-            <NavLink
-              to="/consultas"
-              onClick={() => setMobileOpen(false)}
-              style={({ isActive }) => ({
-                padding: "10px 14px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#fff",
-                background: isActive ? "rgba(215,0,126,0.28)" : "transparent",
-              })}
-            >
-              Consultas
-            </NavLink>
+
+            {/* Oculto para participantes en móvil */}
+            {['admin', 'programa'].includes(user?.role || '') && (
+              <NavLink
+                to="/consultas"
+                onClick={() => setMobileOpen(false)}
+                style={({ isActive }) => ({
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#fff",
+                  background: isActive ? "rgba(215,0,126,0.28)" : "transparent",
+                })}
+              >
+                Consultas
+              </NavLink>
+            )}
+
             <NavLink
               to="/inscripcion"
               onClick={() => setMobileOpen(false)}
@@ -314,9 +338,17 @@ export function Root() {
             >
               Perfil
             </NavLink>
-            {user?.role === "admin" && <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} style={{ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff" }}>Dashboard</NavLink>}
+            {user?.role === "admin" && (
+              <NavLink 
+                to="/dashboard" 
+                onClick={() => setMobileOpen(false)} 
+                style={{ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff" }}
+              >
+                Dashboard
+              </NavLink>
+            )}
             
-            {/* Botón de Cerrar Sesión Mobile (solo si hay usuario) */}
+            {/* Botón de Cerrar Sesión Mobile */}
             {user && (
               <>
                 <div style={{ height: "1px", background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
@@ -350,7 +382,7 @@ export function Root() {
 
       {/* FOOTER */}
       <footer style={{ background: ENJ_NAVY, padding: "32px 24px", textAlign: "center" }}>
-        <div style={{ display: "center", justifyContent: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
           <ScoutsLogo />
         </div>
         <img src={logoImage} alt="Encuentro Nacional de Jóvenes · ENJ 2026" style={{ width: 150, height: "auto", maxHeight: 72, objectFit: "contain", margin: "0 auto 12px", display: "block" }} />
@@ -358,7 +390,7 @@ export function Root() {
           30 Oct - 1 Nov · Aguirre, Venezuela
         </p>
         <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
-          Asociacion de Scouts de Venezuela.
+          Asociación de Scouts de Venezuela.
         </p>
       </footer>
 
