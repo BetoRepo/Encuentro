@@ -150,7 +150,26 @@ export function Root() {
               Inicio
             </NavLink>
 
-            {/* Oculto para participantes: Visible únicamente para admin y programa */}
+            {/* Panel de Programa: Visible únicamente para admin y programa */}
+            {['admin', 'programa'].includes(user?.role || '') && (
+              <NavLink
+                to="/panel-programa"
+                style={({ isActive }) => ({
+                  padding: "7px 16px",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: isActive ? "#fff" : "rgba(255,255,255,0.8)",
+                  background: isActive ? ENJ_MAGENTA : "rgba(215,0,126,0.20)",
+                  transition: "all 0.15s",
+                })}
+              >
+                Programa
+              </NavLink>
+            )}
+
+            {/* Consultas: Visible únicamente para admin y programa */}
             {['admin', 'programa'].includes(user?.role || '') && (
               <NavLink
                 to="/consultas"
@@ -184,6 +203,7 @@ export function Root() {
             >
               Inscripción
             </NavLink>
+
             <NavLink
               to="/perfil"
               style={({ isActive }) => ({
@@ -199,6 +219,7 @@ export function Root() {
             >
               Perfil
             </NavLink>
+
             {user?.role === "admin" && (
               <NavLink 
                 to="/dashboard" 
@@ -289,7 +310,26 @@ export function Root() {
               Inicio
             </NavLink>
 
-            {/* Oculto para participantes en móvil */}
+            {/* Panel de Programa en Móvil */}
+            {['admin', 'programa'].includes(user?.role || '') && (
+              <NavLink
+                to="/panel-programa"
+                onClick={() => setMobileOpen(false)}
+                style={({ isActive }) => ({
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#fff",
+                  background: isActive ? ENJ_MAGENTA : "rgba(215,0,126,0.20)",
+                })}
+              >
+                Programa
+              </NavLink>
+            )}
+
+            {/* Consultas en Móvil */}
             {['admin', 'programa'].includes(user?.role || '') && (
               <NavLink
                 to="/consultas"
@@ -323,6 +363,7 @@ export function Root() {
             >
               Inscripción
             </NavLink>
+
             <NavLink
               to="/perfil"
               onClick={() => setMobileOpen(false)}
@@ -338,6 +379,7 @@ export function Root() {
             >
               Perfil
             </NavLink>
+
             {user?.role === "admin" && (
               <NavLink 
                 to="/dashboard" 
