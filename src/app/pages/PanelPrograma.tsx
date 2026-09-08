@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
-import { Download, AlertTriangle, FileText, Bell } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle } from 'lucide-react';
 
 interface Alarma {
   id: string;
@@ -21,8 +21,23 @@ interface Consulta {
   updated_at: string;
 }
 
+// Nueva interfaz para Logros
+interface SolicitudLogro {
+  id: string;
+  user_id: string;
+  insignia_id: string;
+  estado: 'pendiente' | 'aprobado' | 'rechazado';
+  detalles: string;
+  fecha_solicitud: string;
+  insignias?: {
+    nombre: string;
+    puntos: number;
+  };
+}
+
 export const PanelPrograma: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'alarmas' | 'consultas'>('alarmas');
+  // Se añade 'logros' a las pestañas activas
+  const [activeTab, setActiveTab] = useState<'alarmas' | 'consultas' | 'logros'>('alarmas');
   
   // Estado Alarmas
   const [alarmas, setAlarmas] = useState<Alarma[]>([]);
@@ -39,17 +54,37 @@ export const PanelPrograma: React.FC = () => {
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [loadingConsultas, setLoadingConsultas] = useState(false);
 
+  // Estado Logros
+  const [solicitudes, setSolicitudes] = useState<SolicitudLogro[]>([]);
+  const [loadingSolicitudes, setLoadingSolicitudes] = useState(false);
+
   useEffect(() => {
     fetchAlarmas();
     fetchConsultas();
+    fetchSolicitudes(); // Cargar solicitudes iniciales
 
-    const channel = supabase
+    // Canal original de alarmas
+    const channelAlarmas = supabase
       .channel('realtime-programa-alarmas')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'programa_alarmas' }, () => fetchAlarmas())
       .subscribe();
 
+    // NUEVO: Canal para escuchar solicitudes de logros en tiempo real
+    const channelLogros = supabase
+      .channel('realtime-solicitudes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'solicitudes_logros' },
+        (payload) => {
+          // Recargar para obtener el nombre de la insignia unida o añadir manual
+          fetchSolicitudes();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelAlarmas);
+      supabase.removeChannel(channelLogros);
     };
   }, []);
 
@@ -63,6 +98,19 @@ export const PanelPrograma: React.FC = () => {
     const { data, error } = await supabase.from('consultas_distritales').select('*').order('distrito', { ascending: true });
     if (!error && data) setConsultas(data as Consulta[]);
     setLoadingConsultas(false);
+  };
+
+  // NUEVO: Función para buscar las solicitudes pendientes
+  const fetchSolicitudes = async () => {
+    setLoadingSolicitudes(true);
+    const { data, error } = await supabase
+      .from('solicitudes_logros')
+      .select('*, insignias(nombre, puntos)')
+      .eq('estado', 'pendiente')
+      .order('fecha_solicitud', { ascending: false });
+      
+    if (!error && data) setSolicitudes(data as SolicitudLogro[]);
+    setLoadingSolicitudes(false);
   };
 
   const handleSubmitAlarma = async (e: React.FormEvent) => {
@@ -99,6 +147,36 @@ export const PanelPrograma: React.FC = () => {
     if (!error) fetchAlarmas();
   };
 
+  // NUEVO: Funciones para aprobar y rechazar logros
+  const handleAprobarLogro = async (solicitud: SolicitudLogro) => {
+    try {
+      // 1. Asignar insignia al usuario
+      const { error: insertError } = await supabase.from('participante_insignias').insert([
+        { user_id: solicitud.user_id, insignia_id: solicitud.insignia_id, otorgado_por: 'PANEL_PROGRAMA' }
+      ]);
+      if (insertError && insertError.code !== '23505') throw insertError; // Ignora error si ya la tenía (23505)
+
+      // 2. Actualizar estado de solicitud
+      await supabase.from('solicitudes_logros').update({ estado: 'aprobado' }).eq('id', solicitud.id);
+      
+      // 3. Remover de la lista actual
+      setSolicitudes(prev => prev.filter(s => s.id !== solicitud.id));
+    } catch (error) {
+      alert("Error al aprobar el logro.");
+      console.error(error);
+    }
+  };
+
+  const handleRechazarLogro = async (solicitudId: string) => {
+    if (!confirm('¿Estás seguro de rechazar este logro?')) return;
+    try {
+      await supabase.from('solicitudes_logros').update({ estado: 'rechazado' }).eq('id', solicitudId);
+      setSolicitudes(prev => prev.filter(s => s.id !== solicitudId));
+    } catch (error) {
+      alert("Error al rechazar el logro.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans">
       <header className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
@@ -107,11 +185,11 @@ export const PanelPrograma: React.FC = () => {
           <h1 className="text-2xl font-black text-slate-900">Panel de Programa ⚜️</h1>
         </div>
         
-        {/* Navegación por Tabs */}
-        <div className="flex bg-slate-200 p-1 rounded-lg">
+        {/* Navegación por Tabs Actualizada */}
+        <div className="flex bg-slate-200 p-1 rounded-lg overflow-x-auto">
           <button
             onClick={() => setActiveTab('alarmas')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
               activeTab === 'alarmas' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -119,11 +197,23 @@ export const PanelPrograma: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('consultas')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
               activeTab === 'consultas' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <FileText size={16} /> Consultas de Distrito
+          </button>
+          {/* NUEVA PESTAÑA: LOGROS */}
+          <button
+            onClick={() => setActiveTab('logros')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+              activeTab === 'logros' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Award size={16} /> Logros Virtuales
+            {solicitudes.length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{solicitudes.length}</span>
+            )}
           </button>
         </div>
       </header>
@@ -227,7 +317,6 @@ export const PanelPrograma: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {consultas.map((c) => {
-                      // Función auxiliar para renderizar el botón si existe el archivo
                       const renderDownload = (key: string) => {
                         const fileData = c.respuestas?.[key];
                         if (!fileData || (!fileData.drive_file_url && !fileData.file_url)) return <span className="text-slate-300 text-xs italic">Pendiente</span>;
@@ -263,6 +352,66 @@ export const PanelPrograma: React.FC = () => {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* NUEVA VISTA DE LOGROS */}
+        {activeTab === 'logros' && (
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-800">Aprobación de Logros Virtuales</h2>
+              <button onClick={fetchSolicitudes} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200">
+                ↻ Refrescar
+              </button>
+            </div>
+
+            {loadingSolicitudes ? (
+              <p className="text-center text-sm text-slate-500 py-10">Buscando solicitudes pendientes...</p>
+            ) : solicitudes.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-lg">
+                <Award className="mx-auto text-slate-400 mb-2" size={32} />
+                <p className="text-sm font-semibold text-slate-600">¡Todo al día! No hay solicitudes de logros pendientes de revisión.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {solicitudes.map((sol) => (
+                  <div key={sol.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-blue-800 text-sm flex items-center gap-2">
+                          <Award size={16} className="text-pink-600" /> 
+                          {sol.insignias?.nombre || "Insignia Desconocida"}
+                        </h3>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">
+                          +{sol.insignias?.puntos || 0} pts
+                        </span>
+                      </div>
+                      {/* Aquí idealmente mostraríamos el nombre del joven uniéndolo con la tabla de perfiles */}
+                      <p className="text-xs text-slate-500 mb-1"><strong>ID Usuario:</strong> {sol.user_id}</p>
+                      <div className="bg-white p-3 rounded border border-slate-200 my-3 text-sm text-slate-700 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Prueba / Detalle enviado:</p>
+                        <p>{sol.detalles || "Sin detalles adicionales proporcionados."}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-2">
+                      <button 
+                        onClick={() => handleAprobarLogro(sol)}
+                        className="flex-1 flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-bold transition-colors"
+                      >
+                        <CheckCircle size={16} /> Aprobar
+                      </button>
+                      <button
+                        onClick={() => handleRechazarLogro(sol.id)}
+                        className="flex-1 flex items-center justify-center gap-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg text-sm font-bold transition-colors"
+                      >
+                        <XCircle size={16} /> Rechazar
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

@@ -3,14 +3,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, User, ChevronDown, Camera, MapPin, Heart, Instagram,
   ShieldCheck, Send, Users, CheckCircle, Clock, AlertCircle, Edit3, Share2,
-  Sparkles, Award
+  Sparkles, Award, Trophy, X, Upload
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
 
+// ==========================================
+// CONSTANTES DE DISEÑO ENJ 2026 (ASV)
+// ==========================================
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
 
+// ==========================================
+// ESTRUCTURA ORGANIZATIVA SCOUT DE VENEZUELA
+// ==========================================
 export interface ScoutRegion {
   region: string;
   districts: string[];
@@ -58,8 +64,23 @@ const tiposRol = [
 ];
 
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
-const opcionesGustos = ["RDJ", "Herramientas digitales", "Marca personal", "Comunicación y negociación", "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", "A Salvo del Peligro", "Gobernanza", "Ciudadanía activa", "Salud mental", "Nutrición", "Derechos sexuales y reproductivos", "Intercambio cultural", "Hacer amigos", "Intercambiar pañoletas", "Música/Canto", "Deportes", "Aldea Global"];
+const opcionesGustos = [
+  "RDJ", "Herramientas digitales", "Marca personal", "Comunicación y negociación", 
+  "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", 
+  "A Salvo del Peligro", "Gobernanza", "Ciudadanía activa", "Salud mental", 
+  "Nutrición", "Derechos sexuales y reproductivos", "Intercambio cultural", 
+  "Hacer amigos", "Intercambiar pañoletas", "Música/Canto", "Deportes", "Aldea Global"
+];
 
+interface InsigniaCatalogo {
+  id: string;
+  nombre: string;
+  puntos?: number;
+}
+
+// ==========================================
+// COMPONENTES AUXILIARES
+// ==========================================
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -139,6 +160,159 @@ function SectionDivider({ title, icon }: { title: string; icon: React.ReactNode 
   );
 }
 
+// ==========================================
+// MODAL DE POSTULACIÓN DE INSIGNIAS
+// ==========================================
+interface ModalProps {
+  insignia: InsigniaCatalogo;
+  userId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function SolicitudInsigniaModal({ insignia, userId, onClose, onSuccess }: ModalProps) {
+  const [descripcion, setDescripcion] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPreview(URL.createObjectURL(selectedFile));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!descripcion.trim()) return alert("Por favor describe la prueba o evidencia realizada.");
+
+    setLoading(true);
+    try {
+      let fotoUrl = "";
+
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${userId}/${insignia.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("evidencias_insignias")
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from("evidencias_insignias")
+          .getPublicUrl(filePath);
+
+        fotoUrl = publicUrlData.publicUrl;
+      }
+
+      const { error: insertError } = await supabase
+        .from("solicitudes_insignias")
+        .insert([
+          {
+            user_id: userId,
+            insignia_id: insignia.id,
+            descripcion_evidencia: descripcion.trim(),
+            foto_url: fotoUrl,
+            estado: "pendiente"
+          }
+        ]);
+
+      if (insertError) throw insertError;
+
+      alert("¡Solicitud de insignia enviada con éxito al Equipo Evaluador!");
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      alert("Error al enviar la solicitud: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 480, padding: 24, boxShadow: "0 20px 40px rgba(0,0,0,0.2)", position: "relative" }}>
+        
+        <button type="button" onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: ENJ_NAVY }}>
+          <X size={20} />
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <Sparkles color={ENJ_MAGENTA} size={20} />
+          <h3 style={{ margin: 0, fontSize: 18, color: ENJ_NAVY, fontWeight: 800 }}>Demuestra tu Logro ENJ</h3>
+        </div>
+
+        <p style={{ fontSize: 13, color: "#555", margin: "0 0 16px" }}>
+          Insignia a solicitar: <strong style={{ color: ENJ_MAGENTA }}>{insignia.nombre}</strong>
+        </p>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, display: "block", marginBottom: 6 }}>
+              ¿Cómo completaste este reto o taller? *
+            </label>
+            <textarea
+              rows={3}
+              required
+              placeholder="Explica detalladamente la actividad o reto realizado..."
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY, display: "block", marginBottom: 6 }}>
+              Adjuntar Foto / Evidencia (Opcional)
+            </label>
+            <label htmlFor="evidencia-file" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 10, border: `1.5px dashed ${ENJ_NAVY}`, background: "#FAFBFF", cursor: "pointer" }}>
+              <Upload size={16} color={ENJ_NAVY} />
+              <span style={{ fontSize: 12, color: ENJ_NAVY, fontWeight: 600 }}>
+                {file ? file.name : "Seleccionar foto del logro"}
+              </span>
+            </label>
+            <input id="evidencia-file" type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
+          </div>
+
+          {preview && (
+            <img src={preview} alt="Vista previa" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10 }} />
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              marginTop: 10,
+              padding: "12px",
+              borderRadius: 12,
+              border: "none",
+              background: ENJ_MAGENTA,
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8
+            }}
+          >
+            <Send size={16} />
+            {loading ? "Enviando Solicitud..." : "Enviar a Validación del Staff"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// COMPONENTE PRINCIPAL DE PERFIL
+// ==========================================
 export function Perfil() {
   const navigate = useNavigate();
   const { id: urlUserId } = useParams();
@@ -176,11 +350,16 @@ export function Perfil() {
   const [nuevoMensaje, setNuevoMensaje] = useState("");
   const [misPagos, setMisPagos] = useState<any[]>([]);
 
+  // Insignias y Modal
+  const [catalogoInsignias, setCatalogoInsignias] = useState<InsigniaCatalogo[]>([]);
+  const [misInsigniasIds, setMisInsigniasIds] = useState<string[]>([]);
+  const [insigniaParaSolicitar, setInsigniaParaSolicitar] = useState<InsigniaCatalogo | null>(null);
+
   useEffect(() => {
     if (!targetUserId) return;
 
     const loadProfileAndData = async () => {
-      // 1. Cargar datos del perfil del usuario objetivo
+      // 1. Cargar datos del perfil
       const { data } = await supabase.from("profiles").select("*").eq("id", targetUserId).single();
       if (data) {
         setNombre(data.nombre || "");
@@ -200,7 +379,7 @@ export function Perfil() {
         setIsEditing(true);
       }
 
-      // 2. Cargar pagos PRIVADOS únicamente si es el dueño del perfil
+      // 2. Cargar pagos si es perfil propio
       if (isOwnProfile) {
         const { data: pagosData } = await supabase
           .from("pagos")
@@ -210,18 +389,28 @@ export function Perfil() {
         if (pagosData) setMisPagos(pagosData);
       }
 
-      // 3. Cargar publicaciones del Muro Social
+      // 3. Cargar Muro Social
       const { data: muroData } = await supabase
         .from("muro_social")
         .select("*")
         .order("fecha", { ascending: false })
         .limit(50);
       if (muroData) setComentarios(muroData);
+
+      // 4. Cargar Catálogo e Insignias del Usuario
+      const { data: catData } = await supabase.from("insignias").select("*");
+      if (catData) setCatalogoInsignias(catData);
+
+      const { data: userInsigData } = await supabase
+        .from("participante_insignias")
+        .select("insignia_id")
+        .eq("user_id", targetUserId);
+      if (userInsigData) setMisInsigniasIds(userInsigData.map((i: any) => i.insignia_id));
     };
 
     loadProfileAndData();
 
-    // Suscripción Realtime Muro
+    // Suscripción Realtime Muro Social
     const channel = supabase
       .channel(`muro_realtime_${targetUserId}`)
       .on(
@@ -265,7 +454,7 @@ export function Perfil() {
 
   const handleSaveProfile = async () => {
     if (!nombre || !apellido || !selectedRegion || !selectedDistrict || !grupoScout || !ramaScout) {
-      return alert("Por favor completa los campos obligatorios (*) marcados en el formulario.");
+      return alert("Por favor completa los campos obligatorios (*) del formulario.");
     }
 
     setLoading(true);
@@ -290,7 +479,7 @@ export function Perfil() {
       const { error } = await supabase.from("profiles").upsert(profilePayload);
       if (error) throw error;
 
-      alert("¡Perfil Scout del ENJ 2026 guardado con éxito!");
+      alert("¡Perfil Scout guardado exitosamente!");
       setIsEditing(false);
     } catch (error: any) {
       alert("Error al guardar perfil: " + error.message);
@@ -324,7 +513,7 @@ export function Perfil() {
   const copyProfileLink = () => {
     const link = `${window.location.origin}/scout/${targetUserId}`;
     navigator.clipboard.writeText(link);
-    alert("¡Enlace del perfil Scout copiado al portapapeles!");
+    alert("¡Enlace de tu perfil copiado al portapapeles!");
   };
 
   const qrPublicUrl = `${window.location.origin}/scout/${targetUserId}`;
@@ -338,7 +527,7 @@ export function Perfil() {
           <ArrowLeft size={16} /> Volver
         </button>
 
-        {/* MODO EDICIÓN FORMULARIO COMPLETO */}
+        {/* MODO EDICIÓN FORMULARIO */}
         {isEditing ? (
           <div style={{ background: "#fff", borderRadius: 24, padding: "clamp(20px, 4vw, 36px)", boxShadow: "0 4px 30px rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -354,7 +543,7 @@ export function Perfil() {
             </div>
 
             <form style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              {/* FOTO DE PERFIL */}
+              {/* FOTO */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                 <label htmlFor="foto-upload" style={{ cursor: "pointer", position: "relative" }}>
                   <div style={{ width: 100, height: 100, borderRadius: "50%", border: `3px solid ${ENJ_NAVY}`, background: "#F4F5FA", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -440,12 +629,12 @@ export function Perfil() {
           </div>
         ) : (
 
-          /* MODO VISTA TARJETA ESTILO INSTAGRAM / FEED PUBLICO */
+          /* VISTA PÚBLICA / TARJETA SOCIAL */
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* TARJETA PRINCIPAL DEL PERFIL */}
+            {/* TARJETA PRINCIPAL */}
             <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", boxShadow: "0 10px 40px rgba(0,11,111,0.08)", position: "relative" }}>
               
-              {/* BANNER ENCABEZADO */}
+              {/* BANNER */}
               <div style={{ height: 120, background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #0018B0 100%)`, position: "relative" }}>
                 <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 8 }}>
                   <button type="button" onClick={copyProfileLink} title="Compartir Perfil" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", border: "none", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
@@ -459,14 +648,12 @@ export function Perfil() {
                 </div>
               </div>
 
-              {/* CUERPO DEL PERFIL */}
+              {/* CONTENIDO DEL PERFIL */}
               <div style={{ padding: "0 24px 28px", marginTop: -48, textAlign: "center", position: "relative", zIndex: 1 }}>
-                {/* AVATAR */}
                 <div style={{ width: 96, height: 96, borderRadius: "50%", border: "4px solid #fff", background: "#EAEFFF", margin: "0 auto", overflow: "hidden", boxShadow: "0 4px 14px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {foto ? <img src={foto} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={46} color={ENJ_NAVY} />}
                 </div>
 
-                {/* NOMBRE Y CARGO */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 }}>
                   <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
                     {nombre || "Scout"} {apellido}
@@ -484,7 +671,7 @@ export function Perfil() {
                   )}
                 </div>
 
-                {/* BOTÓN APRETÓN DE MANOS INSTAGRAM STYLE */}
+                {/* BOTÓN INTERACTIVO APRETÓN DE MANOS */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
                   <button
                     type="button"
@@ -508,16 +695,15 @@ export function Perfil() {
                   </button>
                 </div>
 
-                {/* REDES SOCIALES */}
-                <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", marginBottom: 18 }}>
-                  {instagram && (
+                {instagram && (
+                  <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", marginBottom: 18 }}>
                     <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, color: ENJ_MAGENTA, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
                       <Instagram size={15} /> @{instagram}
                     </a>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* DETALLES SCOUT (CHIPS GRID) */}
+                {/* INFO ESTRUCTURA SCOUT */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: "#FAFBFF", padding: 14, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", marginBottom: 18, textAlign: "left" }}>
                   <div>
                     <span style={{ fontSize: 10, color: "rgba(0,11,111,0.5)", textTransform: "uppercase", fontWeight: 700, display: "block" }}>Grupo / Instancia</span>
@@ -531,14 +717,12 @@ export function Perfil() {
                   </div>
                 </div>
 
-                {/* BIO */}
                 {descripcion && (
                   <p style={{ fontStyle: "italic", color: "#444", fontSize: 13, lineHeight: 1.6, margin: "0 0 18px", padding: "0 10px" }}>
                     "{descripcion}"
                   </p>
                 )}
 
-                {/* INTERESES / GUSTOS */}
                 {gustos.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
                     {gustos.map((g) => (
@@ -551,7 +735,71 @@ export function Perfil() {
               </div>
             </div>
 
-            {/* SECCIÓN ESTADO DE CUOTAS (ESTRICTAMENTE PRIVADA) */}
+            {/* SECCIÓN GAMIFICACIÓN: INSIGNIAS Y LOGROS */}
+            <div style={{ background: "#fff", borderRadius: 20, padding: 20, border: "1.5px solid #FCE7F3", boxShadow: "0 4px 20px rgba(0,11,111,0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <Trophy size={20} color={ENJ_MAGENTA} />
+                <h3 style={{ margin: 0, fontSize: 15, color: ENJ_NAVY, fontWeight: 800 }}>Logros del Campamento</h3>
+              </div>
+              
+              {catalogoInsignias.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 12, color: "rgba(0,11,111,0.6)", fontStyle: "italic" }}>
+                  Cargando insignias disponibles...
+                </p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 16 }}>
+                  {catalogoInsignias.map((insignia) => {
+                    const isUnlocked = misInsigniasIds.includes(insignia.id);
+                    return (
+                      <div 
+                        key={insignia.id} 
+                        onClick={() => {
+                          if (!isUnlocked && isOwnProfile) {
+                            setInsigniaParaSolicitar(insignia);
+                          }
+                        }}
+                        style={{ 
+                          display: "flex", 
+                          flexDirection: "column", 
+                          alignItems: "center",
+                          opacity: isUnlocked ? 1 : 0.5,
+                          filter: isUnlocked ? "none" : "grayscale(100%)",
+                          cursor: (!isUnlocked && isOwnProfile) ? "pointer" : "default",
+                          transition: "all 0.3s ease"
+                        }}
+                        title={!isUnlocked && isOwnProfile ? "Haz clic para postular tu evidencia" : insignia.nombre}
+                      >
+                        <div style={{ 
+                          width: 64, 
+                          height: 64, 
+                          borderRadius: "50%", 
+                          background: isUnlocked ? "rgba(215,0,126,0.08)" : "#F4F5FA", 
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center", 
+                          border: isUnlocked ? `2px solid ${ENJ_MAGENTA}` : "2px dashed rgba(0,11,111,0.2)",
+                          boxShadow: isUnlocked ? "0 4px 10px rgba(215,0,126,0.15)" : "none"
+                        }}>
+                           <Award size={30} color={isUnlocked ? ENJ_MAGENTA : "rgba(0,11,111,0.4)"} />
+                        </div>
+                        <span style={{ 
+                          fontSize: 10, 
+                          textAlign: "center", 
+                          marginTop: 6, 
+                          fontWeight: isUnlocked ? 700 : 500,
+                          color: isUnlocked ? ENJ_NAVY : "rgba(0,11,111,0.6)",
+                          lineHeight: 1.2
+                        }}>
+                          {insignia.nombre}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN PRIVADA: ESTADO DE CUOTAS */}
             {isOwnProfile && (
               <div style={{ background: "#fff", borderRadius: 20, padding: 20, border: "1.5px solid #BFDBFE", boxShadow: "0 4px 20px rgba(0,11,111,0.04)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -614,7 +862,7 @@ export function Perfil() {
                   value={nuevoMensaje}
                   onChange={(e) => setNuevoMensaje(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleEnviarMensajeMuro())}
-                  style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(0,11,111,0.15)", fontSize: 12, outline: "none" }}
+                  style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 12, outline: "none" }}
                 />
                 <button type="button" onClick={handleEnviarMensajeMuro} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 10, padding: "0 14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Send size={15} />
@@ -641,6 +889,18 @@ export function Perfil() {
             </div>
 
           </div>
+        )}
+
+        {/* MODAL DE POSTULACIÓN DE INSIGNIAS */}
+        {insigniaParaSolicitar && currentUser && (
+          <SolicitudInsigniaModal
+            insignia={insigniaParaSolicitar}
+            userId={currentUser.id}
+            onClose={() => setInsigniaParaSolicitar(null)}
+            onSuccess={() => {
+              // Notificación o refresco opcional tras enviar
+            }}
+          />
         )}
 
       </div>

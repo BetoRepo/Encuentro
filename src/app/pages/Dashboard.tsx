@@ -18,7 +18,10 @@ import {
   FileSpreadsheet,
   MessageSquare,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  Edit3,
+  Save,
+  MessageCircle
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -79,8 +82,17 @@ interface ComunicacionAnuncio {
   created_at?: string;
 }
 
+interface MensajeMuro {
+  id: string;
+  nombre?: string;
+  autor?: string;
+  cedula?: string;
+  mensaje: string;
+  created_at?: string;
+}
+
 export function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"participantes" | "anuncios">("participantes");
+  const [activeTab, setActiveTab] = useState<"participantes" | "anuncios" | "muro">("participantes");
 
   // ESTADOS DE LISTADO Y PAGINACIÓN
   const [participantes, setParticipantes] = useState<Participante[]>([]);
@@ -105,16 +117,23 @@ export function Dashboard() {
   const [totalUsdValidado, setTotalUsdValidado] = useState<number>(0);
   const [totalPendientesValidacion, setTotalPendientesValidacion] = useState<number>(0);
 
-  // MODAL DE EXPEDIENTE
+  // MODAL DE EXPEDIENTE Y EDICIÓN DE PERFIL
   const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null);
   const [modalPagos, setModalPagos] = useState<Pago[]>([]);
   const [modalDocs, setModalDocs] = useState<Documento[]>([]);
   const [loadingModal, setLoadingModal] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const [isEditingPerfil, setIsEditingPerfil] = useState<boolean>(false);
+  const [editPerfilData, setEditPerfilData] = useState<Partial<Participante>>({});
+
   // ANUNCIOS Y COMUNICACIONES
   const [anuncios, setAnuncios] = useState<ComunicacionAnuncio[]>([]);
   const [loadingAnuncios, setLoadingAnuncios] = useState<boolean>(false);
+
+  // MURO DE MENSAJES
+  const [mensajesMuro, setMensajesMuro] = useState<MensajeMuro[]>([]);
+  const [loadingMuro, setLoadingMuro] = useState<boolean>(false);
 
   // 1. CARGA DE PARTICIPANTES CON PAGINACIÓN Y FILTROS
   const loadParticipantes = useCallback(async () => {
@@ -158,7 +177,7 @@ export function Dashboard() {
     }
   }, [page, searchTerm, selectedTipoFilter, selectedRegionFilter]);
 
-  // 2. MÉTRICAS GENERALES Y TOTALES FINANCIEROS (RECAUDADO VS VALIDADO)
+  // 2. MÉTRICAS GENERALES Y TOTALES FINANCIEROS
   const loadMetricsAndFinances = async () => {
     try {
       const { count: jovenesCount } = await supabase
@@ -233,6 +252,25 @@ export function Dashboard() {
     }
   };
 
+  // 4. CARGA DEL MURO DE MENSAJES
+  const loadMensajesMuro = async () => {
+    setLoadingMuro(true);
+    try {
+      const { data, error } = await supabase
+        .from("muro_mensajes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setMensajesMuro(data);
+      }
+    } catch (e) {
+      console.warn("Error al cargar mensajes del muro:", e);
+    } finally {
+      setLoadingMuro(false);
+    }
+  };
+
   useEffect(() => {
     loadParticipantes();
   }, [loadParticipantes]);
@@ -240,11 +278,14 @@ export function Dashboard() {
   useEffect(() => {
     loadMetricsAndFinances();
     loadAnuncios();
+    loadMensajesMuro();
   }, []);
 
-  // 4. ABRIR EXPEDIENTE INDIVIDUAL Y Cargar PAGOS + DOCUMENTOS
+  // 5. ABRIR EXPEDIENTE INDIVIDUAL Y Cargar PAGOS + DOCUMENTOS
   const openExpediente = async (participante: Participante) => {
     setSelectedParticipante(participante);
+    setEditPerfilData(participante);
+    setIsEditingPerfil(false);
     setLoadingModal(true);
     setModalPagos([]);
     setModalDocs([]);
@@ -273,11 +314,39 @@ export function Dashboard() {
     }
   };
 
-  // 5. CAMBIAR ESTATUS DE PAGO (VALIDAR / RECHAZAR)
+  // 6. GUARDAR EDICIÓN DE PERFIL
+  const handleSavePerfil = async () => {
+    if (!selectedParticipante) return;
+    setActionLoading("saving_profile");
+
+    try {
+      const { error } = await supabase
+        .from("participantes")
+        .update(editPerfilData)
+        .eq("cedula", selectedParticipante.cedula);
+
+      if (error) throw error;
+
+      // Actualizar estado local
+      const updated = { ...selectedParticipante, ...editPerfilData };
+      setSelectedParticipante(updated);
+      setParticipantes((prev) =>
+        prev.map((p) => (p.cedula === selectedParticipante.cedula ? updated : p))
+      );
+
+      setIsEditingPerfil(false);
+      alert("¡Perfil de participante actualizado correctamente!");
+    } catch (err: any) {
+      alert("Error al actualizar perfil: " + err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // 7. CAMBIAR ESTATUS DE PAGO (VALIDAR / RECHAZAR)
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' | 'rechazado') => {
     setActionLoading(pagoId);
     try {
-      // Enviamos 'validado' o 'rechazado' en minúsculas para cumplir el constraint "pagos_estado_check"
       const { error } = await supabase
         .from("pagos")
         .update({ estado: nuevoEstado })
@@ -285,11 +354,9 @@ export function Dashboard() {
 
       if (error) throw error;
 
-      // Actualizamos el estado local en el modal sin recargar la página
       setModalPagos((prev) =>
         prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p))
       );
-      // Recargamos las métricas globales de finanzas
       loadMetricsAndFinances();
     } catch (err: any) {
       alert("Error al actualizar pago: " + err.message);
@@ -298,7 +365,7 @@ export function Dashboard() {
     }
   };
 
-  // 6. ELIMINAR COMUNICADO
+  // 8. ELIMINAR COMUNICADO
   const handleDeleteAnuncio = async (id: string) => {
     if (!confirm("¿Deseas eliminar este anuncio oficial?")) return;
     try {
@@ -310,7 +377,19 @@ export function Dashboard() {
     }
   };
 
-  // 7. DESCARGA DE DOCUMENTOS
+  // 9. ELIMINAR MENSAJE DEL MURO
+  const handleDeleteMensajeMuro = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este mensaje del muro?")) return;
+    try {
+      const { error } = await supabase.from("muro_mensajes").delete().eq("id", id);
+      if (error) throw error;
+      setMensajesMuro((prev) => prev.filter((m) => m.id !== id));
+    } catch (err: any) {
+      alert("Error al eliminar el mensaje del muro: " + err.message);
+    }
+  };
+
+  // 10. DESCARGA DE DOCUMENTOS
   const handleDownloadFile = (doc: Documento) => {
     try {
       if (doc.url_archivo) {
@@ -337,7 +416,7 @@ export function Dashboard() {
     }
   };
 
-  // 8. EXPORTAR LISTADO EN FORMATO CSV / EXCEL
+  // 11. EXPORTAR LISTADO EN FORMATO CSV
   const exportToCSV = async () => {
     try {
       const { data, error } = await supabase
@@ -399,7 +478,7 @@ export function Dashboard() {
               ASOCIACIÓN DE SCOUTS DE VENEZUELA • ENJ 2026
             </span>
             <h1 style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_NAVY }}>
-              Panel General de Control y Validación
+              Panel General de Control y Gestión
             </h1>
           </div>
 
@@ -412,7 +491,7 @@ export function Dashboard() {
             </button>
 
             <button
-              onClick={() => { loadParticipantes(); loadMetricsAndFinances(); loadAnuncios(); }}
+              onClick={() => { loadParticipantes(); loadMetricsAndFinances(); loadAnuncios(); loadMensajesMuro(); }}
               style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid rgba(0,11,111,0.15)", borderRadius: 10, padding: "10px 18px", color: ENJ_NAVY, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
               <RefreshCw size={15} /> Actualizar
@@ -424,7 +503,7 @@ export function Dashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
           <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Inscritos Totales</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Perfiles Registrados</span>
               <Users size={18} color={ENJ_NAVY} />
             </div>
             <p style={{ margin: "10px 0 0", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
@@ -472,7 +551,7 @@ export function Dashboard() {
         </div>
 
         {/* NAVEGACIÓN PESTAÑAS */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <button
             onClick={() => setActiveTab("participantes")}
             style={{
@@ -490,7 +569,27 @@ export function Dashboard() {
               boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
             }}
           >
-            <Users size={16} /> Registro de Participantes
+            <Users size={16} /> Registro de Perfiles ({totalCount})
+          </button>
+
+          <button
+            onClick={() => setActiveTab("muro")}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 12,
+              border: "none",
+              background: activeTab === "muro" ? ENJ_NAVY : "#fff",
+              color: activeTab === "muro" ? "#fff" : ENJ_NAVY,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+            }}
+          >
+            <MessageCircle size={16} /> Muro de Mensajes ({mensajesMuro.length})
           </button>
 
           <button
@@ -510,11 +609,11 @@ export function Dashboard() {
               boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
             }}
           >
-            <MessageSquare size={16} /> Comunicaciones y Anuncios ({anuncios.length})
+            <MessageSquare size={16} /> Comunicaciones Oficiales ({anuncios.length})
           </button>
         </div>
 
-        {/* CONTENIDO PESTAÑA 1: PARTICIPANTES */}
+        {/* CONTENIDO PESTAÑA 1: PARTICIPANTES / PERFILES */}
         {activeTab === "participantes" && (
           <>
             <div style={{ background: "#fff", padding: 18, borderRadius: 16, marginBottom: 20, border: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -577,13 +676,13 @@ export function Dashboard() {
                       <tr>
                         <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)", fontSize: 14 }}>
                           <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 10px", display: "block" }} />
-                          Cargando lista de inscritos...
+                          Cargando lista de perfiles registrados...
                         </td>
                       </tr>
                     ) : participantes.length === 0 ? (
                       <tr>
                         <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)", fontSize: 14 }}>
-                          No se encontraron registros de participantes.
+                          No se encontraron perfiles de participantes.
                         </td>
                       </tr>
                     ) : (
@@ -620,7 +719,7 @@ export function Dashboard() {
                               onClick={() => openExpediente(p)}
                               style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                             >
-                              <Eye size={14} /> Ver Expediente
+                              <Eye size={14} /> Ver / Editar
                             </button>
                           </td>
                         </tr>
@@ -632,7 +731,7 @@ export function Dashboard() {
 
               <div style={{ padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 13, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
-                  Página {page + 1} de {totalPages} ({totalCount} registros)
+                  Página {page + 1} de {totalPages} ({totalCount} perfiles)
                 </span>
 
                 <div style={{ display: "flex", gap: 8 }}>
@@ -656,7 +755,57 @@ export function Dashboard() {
           </>
         )}
 
-        {/* CONTENIDO PESTAÑA 2: ANUNCIOS Y COMUNICACIONES */}
+        {/* CONTENIDO PESTAÑA 2: MURO DE MENSAJES */}
+        {activeTab === "muro" && (
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
+            <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+              <MessageCircle size={20} color={ENJ_MAGENTA} /> Moderación de Publicaciones del Muro de Mensajes
+            </h3>
+
+            {loadingMuro ? (
+              <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)" }}>
+                <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 10px", display: "block" }} />
+                Cargando mensajes del muro...
+              </div>
+            ) : mensajesMuro.length === 0 ? (
+              <p style={{ color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No se registran mensajes publicados en el muro.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {mensajesMuro.map((item) => (
+                  <div key={item.id} style={{ background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                        <strong style={{ fontSize: 15, color: ENJ_NAVY }}>{item.nombre || item.autor || "Participante Anonimo"}</strong>
+                        {item.cedula && (
+                          <span style={{ fontSize: 11, background: "rgba(0,11,111,0.08)", color: ENJ_NAVY, padding: "2px 8px", borderRadius: 6, fontWeight: 700 }}>
+                            C.I. {item.cedula}
+                          </span>
+                        )}
+                        {item.created_at && (
+                          <span style={{ fontSize: 11, color: "rgba(0,11,111,0.4)" }}>
+                            {new Date(item.created_at).toLocaleString("es-VE")}
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ margin: 0, fontSize: 14, color: "#333", lineHeight: 1.5, background: "#fff", padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.05)" }}>
+                        "{item.mensaje}"
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteMensajeMuro(item.id)}
+                      style={{ background: "#FEE2E2", color: "#DC2626", border: "none", padding: "10px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+                    >
+                      <Trash2 size={15} /> Eliminar Mensaje
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CONTENIDO PESTAÑA 3: ANUNCIOS Y COMUNICACIONES */}
         {activeTab === "anuncios" && (
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
             <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
@@ -702,7 +851,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* MODAL COMPLETO DE EXPEDIENTE DEL PARTICIPANTE */}
+        {/* MODAL COMPLETO DE EXPEDIENTE / EDICIÓN DE PARTICIPANTE */}
         {selectedParticipante && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
             <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 880, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.2)", position: "relative", padding: 32 }}>
@@ -714,18 +863,40 @@ export function Dashboard() {
                 <X size={18} />
               </button>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, borderBottom: "1px solid rgba(0,11,111,0.1)", paddingBottom: 20 }}>
-                <div style={{ width: 60, height: 60, borderRadius: "50%", background: ENJ_NAVY, color: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900 }}>
-                  {selectedParticipante.nombre.charAt(0)}{selectedParticipante.apellido.charAt(0)}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid rgba(0,11,111,0.1)", paddingBottom: 20, flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: ENJ_NAVY, color: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900 }}>
+                    {selectedParticipante.nombre.charAt(0)}{selectedParticipante.apellido.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
+                      {selectedParticipante.nombre} {selectedParticipante.apellido}
+                    </h2>
+                    <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
+                      Cédula: {selectedParticipante.cedula} | Región: {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
-                    {selectedParticipante.nombre} {selectedParticipante.apellido}
-                  </h2>
-                  <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
-                    Cédula: {selectedParticipante.cedula} | Región: {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"}
-                  </p>
-                </div>
+
+                {/* BOTÓN TOGGLE MODO EDICIÓN DE PERFIL */}
+                <button
+                  onClick={() => setIsEditingPerfil(!isEditingPerfil)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY,
+                    color: isEditingPerfil ? ENJ_NAVY : "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "10px 16px",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: "pointer"
+                  }}
+                >
+                  <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Perfil"}
+                </button>
               </div>
 
               {loadingModal ? (
@@ -736,20 +907,168 @@ export function Dashboard() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                   
-                  {/* FICHA SCOUT Y MÉDICA DETALLADA */}
-                  <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
-                    <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Ficha Médica y de Registro</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 13 }}>
-                      <div><strong>Correo:</strong> {selectedParticipante.correo || "N/A"}</div>
-                      <div><strong>Teléfono:</strong> {selectedParticipante.telefono || "N/A"}</div>
-                      <div><strong>Grupo Scout:</strong> {selectedParticipante.grupo_scout || "N/A"}</div>
-                      <div><strong>Rama / Unidad:</strong> {selectedParticipante.rama || "N/A"}</div>
-                      <div><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</div>
-                      <div><strong>Tipo Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</div>
-                      <div><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</div>
-                      <div><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</div>
+                  {/* FORMULARIO DE EDICIÓN O VISTA DE FICHA */}
+                  {isEditingPerfil ? (
+                    <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14 }}>
+                      <h4 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+                        <Edit3 size={18} color={ENJ_NAVY} /> Modificar Datos del Perfil
+                      </h4>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Nombre</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.nombre || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, nombre: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Apellido</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.apellido || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, apellido: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Correo Electrónico</label>
+                          <input
+                            type="email"
+                            value={editPerfilData.correo || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, correo: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Teléfono</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.telefono || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, telefono: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Región</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.region || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, region: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Distrito</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.distrito || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, distrito: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Grupo Scout</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.grupo_scout || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, grupo_scout: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Rama / Unidad</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.rama || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, rama: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Tipo Participante</label>
+                          <select
+                            value={editPerfilData.tipo_participante || "joven"}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, tipo_participante: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          >
+                            <option value="joven">Joven</option>
+                            <option value="adulto">Adulto</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Talla Uniforme</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.talla_uniforme || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, talla_uniforme: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Tipo de Sangre</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.tipo_sangre || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, tipo_sangre: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Alergias</label>
+                          <input
+                            type="text"
+                            value={editPerfilData.alergias || ""}
+                            onChange={(e) => setEditPerfilData({ ...editPerfilData, alergias: e.target.value })}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+                        <button
+                          onClick={() => setIsEditingPerfil(false)}
+                          style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", background: "#fff", color: ENJ_NAVY, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          disabled={actionLoading === "saving_profile"}
+                          onClick={handleSavePerfil}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, cursor: "pointer" }}
+                        >
+                          <Save size={15} /> Guardar Cambios
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
+                      <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Ficha Médica y de Registro</h4>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 13 }}>
+                        <div><strong>Correo:</strong> {selectedParticipante.correo || "N/A"}</div>
+                        <div><strong>Teléfono:</strong> {selectedParticipante.telefono || "N/A"}</div>
+                        <div><strong>Grupo Scout:</strong> {selectedParticipante.grupo_scout || "N/A"}</div>
+                        <div><strong>Rama / Unidad:</strong> {selectedParticipante.rama || "N/A"}</div>
+                        <div><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</div>
+                        <div><strong>Tipo Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</div>
+                        <div><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</div>
+                        <div><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* SECCIÓN DE VALIDACIÓN DE CUOTAS / PAGOS */}
                   <div>

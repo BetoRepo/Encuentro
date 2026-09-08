@@ -16,8 +16,6 @@ import {
   HeartPulse, 
   Building 
 } from "lucide-react";
-
-// CLIENTE SUPABASE
 import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";

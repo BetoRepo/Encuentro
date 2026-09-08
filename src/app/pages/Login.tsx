@@ -13,13 +13,17 @@ export function Login() {
   const navigate = useNavigate();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+
+  // Estados del Formulario Principal
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Estados del Modal de Cambio de Contraseña
+  const [resetEmail, setResetEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [changePasswordLoading, setChangePasswordLoading] = useState(false);
 
   const readResponse = async (response: Response) => {
@@ -42,7 +46,7 @@ export function Login() {
         const response = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), password }),
+          body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
         });
         const result = await readResponse(response);
         localStorage.setItem("token", result.token);
@@ -52,7 +56,7 @@ export function Login() {
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
+          body: JSON.stringify({ email: email.trim().toLowerCase(), password, name: name.trim() }),
         });
         const result = await readResponse(response);
         localStorage.setItem("token", result.token);
@@ -65,7 +69,7 @@ export function Login() {
         const initialProfile = {
           nombre: firstName,
           apellido: lastName,
-          correo: email.trim(),
+          correo: email.trim().toLowerCase(),
         };
         localStorage.setItem("enj_profile", JSON.stringify(initialProfile));
 
@@ -81,19 +85,28 @@ export function Login() {
 
   const handleChangePassword = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!resetEmail.trim()) return alert("Por favor ingresa tu correo registrado.");
     if (newPassword !== confirmation) return alert("Las contraseñas no coinciden.");
+    if (newPassword.length < 8) return alert("La contraseña debe tener al menos 8 caracteres.");
+
     setChangePasswordLoading(true);
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+
     try {
       const response = await fetch("/api/auth/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-        body: JSON.stringify({ email: email.trim(), newPassword }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: resetEmail.trim().toLowerCase(), 
+          newPassword 
+        }),
         signal: controller.signal,
       });
+
       const result = await readResponse(response);
-      alert(result.message);
+      alert(result.message || "¡Contraseña actualizada exitosamente!");
+      setResetEmail("");
       setNewPassword("");
       setConfirmation("");
       setChangePasswordOpen(false);
@@ -101,7 +114,7 @@ export function Login() {
       const isAbortError = error instanceof DOMException && error.name === "AbortError";
       alert(
         isAbortError
-          ? "El servidor tardó demasiado en responder. Revisa la configuración de Supabase en Vercel."
+          ? "El servidor tardó demasiado en responder. Revisa la conexión con la base de datos."
           : error?.message || "No se pudo cambiar la contraseña."
       );
     } finally {
@@ -112,7 +125,7 @@ export function Login() {
 
   const inputStyle = {
     width: "100%",
-    padding: "12px 40px",
+    padding: "12px 12px 12px 40px",
     borderRadius: "12px",
     border: "1.5px solid rgba(0,11,111,0.1)",
     background: "#F8FAFF",
@@ -133,34 +146,33 @@ export function Login() {
         padding: "24px",
         boxSizing: "border-box",
         overflow: "hidden",
+        backgroundColor: ENJ_NAVY, // Fondo base azul ASV
       }}
     >
-      {/* Capa de fondo optimizada con la foto del mosaico */}
+      {/* Capa de fondo con la imagen completa (contain) */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover",
+          backgroundSize: "contain",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
-          filter: "blur(3px)", // Difumina levemente las caras para dar soporte tipográfico
-          transform: "scale(1.03)", // Evita bordes blancos al aplicar el blur
           zIndex: 0,
         }}
       />
 
-      {/* Overlay con gradiente semitransparente con los colores de la ASV */}
+      {/* Overlay con gradiente semitransparente ASV */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(135deg, rgba(0, 11, 111, 0.72) 0%, rgba(215, 0, 126, 0.55) 100%)",
+          background: "linear-gradient(135deg, rgba(0, 11, 111, 0.6) 0%, rgba(215, 0, 126, 0.45) 100%)",
           zIndex: 1,
         }}
       />
 
-      {/* Tarjeta Glassmorphism para el Login */}
+      {/* Tarjeta Glassmorphism de Inicio de Sesión */}
       <div
         style={{
           position: "relative",
@@ -244,27 +256,91 @@ export function Login() {
 
         <button
           type="button"
-          onClick={() => setChangePasswordOpen(true)}
+          onClick={() => {
+            setResetEmail(email); // Copia automáticamente el correo si ya se ingresó
+            setChangePasswordOpen(true);
+          }}
           style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: ENJ_NAVY, fontSize: "13px", cursor: "pointer", fontWeight: 600 }}
         >
-          Cambiar Contraseña
+          ¿Olvidaste o quieres cambiar tu contraseña?
         </button>
       </div>
 
+      {/* Modal para Cambio de Contraseña */}
       {changePasswordOpen && (
-        <div role="dialog" aria-modal="true" aria-labelledby="change-password-title" style={{ position: "fixed", inset: 0, zIndex: 10, display: "grid", placeItems: "center", padding: 24, background: "rgba(0,11,111,0.45)", backdropFilter: "blur(4px)" }}>
-          <form onSubmit={handleChangePassword} style={{ width: "min(100%, 380px)", background: "#fff", borderRadius: 18, padding: 28, boxShadow: "0 20px 50px rgba(0,0,0,0.3)" }}>
-            <h2 id="change-password-title" style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: "20px" }}>Cambiar Contraseña</h2>
-            <p style={{ margin: "0 0 20px", color: "rgba(0,11,111,0.62)", fontSize: 14 }}>Escribe y confirma tu nueva contraseña.</p>
-            {[{ label: "Nueva contraseña", value: newPassword, setValue: setNewPassword }, { label: "Confirmar nueva contraseña", value: confirmation, setValue: setConfirmation }].map((field) => (
-              <div key={field.label} style={{ position: "relative", marginTop: 14 }}>
-                <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
-                <input required minLength={8} type="password" placeholder={`${field.label} (mínimo 8 caracteres)`} value={field.value} onChange={(event) => field.setValue(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }} />
-              </div>
-            ))}
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          aria-labelledby="change-password-title" 
+          style={{ position: "fixed", inset: 0, zIndex: 10, display: "grid", placeItems: "center", padding: 24, background: "rgba(0,11,111,0.45)", backdropFilter: "blur(4px)" }}
+        >
+          <form 
+            onSubmit={handleChangePassword} 
+            style={{ width: "min(100%, 380px)", background: "#fff", borderRadius: 18, padding: 28, boxShadow: "0 20px 50px rgba(0,0,0,0.3)" }}
+          >
+            <h2 id="change-password-title" style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: "20px", fontWeight: 700 }}>
+              Cambiar Contraseña
+            </h2>
+            <p style={{ margin: "0 0 20px", color: "rgba(0,11,111,0.62)", fontSize: 14 }}>
+              Ingresa tu correo registrado y tu nueva clave para actualizar la base de datos.
+            </p>
+
+            {/* Campo: Correo del usuario */}
+            <div style={{ position: "relative", marginTop: 14 }}>
+              <Mail size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
+              <input 
+                required 
+                type="email" 
+                placeholder="Correo registrado" 
+                value={resetEmail} 
+                onChange={(e) => setResetEmail(e.target.value)} 
+                style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }} 
+              />
+            </div>
+
+            {/* Campo: Nueva Contraseña */}
+            <div style={{ position: "relative", marginTop: 14 }}>
+              <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
+              <input 
+                required 
+                minLength={8} 
+                type="password" 
+                placeholder="Nueva contraseña (mínimo 8 caracteres)" 
+                value={newPassword} 
+                onChange={(e) => setNewPassword(e.target.value)} 
+                style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }} 
+              />
+            </div>
+
+            {/* Campo: Confirmar Contraseña */}
+            <div style={{ position: "relative", marginTop: 14 }}>
+              <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
+              <input 
+                required 
+                minLength={8} 
+                type="password" 
+                placeholder="Confirmar nueva contraseña" 
+                value={confirmation} 
+                onChange={(e) => setConfirmation(e.target.value)} 
+                style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }} 
+              />
+            </div>
+
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-              <button type="button" onClick={() => setChangePasswordOpen(false)} style={{ flex: 1, padding: 12, border: "1px solid rgba(0,11,111,0.18)", borderRadius: 10, background: "#fff", color: ENJ_NAVY, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-              <button type="submit" disabled={changePasswordLoading} style={{ flex: 1, padding: 12, border: 0, borderRadius: 10, background: ENJ_NAVY, color: "#fff", fontWeight: 700, cursor: "pointer" }}>{changePasswordLoading ? "Guardando..." : "Guardar"}</button>
+              <button 
+                type="button" 
+                onClick={() => setChangePasswordOpen(false)} 
+                style={{ flex: 1, padding: 12, border: "1px solid rgba(0,11,111,0.18)", borderRadius: 10, background: "#fff", color: ENJ_NAVY, fontWeight: 600, cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                disabled={changePasswordLoading} 
+                style={{ flex: 1, padding: 12, border: 0, borderRadius: 10, background: ENJ_NAVY, color: "#fff", fontWeight: 700, cursor: "pointer", opacity: changePasswordLoading ? 0.7 : 1 }}
+              >
+                {changePasswordLoading ? "Guardando..." : "Guardar"}
+              </button>
             </div>
           </form>
         </div>
