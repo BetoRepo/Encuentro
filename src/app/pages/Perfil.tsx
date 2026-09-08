@@ -58,7 +58,7 @@ const tiposRol = [
 ];
 
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
-const opcionesGustos = ["RDJ", "Herramientas digitales", "Marca personal",  "Comunicación y negociación", "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", "A Salvo del Peligro", "Gobernanza", "Ciudadanía activa", "Salud mental", "Nutrición", "Derechos sexuales y reproductivos", "Intercambio cultural", "Hacer amigos", "Intercambiar pañoletas", "Música/Canto", "Deportes", "Aldea Global"];
+const opcionesGustos = ["RDJ", "Herramientas digitales", "Marca personal", "Comunicación y negociación", "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", "A Salvo del Peligro", "Gobernanza", "Ciudadanía activa", "Salud mental", "Nutrición", "Derechos sexuales y reproductivos", "Intercambio cultural", "Hacer amigos", "Intercambiar pañoletas", "Música/Canto", "Deportes", "Aldea Global"];
 
 function InputField({ label, placeholder, type = "text", icon, required = true, value, onChange, disabled = false }: any) {
   return (
@@ -156,7 +156,6 @@ export function Perfil() {
   const [rolEvento, setRolEvento] = useState("Protagonista (Joven participante)");
 
   // 2. Estructura Scout
-  const [isCargoNacional, setIsCargoNacional] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
@@ -188,7 +187,6 @@ export function Perfil() {
         setApellido(data.apellido || "");
         setBirthDate(data.birth_date || "");
         setRolEvento(data.rol_evento || "Protagonista (Joven participante)");
-        setIsCargoNacional(Boolean(data.es_cargo_nacional));
         setSelectedRegion(data.selected_region || "");
         setSelectedDistrict(data.selected_district || "");
         setGrupoScout(data.grupo_scout || "");
@@ -240,19 +238,6 @@ export function Perfil() {
     };
   }, [targetUserId, isOwnProfile]);
 
-  const handleCargoNacionalToggle = (checked: boolean) => {
-    setIsCargoNacional(checked);
-    if (checked) {
-      setSelectedRegion("ESTRUCTURA NACIONAL / OSN");
-      setSelectedDistrict("OFICINA SCOUT NACIONAL");
-      setGrupoScout("Oficina Scout Nacional (OSN)");
-    } else {
-      setSelectedRegion("");
-      setSelectedDistrict("");
-      setGrupoScout("");
-    }
-  };
-
   const toggleGusto = (item: string) => {
     setGustos(prev => prev.includes(item) ? prev.filter(g => g !== item) : [...prev, item]);
   };
@@ -279,7 +264,7 @@ export function Perfil() {
   };
 
   const handleSaveProfile = async () => {
-    if (!nombre || !apellido || !selectedRegion || !selectedDistrict || (!isCargoNacional && !grupoScout) || !ramaScout) {
+    if (!nombre || !apellido || !selectedRegion || !selectedDistrict || !grupoScout || !ramaScout) {
       return alert("Por favor completa los campos obligatorios (*) marcados en el formulario.");
     }
 
@@ -291,7 +276,6 @@ export function Perfil() {
         apellido: apellido.trim(),
         birth_date: birthDate,
         rol_evento: rolEvento,
-        es_cargo_nacional: isCargoNacional,
         selected_region: selectedRegion,
         selected_district: selectedDistrict,
         grupo_scout: grupoScout,
@@ -399,40 +383,18 @@ export function Perfil() {
               {/* SECCIÓN 2: ESTRUCTURA SCOUT */}
               <SectionDivider title="2. Estructura Scout" icon={<MapPin size={15} color={ENJ_NAVY} />} />
 
-              <div style={{
-                background: "rgba(0,11,111,0.03)",
-                border: "1px solid rgba(0,11,111,0.12)",
-                borderRadius: 10,
-                padding: "12px 16px",
-                display: "flex",
-                alignItems: "center",
-                gap: 12
-              }}>
-                <input
-                  type="checkbox"
-                  id="cargoNacionalCheck"
-                  checked={isCargoNacional}
-                  onChange={(e) => handleCargoNacionalToggle(e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: ENJ_MAGENTA, cursor: "pointer" }}
-                />
-                <label htmlFor="cargoNacionalCheck" style={{ fontSize: 13, fontWeight: 700, color: ENJ_NAVY, cursor: "pointer" }}>
-                  Tengo un Cargo Institucional / Estructura Nacional (OSN / Consejo / Directorio)
-                </label>
-              </div>
-
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <SelectField
                   label="Región Scout"
                   options={scoutRegions.map((r) => r.region)}
                   value={selectedRegion}
-                  disabled={isCargoNacional}
                   onChange={(v: string) => { setSelectedRegion(v); setSelectedDistrict(""); }}
                 />
                 <SelectField
                   label="Distrito Scout"
-                  options={isCargoNacional ? scoutRegions[0].districts : scoutRegions.find((r) => r.region === selectedRegion)?.districts || []}
+                  options={scoutRegions.find((r) => r.region === selectedRegion)?.districts || []}
                   value={selectedDistrict}
-                  disabled={!selectedRegion || isCargoNacional}
+                  disabled={!selectedRegion}
                   onChange={setSelectedDistrict}
                 />
               </div>
@@ -442,9 +404,8 @@ export function Perfil() {
                   label="Grupo Scout / Instancia"
                   placeholder="Ej. Grupo San Jorge 12"
                   value={grupoScout}
-                  disabled={isCargoNacional}
                   onChange={setGrupoScout}
-                  required={!isCargoNacional}
+                  required={true}
                 />
                 <SelectField label="Unidad / Rama" options={ramas} value={ramaScout} onChange={setRamaScout} />
               </div>
@@ -510,11 +471,6 @@ export function Perfil() {
                   <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
                     {nombre || "Scout"} {apellido}
                   </h2>
-                  {isCargoNacional && (
-                    <span title="Cargo Institucional / OSN" style={{ display: "inline-flex" }}>
-                      <ShieldCheck size={20} color={ENJ_MAGENTA} />
-                    </span>
-                  )}
                 </div>
 
                 <div style={{ margin: "6px 0 14px", display: "flex", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
