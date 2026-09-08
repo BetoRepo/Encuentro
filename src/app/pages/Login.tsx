@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
 
-// Importación de assets
+// Importación de assets del ENJ 2026
 import bgImage from "../../assets/background.png";
 import logoImage from "../../assets/logonacional.svg";
 
@@ -125,31 +125,56 @@ export function Login() {
     <div
       style={{
         minHeight: "100vh",
+        width: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundImage: `linear-gradient(rgba(240, 244, 255, 0.82), rgba(240, 244, 255, 0.82)), url(${bgImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center 20%",
-        backgroundRepeat: "no-repeat",
-        padding: "24px",
         position: "relative",
+        padding: "24px",
+        boxSizing: "border-box",
         overflow: "hidden",
       }}
     >
+      {/* Capa de fondo optimizada con la foto del mosaico */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(3px)", // Difumina levemente las caras para dar soporte tipográfico
+          transform: "scale(1.03)", // Evita bordes blancos al aplicar el blur
+          zIndex: 0,
+        }}
+      />
+
+      {/* Overlay con gradiente semitransparente con los colores de la ASV */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(135deg, rgba(0, 11, 111, 0.72) 0%, rgba(215, 0, 126, 0.55) 100%)",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Tarjeta Glassmorphism para el Login */}
       <div
         style={{
           position: "relative",
-          background: "rgba(255, 255, 255, 0.98)",
+          background: "rgba(255, 255, 255, 0.95)",
           borderRadius: 24,
           padding: "40px 32px",
           maxWidth: 400,
           width: "100%",
           textAlign: "center",
-          boxShadow: "0 25px 50px -12px rgba(0, 11, 111, 0.25)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255, 255, 255, 0.6)",
-          zIndex: 1,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(255, 255, 255, 0.8)",
+          zIndex: 2,
         }}
       >
         <div style={{ marginBottom: 18, minHeight: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -157,9 +182,9 @@ export function Login() {
             src={logoImage}
             alt="ENJ 2026"
             style={{
-              width: 130,
+              width: 140,
               height: "auto",
-              maxHeight: 80,
+              maxHeight: 85,
               objectFit: "contain",
               margin: "0 auto",
               display: "block",
@@ -167,25 +192,25 @@ export function Login() {
           />
         </div>
 
-        <p style={{ color: "rgba(0,11,111,0.65)", marginBottom: 32, lineHeight: 1.6, fontSize: 15 }}>
+        <p style={{ color: "rgba(0,11,111,0.75)", marginBottom: 28, lineHeight: 1.5, fontSize: 15, fontWeight: 500 }}>
           {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta de participante"}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {!isLogin && (
             <div style={{ position: "relative" }}>
-              <UserIcon size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
+              <UserIcon size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)" }} />
               <input style={inputStyle} type="text" placeholder="Nombre completo" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
           )}
 
           <div style={{ position: "relative" }}>
-            <Mail size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
+            <Mail size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)" }} />
             <input style={inputStyle} type="email" placeholder="Correo electrónico" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
 
           <div style={{ position: "relative" }}>
-            <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.3)" }} />
+            <Lock size={18} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.4)" }} />
             <input style={inputStyle} type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
@@ -198,9 +223,12 @@ export function Login() {
               padding: "14px",
               borderRadius: "12px",
               fontWeight: 700,
+              fontSize: "15px",
               cursor: "pointer",
               marginTop: "8px",
               opacity: loading ? 0.7 : 1,
+              transition: "all 0.2s ease-in-out",
+              boxShadow: "0 4px 12px rgba(0, 11, 111, 0.2)",
             }}
           >
             {loading ? "Procesando..." : isLogin ? "Entrar" : "Registrarme y completar perfil"}
@@ -208,9 +236,7 @@ export function Login() {
         </form>
 
         <button
-          onClick={() => {
-            setIsLogin(!isLogin);
-          }}
+          onClick={() => setIsLogin(!isLogin)}
           style={{ background: "none", border: "none", color: ENJ_MAGENTA, marginTop: "24px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
         >
           {isLogin ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión"}
@@ -219,26 +245,26 @@ export function Login() {
         <button
           type="button"
           onClick={() => setChangePasswordOpen(true)}
-          style={{ display: "block", margin: "14px auto 0", background: "none", border: "none", color: ENJ_NAVY, fontSize: "13px", cursor: "pointer", fontWeight: 600 }}
+          style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: ENJ_NAVY, fontSize: "13px", cursor: "pointer", fontWeight: 600 }}
         >
           Cambiar Contraseña
         </button>
       </div>
 
       {changePasswordOpen && (
-        <div role="dialog" aria-modal="true" aria-labelledby="change-password-title" style={{ position: "fixed", inset: 0, zIndex: 10, display: "grid", placeItems: "center", padding: 24, background: "rgba(0,11,111,0.35)" }}>
-          <form onSubmit={handleChangePassword} style={{ width: "min(100%, 380px)", background: "#fff", borderRadius: 18, padding: 28, boxShadow: "0 20px 50px rgba(0,0,0,0.2)" }}>
-            <h2 id="change-password-title" style={{ margin: "0 0 8px", color: ENJ_NAVY }}>Cambiar Contraseña</h2>
+        <div role="dialog" aria-modal="true" aria-labelledby="change-password-title" style={{ position: "fixed", inset: 0, zIndex: 10, display: "grid", placeItems: "center", padding: 24, background: "rgba(0,11,111,0.45)", backdropFilter: "blur(4px)" }}>
+          <form onSubmit={handleChangePassword} style={{ width: "min(100%, 380px)", background: "#fff", borderRadius: 18, padding: 28, boxShadow: "0 20px 50px rgba(0,0,0,0.3)" }}>
+            <h2 id="change-password-title" style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: "20px" }}>Cambiar Contraseña</h2>
             <p style={{ margin: "0 0 20px", color: "rgba(0,11,111,0.62)", fontSize: 14 }}>Escribe y confirma tu nueva contraseña.</p>
             {[{ label: "Nueva contraseña", value: newPassword, setValue: setNewPassword }, { label: "Confirmar nueva contraseña", value: confirmation, setValue: setConfirmation }].map((field) => (
               <div key={field.label} style={{ position: "relative", marginTop: 14 }}>
                 <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
-                <input required minLength={8} type="password" placeholder={`${field.label} (mínimo 8 caracteres)`} value={field.value} onChange={(event) => field.setValue(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10 }} />
+                <input required minLength={8} type="password" placeholder={`${field.label} (mínimo 8 caracteres)`} value={field.value} onChange={(event) => field.setValue(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }} />
               </div>
             ))}
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-              <button type="button" onClick={() => setChangePasswordOpen(false)} style={{ flex: 1, padding: 12, border: "1px solid rgba(0,11,111,0.18)", borderRadius: 10, background: "#fff", color: ENJ_NAVY, fontWeight: 600 }}>Cancelar</button>
-              <button type="submit" disabled={changePasswordLoading} style={{ flex: 1, padding: 12, border: 0, borderRadius: 10, background: ENJ_NAVY, color: "#fff", fontWeight: 700 }}>{changePasswordLoading ? "Guardando..." : "Guardar"}</button>
+              <button type="button" onClick={() => setChangePasswordOpen(false)} style={{ flex: 1, padding: 12, border: "1px solid rgba(0,11,111,0.18)", borderRadius: 10, background: "#fff", color: ENJ_NAVY, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+              <button type="submit" disabled={changePasswordLoading} style={{ flex: 1, padding: 12, border: 0, borderRadius: 10, background: ENJ_NAVY, color: "#fff", fontWeight: 700, cursor: "pointer" }}>{changePasswordLoading ? "Guardando..." : "Guardar"}</button>
             </div>
           </form>
         </div>

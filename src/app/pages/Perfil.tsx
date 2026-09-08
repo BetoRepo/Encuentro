@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, User, Phone, ChevronDown, Camera, MapPin, Heart, Instagram,
+  ArrowLeft, User, ChevronDown, Camera, MapPin, Heart, Instagram,
   ShieldCheck, Send, Users, CheckCircle, Clock, AlertCircle, Edit3, Share2,
-  Sparkles, ShieldAlert, Award
+  Sparkles, Award
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
@@ -162,13 +162,7 @@ export function Perfil() {
   const [grupoScout, setGrupoScout] = useState("");
   const [ramaScout, setRamaScout] = useState("");
 
-  // 3. Contacto y Emergencia
-  const [telefono, setTelefono] = useState("");
-  const [correo, setCorreo] = useState("");
-  const [contactoEmergencia, setContactoEmergencia] = useState("");
-  const [telefonoEmergencia, setTelefonoEmergencia] = useState("");
-
-  // 4. Redes y Perfil Público
+  // 3. Redes y Perfil Público
   const [descripcion, setDescripcion] = useState("");
   const [instagram, setInstagram] = useState("");
   const [gustos, setGustos] = useState<string[]>([]);
@@ -199,10 +193,6 @@ export function Perfil() {
         setSelectedDistrict(data.selected_district || "");
         setGrupoScout(data.grupo_scout || "");
         setRamaScout(data.rama_scout || "");
-        setTelefono(data.telefono || "");
-        setCorreo(data.correo || "");
-        setContactoEmergencia(data.contacto_emergencia || "");
-        setTelefonoEmergencia(data.telefono_emergencia || "");
         setDescripcion(data.descripcion || "");
         setInstagram(data.instagram || "");
         setGustos(data.gustos_evento || []);
@@ -306,10 +296,6 @@ export function Perfil() {
         selected_district: selectedDistrict,
         grupo_scout: grupoScout,
         rama_scout: ramaScout,
-        telefono: telefono.trim(),
-        correo: correo.trim() || currentUser?.email,
-        contacto_emergencia: contactoEmergencia.trim(),
-        telefono_emergencia: telefonoEmergencia.trim(),
         descripcion: descripcion.trim(),
         instagram: instagram.trim().replace("@", ""),
         gustos_evento: gustos,
@@ -463,20 +449,8 @@ export function Perfil() {
                 <SelectField label="Unidad / Rama" options={ramas} value={ramaScout} onChange={setRamaScout} />
               </div>
 
-              {/* SECCIÓN 3: CONTACTO Y EMERGENCIA */}
-              <SectionDivider title="3. Contacto y Emergencia" icon={<ShieldAlert size={15} color={ENJ_NAVY} />} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <InputField label="Teléfono / WhatsApp" type="tel" icon={<Phone size={15} />} value={telefono} onChange={setTelefono} required={false} />
-                <InputField label="Correo Electrónico" type="email" value={correo} onChange={setCorreo} required={false} />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <InputField label="Contacto de Emergencia" placeholder="Nombre del Representante" value={contactoEmergencia} onChange={setContactoEmergencia} required={false} />
-                <InputField label="Teléfono de Emergencia" type="tel" placeholder="0414-0000000" value={telefonoEmergencia} onChange={setTelefonoEmergencia} required={false} />
-              </div>
-
-              {/* SECCIÓN 4: REDES E INTERESES */}
-              <SectionDivider title="4. Social & Redes ENJ" icon={<Heart size={15} color={ENJ_NAVY} />} />
+              {/* SECCIÓN 3: REDES E INTERESES */}
+              <SectionDivider title="3. Social & Redes ENJ" icon={<Heart size={15} color={ENJ_NAVY} />} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>Biografía / Lema Scout</label>
                 <textarea placeholder="Cuéntanos tus expectativas para el ENJ 2026..." value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", outline: "none", boxSizing: "border-box", fontSize: 13 }} />
@@ -578,17 +552,12 @@ export function Perfil() {
                   </button>
                 </div>
 
-                {/* REDES SOCIALES & CONTACTO */}
+                {/* REDES SOCIALES */}
                 <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", marginBottom: 18 }}>
                   {instagram && (
                     <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, color: ENJ_MAGENTA, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
                       <Instagram size={15} /> @{instagram}
                     </a>
-                  )}
-                  {telefono && isOwnProfile && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: "rgba(0,11,111,0.6)", fontSize: 13 }}>
-                      <Phone size={15} /> {telefono}
-                    </span>
                   )}
                 </div>
 

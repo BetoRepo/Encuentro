@@ -5,3 +5,4 @@ export { Perfil } from "./Perfil";
 export { Login } from "./Login"; // 👈 Agrega esta línea
 export { Dashboard } from "./Dashboard";
 export { ChangePassword } from "./ChangePassword";
+export { PanelPrograma }  from "./PanelPrograma";

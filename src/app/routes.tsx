@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { Root } from './components/Root';
 import { PerfilPublico } from './components/PerfilPublico';
-import { Home, Inscripcion, Consultas, Perfil, Dashboard } from './pages';
+import { Home, Inscripcion, Consultas, Perfil, Dashboard, PanelPrograma } from './pages';
 import { Login } from './pages/Login';
 
 // GUARDIÁN DE AUTENTICACIÓN GENERAL
@@ -51,10 +51,16 @@ export const router = createBrowserRouter(
             { path: 'inscripcion', element: <Inscripcion /> },
             { path: 'perfil', element: <Perfil /> },
             { 
+              // ELIMINADO EL ROLEGUARD: Ahora todos los participantes autenticados pueden ver 'consultas'
               path: 'consultas', 
+              element: <Consultas />
+            },
+            { 
+              // NUEVA RUTA: Solo para Programa y Administradores
+              path: 'panel-programa', 
               element: (
                 <RoleGuard allowedRoles={['admin', 'programa']}>
-                  <Consultas />
+                  <PanelPrograma />
                 </RoleGuard>
               ) 
             },
