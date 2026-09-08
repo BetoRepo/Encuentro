@@ -149,13 +149,13 @@ export function Login() {
         backgroundColor: ENJ_NAVY, // Fondo base azul ASV
       }}
     >
-      {/* Capa de fondo con la imagen completa (contain) */}
+      {/* Capa de fondo con la imagen ajustada al ancho completo (cover) */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           backgroundImage: `url(${bgImage})`,
-          backgroundSize: "contain",
+          backgroundSize: "cover", // Se cambió de "contain" a "cover" para llenar la pantalla
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
           zIndex: 0,

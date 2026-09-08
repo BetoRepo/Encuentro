@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   Edit3,
   Save,
-  MessageCircle
+  MessageCircle,
+  UserCheck
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -29,7 +30,8 @@ const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
-interface Participante {
+export interface Profile {
+  id: string;
   cedula: string;
   nombre: string;
   apellido: string;
@@ -49,7 +51,7 @@ interface Participante {
   created_at?: string;
 }
 
-interface Pago {
+export interface Pago {
   id?: string;
   cedula_participante: string;
   usuario_id?: string;
@@ -63,7 +65,7 @@ interface Pago {
   created_at?: string;
 }
 
-interface Documento {
+export interface Documento {
   id?: string;
   cedula_participante: string;
   tipo_documento: string;
@@ -73,7 +75,7 @@ interface Documento {
   created_at?: string;
 }
 
-interface ComunicacionAnuncio {
+export interface ComunicacionAnuncio {
   id: string;
   titulo?: string;
   contenido?: string;
@@ -82,7 +84,7 @@ interface ComunicacionAnuncio {
   created_at?: string;
 }
 
-interface MensajeMuro {
+export interface MensajeMuro {
   id: string;
   nombre?: string;
   autor?: string;
@@ -92,21 +94,25 @@ interface MensajeMuro {
 }
 
 export function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"participantes" | "anuncios" | "muro">("participantes");
+  const [activeTab, setActiveTab] = useState<"perfiles" | "pagos" | "anuncios" | "muro">("perfiles");
 
-  // ESTADOS DE LISTADO Y PAGINACIÓN
-  const [participantes, setParticipantes] = useState<Participante[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // ESTADOS DE LISTADO Y PAGINACIÓN DE PROFILES
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [page, setPage] = useState<number>(0);
   const [totalCount, setTotalCount] = useState<number>(0);
   const pageSize = 15;
 
-  // FILTROS
+  // FILTROS DE BÚSQUEDA
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedTipoFilter, setSelectedTipoFilter] = useState<string>("");
   const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>("");
+
+  // ESTADOS DE PAGOS
+  const [todosLosPagos, setTodosLosPagos] = useState<Pago[]>([]);
+  const [loadingPagos, setLoadingPagos] = useState<boolean>(false);
 
   // MÉTRICAS FINANCIERAS Y GENERALES
   const [totalJovenes, setTotalJovenes] = useState<number>(0);
@@ -117,15 +123,15 @@ export function Dashboard() {
   const [totalUsdValidado, setTotalUsdValidado] = useState<number>(0);
   const [totalPendientesValidacion, setTotalPendientesValidacion] = useState<number>(0);
 
-  // MODAL DE EXPEDIENTE Y EDICIÓN DE PERFIL
-  const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null);
+  // MODAL DE EXPEDIENTE / EDICIÓN DE PROFILE
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [modalPagos, setModalPagos] = useState<Pago[]>([]);
   const [modalDocs, setModalDocs] = useState<Documento[]>([]);
   const [loadingModal, setLoadingModal] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [isEditingPerfil, setIsEditingPerfil] = useState<boolean>(false);
-  const [editPerfilData, setEditPerfilData] = useState<Partial<Participante>>({});
+  const [editPerfilData, setEditPerfilData] = useState<Partial<Profile>>({});
 
   // ANUNCIOS Y COMUNICACIONES
   const [anuncios, setAnuncios] = useState<ComunicacionAnuncio[]>([]);
@@ -135,9 +141,9 @@ export function Dashboard() {
   const [mensajesMuro, setMensajesMuro] = useState<MensajeMuro[]>([]);
   const [loadingMuro, setLoadingMuro] = useState<boolean>(false);
 
-  // 1. CARGA DE PARTICIPANTES CON PAGINACIÓN Y FILTROS
-  const loadParticipantes = useCallback(async () => {
-    setLoading(true);
+  // 1. CARGA DE PROFILES DESDE LA TABLA 'profiles'
+  const loadProfiles = useCallback(async () => {
+    setLoadingProfiles(true);
     setErrorMsg(null);
 
     try {
@@ -145,7 +151,7 @@ export function Dashboard() {
       const to = from + pageSize - 1;
 
       let query = supabase
-        .from("participantes")
+        .from("profiles")
         .select("*", { count: "planned" });
 
       if (searchTerm.trim() !== "") {
@@ -167,27 +173,46 @@ export function Dashboard() {
 
       if (error) throw error;
 
-      setParticipantes(data || []);
+      setProfiles(data || []);
       setTotalCount(count || 0);
     } catch (err: any) {
-      console.error("Error al cargar participantes:", err);
-      setErrorMsg(err.message || "Error al conectar con la base de datos.");
+      console.error("Error al cargar perfiles:", err);
+      setErrorMsg(err.message || "Error al conectar con la tabla profiles.");
     } finally {
-      setLoading(false);
+      setLoadingProfiles(false);
     }
   }, [page, searchTerm, selectedTipoFilter, selectedRegionFilter]);
 
-  // 2. MÉTRICAS GENERALES Y TOTALES FINANCIEROS
+  // 2. CARGA GLOBAL DE PAGOS (SECCIÓN DEDICADA A PAGOS)
+  const loadGlobalPagos = async () => {
+    setLoadingPagos(true);
+    try {
+      const { data, error } = await supabase
+        .from("pagos")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setTodosLosPagos(data);
+      }
+    } catch (e) {
+      console.warn("Error al cargar lista global de pagos:", e);
+    } finally {
+      setLoadingPagos(false);
+    }
+  };
+
+  // 3. MÉTRICAS GENERALES Y TOTALES FINANCIEROS
   const loadMetricsAndFinances = async () => {
     try {
       const { count: jovenesCount } = await supabase
-        .from("participantes")
-        .select("cedula", { count: "planned", head: true })
+        .from("profiles")
+        .select("id", { count: "planned", head: true })
         .eq("tipo_participante", "joven");
 
       const { count: adultosCount } = await supabase
-        .from("participantes")
-        .select("cedula", { count: "planned", head: true })
+        .from("profiles")
+        .select("id", { count: "planned", head: true })
         .eq("tipo_participante", "adulto");
 
       setTotalJovenes(jovenesCount || 0);
@@ -233,18 +258,12 @@ export function Dashboard() {
     }
   };
 
-  // 3. CARGA DE TABLA DE ANUNCIOS / COMUNICACIONES
+  // 4. ANUNCIOS Y MURO
   const loadAnuncios = async () => {
     setLoadingAnuncios(true);
     try {
-      const { data, error } = await supabase
-        .from("comunicaciones_anuncios")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
-        setAnuncios(data);
-      }
+      const { data } = await supabase.from("comunicaciones_anuncios").select("*").order("created_at", { ascending: false });
+      if (data) setAnuncios(data);
     } catch (e) {
       console.warn("Error al cargar comunicaciones:", e);
     } finally {
@@ -252,18 +271,11 @@ export function Dashboard() {
     }
   };
 
-  // 4. CARGA DEL MURO DE MENSAJES
   const loadMensajesMuro = async () => {
     setLoadingMuro(true);
     try {
-      const { data, error } = await supabase
-        .from("muro_mensajes")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
-        setMensajesMuro(data);
-      }
+      const { data } = await supabase.from("muro_mensajes").select("*").order("created_at", { ascending: false });
+      if (data) setMensajesMuro(data);
     } catch (e) {
       console.warn("Error al cargar mensajes del muro:", e);
     } finally {
@@ -272,37 +284,38 @@ export function Dashboard() {
   };
 
   useEffect(() => {
-    loadParticipantes();
-  }, [loadParticipantes]);
+    loadProfiles();
+  }, [loadProfiles]);
 
   useEffect(() => {
     loadMetricsAndFinances();
+    loadGlobalPagos();
     loadAnuncios();
     loadMensajesMuro();
   }, []);
 
-  // 5. ABRIR EXPEDIENTE INDIVIDUAL Y Cargar PAGOS + DOCUMENTOS
-  const openExpediente = async (participante: Participante) => {
-    setSelectedParticipante(participante);
-    setEditPerfilData(participante);
+  // 5. EXPEDIENTE INDIVIDUAL DEL PROFILE
+  const openExpediente = async (profile: Profile) => {
+    setSelectedProfile(profile);
+    setEditPerfilData(profile);
     setIsEditingPerfil(false);
     setLoadingModal(true);
     setModalPagos([]);
     setModalDocs([]);
 
     try {
-      const cleanCedula = participante.cedula.replace(/\D/g, "").trim();
+      const cleanCedula = profile.cedula?.replace(/\D/g, "").trim() || "";
 
       const [pagosRes, docsRes] = await Promise.all([
         supabase
           .from("pagos")
           .select("*")
-          .or(`cedula_participante.eq.${cleanCedula},cedula_participante.eq.${participante.cedula}`)
+          .or(`usuario_id.eq.${profile.id},cedula_participante.eq.${cleanCedula},cedula_participante.eq.${profile.cedula}`)
           .order("created_at", { ascending: true }),
         supabase
           .from("documentos_participante")
           .select("*")
-          .or(`cedula_participante.eq.${cleanCedula},cedula_participante.eq.${participante.cedula}`)
+          .or(`cedula_participante.eq.${cleanCedula},cedula_participante.eq.${profile.cedula}`)
       ]);
 
       setModalPagos(pagosRes.data || []);
@@ -314,28 +327,27 @@ export function Dashboard() {
     }
   };
 
-  // 6. GUARDAR EDICIÓN DE PERFIL
+  // 6. GUARDAR EDICIÓN DE REGISTRO EN LA TABLA 'profiles'
   const handleSavePerfil = async () => {
-    if (!selectedParticipante) return;
+    if (!selectedProfile) return;
     setActionLoading("saving_profile");
 
     try {
       const { error } = await supabase
-        .from("participantes")
+        .from("profiles")
         .update(editPerfilData)
-        .eq("cedula", selectedParticipante.cedula);
+        .eq("id", selectedProfile.id);
 
       if (error) throw error;
 
-      // Actualizar estado local
-      const updated = { ...selectedParticipante, ...editPerfilData };
-      setSelectedParticipante(updated);
-      setParticipantes((prev) =>
-        prev.map((p) => (p.cedula === selectedParticipante.cedula ? updated : p))
+      const updated = { ...selectedProfile, ...editPerfilData };
+      setSelectedProfile(updated);
+      setProfiles((prev) =>
+        prev.map((p) => (p.id === selectedProfile.id ? updated : p))
       );
 
       setIsEditingPerfil(false);
-      alert("¡Perfil de participante actualizado correctamente!");
+      alert("¡Perfil actualizado con éxito en la tabla 'profiles'!");
     } catch (err: any) {
       alert("Error al actualizar perfil: " + err.message);
     } finally {
@@ -343,7 +355,7 @@ export function Dashboard() {
     }
   };
 
-  // 7. CAMBIAR ESTATUS DE PAGO (VALIDAR / RECHAZAR)
+  // 7. ACTUALIZACIÓN ESTATUS PAGO
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: 'validado' | 'rechazado') => {
     setActionLoading(pagoId);
     try {
@@ -354,83 +366,28 @@ export function Dashboard() {
 
       if (error) throw error;
 
-      setModalPagos((prev) =>
-        prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p))
-      );
+      setModalPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p)));
+      setTodosLosPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p)));
       loadMetricsAndFinances();
     } catch (err: any) {
-      alert("Error al actualizar pago: " + err.message);
+      alert("Error al actualizar estado del pago: " + err.message);
     } finally {
       setActionLoading(null);
     }
   };
 
-  // 8. ELIMINAR COMUNICADO
-  const handleDeleteAnuncio = async (id: string) => {
-    if (!confirm("¿Deseas eliminar este anuncio oficial?")) return;
-    try {
-      const { error } = await supabase.from("comunicaciones_anuncios").delete().eq("id", id);
-      if (error) throw error;
-      setAnuncios((prev) => prev.filter((a) => a.id !== id));
-    } catch (err: any) {
-      alert("Error al eliminar comunicado: " + err.message);
-    }
-  };
-
-  // 9. ELIMINAR MENSAJE DEL MURO
-  const handleDeleteMensajeMuro = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este mensaje del muro?")) return;
-    try {
-      const { error } = await supabase.from("muro_mensajes").delete().eq("id", id);
-      if (error) throw error;
-      setMensajesMuro((prev) => prev.filter((m) => m.id !== id));
-    } catch (err: any) {
-      alert("Error al eliminar el mensaje del muro: " + err.message);
-    }
-  };
-
-  // 10. DESCARGA DE DOCUMENTOS
-  const handleDownloadFile = (doc: Documento) => {
-    try {
-      if (doc.url_archivo) {
-        window.open(doc.url_archivo, "_blank");
-        return;
-      }
-
-      if (doc.archivo_base64) {
-        const link = document.createElement("a");
-        const isFullDataUrl = doc.archivo_base64.startsWith("data:");
-        
-        link.href = isFullDataUrl ? doc.archivo_base64 : `data:application/octet-stream;base64,${doc.archivo_base64}`;
-        link.download = doc.nombre_archivo || `documento_${doc.tipo_documento}`;
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        alert("El archivo no posee un formato válido para descargar.");
-      }
-    } catch (e) {
-      console.error("Error al descargar archivo:", e);
-      alert("No se pudo iniciar la descarga.");
-    }
-  };
-
-  // 11. EXPORTAR LISTADO EN FORMATO CSV
+  // EXPORTAR CSV
   const exportToCSV = async () => {
     try {
-      const { data, error } = await supabase
-        .from("participantes")
-        .select("*")
-        .order("apellido", { ascending: true });
-
+      const { data, error } = await supabase.from("profiles").select("*").order("apellido", { ascending: true });
       if (error) throw error;
-      if (!data || data.length === 0) return alert("No hay datos de participantes para exportar.");
+      if (!data || data.length === 0) return alert("No hay perfiles para exportar.");
 
-      const headers = ["Cedula", "Nombre", "Apellido", "Correo", "Telefono", "Region", "Distrito", "Grupo", "Rama", "Tipo", "Talla"];
+      const headers = ["ID", "Cedula", "Nombre", "Apellido", "Correo", "Telefono", "Region", "Distrito", "Grupo", "Rama", "Tipo"];
       const csvRows = [
         headers.join(","),
         ...data.map((p) => [
+          `"${p.id || ''}"`,
           `"${p.cedula || ''}"`,
           `"${p.nombre || ''}"`,
           `"${p.apellido || ''}"`,
@@ -440,8 +397,7 @@ export function Dashboard() {
           `"${p.distrito || ''}"`,
           `"${p.grupo_scout || ''}"`,
           `"${p.rama || ''}"`,
-          `"${p.tipo_participante || ''}"`,
-          `"${p.talla_uniforme || ''}"`
+          `"${p.tipo_participante || ''}"`
         ].join(","))
       ];
 
@@ -449,7 +405,7 @@ export function Dashboard() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Inscritos_ENJ2026_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.download = `Perfiles_ENJ2026_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -460,18 +416,11 @@ export function Dashboard() {
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
-  const modalTotalBs = modalPagos.reduce((acc, p) => acc + (Number(p.monto_bs) || 0), 0);
-  const modalTotalUsd = modalPagos.reduce((acc, p) => {
-    const bs = Number(p.monto_bs) || 0;
-    const tasa = Number(p.tasa_cambio) || 1;
-    return acc + (tasa > 0 ? bs / tasa : 0);
-  }, 0);
-
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "32px 24px 60px" }}>
       <div style={{ maxWidth: 1240, margin: "0 auto" }}>
         
-        {/* ENCABEZADO Y ACCIONES */}
+        {/* ENCABEZADO */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, flexWrap: "wrap", gap: 16 }}>
           <div>
             <span style={{ background: ENJ_NAVY, color: ENJ_YELLOW, fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 100, letterSpacing: "0.08em" }}>
@@ -487,11 +436,11 @@ export function Dashboard() {
               onClick={exportToCSV}
               style={{ display: "flex", alignItems: "center", gap: 8, background: "#16A34A", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
-              <FileSpreadsheet size={16} /> Exportar CSV / Excel
+              <FileSpreadsheet size={16} /> Exportar Perfiles CSV
             </button>
 
             <button
-              onClick={() => { loadParticipantes(); loadMetricsAndFinances(); loadAnuncios(); loadMensajesMuro(); }}
+              onClick={() => { loadProfiles(); loadMetricsAndFinances(); loadGlobalPagos(); loadAnuncios(); loadMensajesMuro(); }}
               style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid rgba(0,11,111,0.15)", borderRadius: 10, padding: "10px 18px", color: ENJ_NAVY, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
               <RefreshCw size={15} /> Actualizar
@@ -503,8 +452,8 @@ export function Dashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
           <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Perfiles Registrados</span>
-              <Users size={18} color={ENJ_NAVY} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Perfiles Activos</span>
+              <UserCheck size={18} color={ENJ_NAVY} />
             </div>
             <p style={{ margin: "10px 0 0", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
           </div>
@@ -521,7 +470,7 @@ export function Dashboard() {
 
           <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Por Validar</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Pagos Pendientes</span>
               <Clock size={18} color="#D97706" />
             </div>
             <p style={{ margin: "10px 0 0", fontSize: 26, fontWeight: 900, color: "#D97706" }}>{totalPendientesValidacion}</p>
@@ -529,11 +478,11 @@ export function Dashboard() {
 
           <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Total Reportado</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Total Recaudado</span>
               <CreditCard size={18} color={ENJ_NAVY} />
             </div>
             <p style={{ margin: "8px 0 0", fontSize: 18, fontWeight: 900, color: ENJ_NAVY }}>
-              Bs. {totalBsRecaudado.toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              Bs. {totalBsRecaudado.toLocaleString('es-VE')}
             </p>
             <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.5)" }}>~ ${totalUsdRecaudado.toFixed(2)} USD</span>
           </div>
@@ -550,16 +499,16 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* NAVEGACIÓN PESTAÑAS */}
+        {/* BARRA NAVEGACIÓN - SECCIÓN DE PESTAÑAS SEPARADAS */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <button
-            onClick={() => setActiveTab("participantes")}
+            onClick={() => setActiveTab("perfiles")}
             style={{
               padding: "10px 20px",
               borderRadius: 12,
               border: "none",
-              background: activeTab === "participantes" ? ENJ_NAVY : "#fff",
-              color: activeTab === "participantes" ? "#fff" : ENJ_NAVY,
+              background: activeTab === "perfiles" ? ENJ_NAVY : "#fff",
+              color: activeTab === "perfiles" ? "#fff" : ENJ_NAVY,
               fontWeight: 800,
               fontSize: 14,
               cursor: "pointer",
@@ -569,7 +518,27 @@ export function Dashboard() {
               boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
             }}
           >
-            <Users size={16} /> Registro de Perfiles ({totalCount})
+            <Users size={16} /> Gestión de Perfiles ({totalCount})
+          </button>
+
+          <button
+            onClick={() => setActiveTab("pagos")}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 12,
+              border: "none",
+              background: activeTab === "pagos" ? ENJ_NAVY : "#fff",
+              color: activeTab === "pagos" ? "#fff" : ENJ_NAVY,
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+            }}
+          >
+            <CreditCard size={16} /> Reporte General de Pagos
           </button>
 
           <button
@@ -609,19 +578,19 @@ export function Dashboard() {
               boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
             }}
           >
-            <MessageSquare size={16} /> Comunicaciones Oficiales ({anuncios.length})
+            <MessageSquare size={16} /> Comunicaciones ({anuncios.length})
           </button>
         </div>
 
-        {/* CONTENIDO PESTAÑA 1: PARTICIPANTES / PERFILES */}
-        {activeTab === "participantes" && (
+        {/* PESTAÑA 1: GESTIÓN INDEPENDIENTE DE PROFILES */}
+        {activeTab === "perfiles" && (
           <>
             <div style={{ background: "#fff", padding: 18, borderRadius: 16, marginBottom: 20, border: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ flex: 1, minWidth: 260, position: "relative" }}>
                 <Search size={16} color="rgba(0,11,111,0.4)" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
                 <input
                   type="text"
-                  placeholder="Buscar por cédula, nombre o apellido..."
+                  placeholder="Buscar perfil por cédula, nombre o apellido..."
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
                   style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 14, outline: "none", boxSizing: "border-box" }}
@@ -650,10 +619,10 @@ export function Dashboard() {
             {errorMsg && (
               <div style={{ background: "#FDF2F4", border: `1.5px solid ${ENJ_MAGENTA}`, borderRadius: 16, padding: 24, textAlign: "center", marginBottom: 20 }}>
                 <AlertCircle size={36} color={ENJ_MAGENTA} style={{ margin: "0 auto 10px" }} />
-                <h3 style={{ margin: "0 0 6px", color: ENJ_NAVY, fontSize: 18 }}>Error al conectar con Supabase</h3>
+                <h3 style={{ margin: "0 0 6px", color: ENJ_NAVY, fontSize: 18 }}>Error al obtener datos de la tabla profiles</h3>
                 <p style={{ margin: "0 0 16px", color: "#9F1239", fontSize: 14, fontFamily: "monospace" }}>{errorMsg}</p>
-                <button onClick={() => loadParticipantes()} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  Reintentar Carga
+                <button onClick={() => loadProfiles()} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  Reintentar
                 </button>
               </div>
             )}
@@ -663,36 +632,36 @@ export function Dashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontFamily: "Inter, sans-serif" }}>
                   <thead>
                     <tr style={{ background: "#F8FAFF", borderBottom: "1px solid rgba(0,11,111,0.08)" }}>
-                      <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Participante</th>
+                      <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Perfil Usuario</th>
                       <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Cédula</th>
                       <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Región / Distrito</th>
                       <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Rama / Grupo</th>
                       <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase" }}>Tipo</th>
-                      <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase", textAlign: "right" }}>Acción</th>
+                      <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textTransform: "uppercase", textAlign: "right" }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {loading ? (
+                    {loadingProfiles ? (
                       <tr>
                         <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)", fontSize: 14 }}>
                           <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 10px", display: "block" }} />
-                          Cargando lista de perfiles registrados...
+                          Cargando perfiles desde la tabla profiles...
                         </td>
                       </tr>
-                    ) : participantes.length === 0 ? (
+                    ) : profiles.length === 0 ? (
                       <tr>
                         <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)", fontSize: 14 }}>
-                          No se encontraron perfiles de participantes.
+                          No se encontraron registros en la tabla profiles.
                         </td>
                       </tr>
                     ) : (
-                      participantes.map((p) => (
-                        <tr key={p.cedula} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
+                      profiles.map((p) => (
+                        <tr key={p.id || p.cedula} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
                           <td style={{ padding: "14px 18px" }}>
                             <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 14 }}>{p.nombre} {p.apellido}</div>
                             <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>{p.correo || "Sin correo"}</div>
                           </td>
-                          <td style={{ padding: "14px 18px", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>{p.cedula}</td>
+                          <td style={{ padding: "14px 18px", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>{p.cedula || "N/A"}</td>
                           <td style={{ padding: "14px 18px", fontSize: 13, color: "rgba(0,11,111,0.8)" }}>
                             <div>{p.region || "N/A"}</div>
                             <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>{p.distrito}</div>
@@ -719,7 +688,7 @@ export function Dashboard() {
                               onClick={() => openExpediente(p)}
                               style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                             >
-                              <Eye size={14} /> Ver / Editar
+                              <Eye size={14} /> Expediente
                             </button>
                           </td>
                         </tr>
@@ -755,92 +724,113 @@ export function Dashboard() {
           </>
         )}
 
-        {/* CONTENIDO PESTAÑA 2: MURO DE MENSAJES */}
-        {activeTab === "muro" && (
+        {/* PESTAÑA 2: SECCIÓN DEDICADA INDEPENDIENTE PARA PAGOS */}
+        {activeTab === "pagos" && (
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
             <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
-              <MessageCircle size={20} color={ENJ_MAGENTA} /> Moderación de Publicaciones del Muro de Mensajes
+              <CreditCard size={20} color={ENJ_MAGENTA} /> Control y Validación de Pagos Reportados
             </h3>
 
-            {loadingMuro ? (
+            {loadingPagos ? (
               <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)" }}>
                 <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 10px", display: "block" }} />
-                Cargando mensajes del muro...
+                Cargando registros de pagos...
               </div>
-            ) : mensajesMuro.length === 0 ? (
-              <p style={{ color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No se registran mensajes publicados en el muro.</p>
+            ) : todosLosPagos.length === 0 ? (
+              <p style={{ color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No se registran pagos en la base de datos.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {mensajesMuro.map((item) => (
-                  <div key={item.id} style={{ background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                        <strong style={{ fontSize: 15, color: ENJ_NAVY }}>{item.nombre || item.autor || "Participante Anonimo"}</strong>
-                        {item.cedula && (
-                          <span style={{ fontSize: 11, background: "rgba(0,11,111,0.08)", color: ENJ_NAVY, padding: "2px 8px", borderRadius: 6, fontWeight: 700 }}>
-                            C.I. {item.cedula}
-                          </span>
-                        )}
-                        {item.created_at && (
-                          <span style={{ fontSize: 11, color: "rgba(0,11,111,0.4)" }}>
-                            {new Date(item.created_at).toLocaleString("es-VE")}
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ margin: 0, fontSize: 14, color: "#333", lineHeight: 1.5, background: "#fff", padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.05)" }}>
-                        "{item.mensaje}"
-                      </p>
-                    </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#F8FAFF", borderBottom: "1px solid rgba(0,11,111,0.08)" }}>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Cédula Participante</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Concepto / Cuota</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Referencia</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Monto</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Estado</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY, textAlign: "right" }}>Validación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {todosLosPagos.map((pago) => {
+                      const estatus = (pago.estado || "pendiente").toLowerCase();
+                      const isValidado = estatus === "validado";
+                      const isRechazado = estatus === "rechazado";
 
-                    <button
-                      onClick={() => handleDeleteMensajeMuro(item.id)}
-                      style={{ background: "#FEE2E2", color: "#DC2626", border: "none", padding: "10px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
-                    >
-                      <Trash2 size={15} /> Eliminar Mensaje
-                    </button>
-                  </div>
-                ))}
+                      return (
+                        <tr key={pago.id || pago.referencia} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
+                          <td style={{ padding: "12px 16px", fontWeight: 700, color: ENJ_NAVY, fontSize: 13 }}>{pago.cedula_participante}</td>
+                          <td style={{ padding: "12px 16px", fontSize: 13 }}>{pago.concepto || pago.numero_cuota}</td>
+                          <td style={{ padding: "12px 16px", fontSize: 13, fontFamily: "monospace" }}>{pago.referencia}</td>
+                          <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: ENJ_MAGENTA }}>Bs. {Number(pago.monto_bs).toLocaleString('es-VE')}</td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 800,
+                              padding: "2px 8px",
+                              borderRadius: 100,
+                              background: isValidado ? "#DCFCE7" : isRechazado ? "#FEE2E2" : "#FEF3C7",
+                              color: isValidado ? "#166534" : isRechazado ? "#991B1B" : "#92400E",
+                              textTransform: "capitalize"
+                            }}>
+                              {estatus}
+                            </span>
+                          </td>
+                          <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                            {pago.id && (
+                              <div style={{ display: "inline-flex", gap: 6 }}>
+                                <button
+                                  disabled={actionLoading === pago.id || isValidado}
+                                  onClick={() => handleUpdateEstatusPago(pago.id!, "validado")}
+                                  style={{ background: isValidado ? "#E2E8F0" : "#16A34A", color: isValidado ? "#94A3B8" : "#fff", border: "none", borderRadius: 6, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: isValidado ? "not-allowed" : "pointer" }}
+                                >
+                                  Validar
+                                </button>
+                                <button
+                                  disabled={actionLoading === pago.id || isRechazado}
+                                  onClick={() => handleUpdateEstatusPago(pago.id!, "rechazado")}
+                                  style={{ background: isRechazado ? "#E2E8F0" : "#DC2626", color: isRechazado ? "#94A3B8" : "#fff", border: "none", borderRadius: 6, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: isRechazado ? "not-allowed" : "pointer" }}
+                                >
+                                  Rechazar
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         )}
 
-        {/* CONTENIDO PESTAÑA 3: ANUNCIOS Y COMUNICACIONES */}
-        {activeTab === "anuncios" && (
+        {/* PESTAÑA 3: MURO */}
+        {activeTab === "muro" && (
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
             <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
-              <MessageSquare size={20} color={ENJ_MAGENTA} /> Anuncios y Comunicaciones Publicadas
+              <MessageCircle size={20} color={ENJ_MAGENTA} /> Moderación del Muro de Mensajes
             </h3>
-
-            {loadingAnuncios ? (
-              <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)" }}>
-                <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 10px", display: "block" }} />
-                Cargando anuncios...
-              </div>
-            ) : anuncios.length === 0 ? (
-              <p style={{ color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No se registran anuncios o comunicaciones cargadas.</p>
+            {loadingMuro ? (
+              <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)" }}>Cargando mensajes...</div>
+            ) : mensajesMuro.length === 0 ? (
+              <p style={{ color: "rgba(0,11,111,0.5)" }}>No hay mensajes publicados.</p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {anuncios.map((item) => (
-                  <div key={item.id} style={{ background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                {mensajesMuro.map((item) => (
+                  <div key={item.id} style={{ background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <strong style={{ fontSize: 15, color: ENJ_NAVY }}>{item.titulo || "Comunicado Oficial"}</strong>
-                        {item.created_at && (
-                          <span style={{ fontSize: 11, color: "rgba(0,11,111,0.4)" }}>
-                            {new Date(item.created_at).toLocaleString("es-VE")}
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ margin: 0, fontSize: 14, color: "#333", lineHeight: 1.5 }}>
-                        {item.contenido || item.mensaje}
-                      </p>
-                      {item.autor && <span style={{ fontSize: 11, color: ENJ_MAGENTA, fontWeight: 700 }}>Publicado por: {item.autor}</span>}
+                      <strong style={{ fontSize: 15, color: ENJ_NAVY }}>{item.nombre || item.autor || "Anónimo"}</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: 14, color: "#333" }}>"{item.mensaje}"</p>
                     </div>
-
                     <button
-                      onClick={() => handleDeleteAnuncio(item.id)}
-                      style={{ background: "#FEE2E2", color: "#DC2626", border: "none", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+                      onClick={async () => {
+                        if (!confirm("¿Eliminar este mensaje?")) return;
+                        await supabase.from("muro_mensajes").delete().eq("id", item.id);
+                        setMensajesMuro((prev) => prev.filter((m) => m.id !== item.id));
+                      }}
+                      style={{ background: "#FEE2E2", color: "#DC2626", border: "none", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                     >
                       <Trash2 size={14} /> Eliminar
                     </button>
@@ -851,13 +841,48 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* MODAL COMPLETO DE EXPEDIENTE / EDICIÓN DE PARTICIPANTE */}
-        {selectedParticipante && (
+        {/* PESTAÑA 4: ANUNCIOS */}
+        {activeTab === "anuncios" && (
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
+            <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+              <MessageSquare size={20} color={ENJ_MAGENTA} /> Comunicaciones Oficiales
+            </h3>
+            {loadingAnuncios ? (
+              <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.5)" }}>Cargando anuncios...</div>
+            ) : anuncios.length === 0 ? (
+              <p style={{ color: "rgba(0,11,111,0.5)" }}>No hay comunicados publicados.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {anuncios.map((item) => (
+                  <div key={item.id} style={{ background: "#F8FAFF", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <strong style={{ fontSize: 15, color: ENJ_NAVY }}>{item.titulo || "Comunicado"}</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: 14, color: "#333" }}>{item.contenido || item.mensaje}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("¿Eliminar comunicado?")) return;
+                        await supabase.from("comunicaciones_anuncios").delete().eq("id", item.id);
+                        setAnuncios((prev) => prev.filter((a) => a.id !== item.id));
+                      }}
+                      style={{ background: "#FEE2E2", color: "#DC2626", border: "none", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      <Trash2 size={14} /> Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODAL DE EDICIÓN Y EXPEDIENTE VINCULADO A LA TABLA PROFILES */}
+        {selectedProfile && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 880, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.2)", position: "relative", padding: 32 }}>
+            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 880, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
               
               <button
-                onClick={() => setSelectedParticipante(null)}
+                onClick={() => setSelectedProfile(null)}
                 style={{ position: "absolute", right: 20, top: 20, background: "#F4F5FA", border: "none", borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: ENJ_NAVY }}
               >
                 <X size={18} />
@@ -866,328 +891,120 @@ export function Dashboard() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid rgba(0,11,111,0.1)", paddingBottom: 20, flexWrap: "wrap", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                   <div style={{ width: 60, height: 60, borderRadius: "50%", background: ENJ_NAVY, color: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900 }}>
-                    {selectedParticipante.nombre.charAt(0)}{selectedParticipante.apellido.charAt(0)}
+                    {selectedProfile.nombre?.charAt(0)}{selectedProfile.apellido?.charAt(0)}
                   </div>
                   <div>
                     <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
-                      {selectedParticipante.nombre} {selectedParticipante.apellido}
+                      {selectedProfile.nombre} {selectedProfile.apellido}
                     </h2>
                     <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
-                      Cédula: {selectedParticipante.cedula} | Región: {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"}
+                      ID: {selectedProfile.id} | Cédula: {selectedProfile.cedula}
                     </p>
                   </div>
                 </div>
 
-                {/* BOTÓN TOGGLE MODO EDICIÓN DE PERFIL */}
                 <button
                   onClick={() => setIsEditingPerfil(!isEditingPerfil)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY,
-                    color: isEditingPerfil ? ENJ_NAVY : "#fff",
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "10px 16px",
-                    fontWeight: 800,
-                    fontSize: 13,
-                    cursor: "pointer"
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
                 >
-                  <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Perfil"}
+                  <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Perfil (profiles)"}
                 </button>
               </div>
 
               {loadingModal ? (
                 <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.6)" }}>
                   <RefreshCw size={28} style={{ animation: "spin 1s linear infinite", margin: "0 auto 12px", display: "block" }} />
-                  Cargando expediente, ficha y pagos...
+                  Cargando información...
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                   
-                  {/* FORMULARIO DE EDICIÓN O VISTA DE FICHA */}
                   {isEditingPerfil ? (
                     <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14 }}>
-                      <h4 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
-                        <Edit3 size={18} color={ENJ_NAVY} /> Modificar Datos del Perfil
-                      </h4>
+                      <h4 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Modificar Campos en `profiles`</h4>
 
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Nombre</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.nombre || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, nombre: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.nombre || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, nombre: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Apellido</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.apellido || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, apellido: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.apellido || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, apellido: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Correo Electrónico</label>
-                          <input
-                            type="email"
-                            value={editPerfilData.correo || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, correo: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="email" value={editPerfilData.correo || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, correo: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Teléfono</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.telefono || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, telefono: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.telefono || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, telefono: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Región</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.region || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, region: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.region || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, region: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Distrito</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.distrito || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, distrito: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.distrito || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, distrito: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Grupo Scout</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.grupo_scout || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, grupo_scout: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.grupo_scout || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, grupo_scout: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
 
                         <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Rama / Unidad</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.rama || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, rama: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Tipo Participante</label>
-                          <select
-                            value={editPerfilData.tipo_participante || "joven"}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, tipo_participante: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          >
-                            <option value="joven">Joven</option>
-                            <option value="adulto">Adulto</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Talla Uniforme</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.talla_uniforme || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, talla_uniforme: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Tipo de Sangre</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.tipo_sangre || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, tipo_sangre: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Alergias</label>
-                          <input
-                            type="text"
-                            value={editPerfilData.alergias || ""}
-                            onChange={(e) => setEditPerfilData({ ...editPerfilData, alergias: e.target.value })}
-                            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }}
-                          />
+                          <input type="text" value={editPerfilData.rama || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, rama: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
                         </div>
                       </div>
 
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-                        <button
-                          onClick={() => setIsEditingPerfil(false)}
-                          style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", background: "#fff", color: ENJ_NAVY, fontWeight: 700, cursor: "pointer" }}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          disabled={actionLoading === "saving_profile"}
-                          onClick={handleSavePerfil}
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, cursor: "pointer" }}
-                        >
-                          <Save size={15} /> Guardar Cambios
+                        <button onClick={() => setIsEditingPerfil(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", background: "#fff", color: ENJ_NAVY, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
+                        <button disabled={actionLoading === "saving_profile"} onClick={handleSavePerfil} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+                          <Save size={15} /> Actualizar Perfil
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
-                      <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Ficha Médica y de Registro</h4>
+                      <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 14, textTransform: "uppercase" }}>Datos del Perfil</h4>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 13 }}>
-                        <div><strong>Correo:</strong> {selectedParticipante.correo || "N/A"}</div>
-                        <div><strong>Teléfono:</strong> {selectedParticipante.telefono || "N/A"}</div>
-                        <div><strong>Grupo Scout:</strong> {selectedParticipante.grupo_scout || "N/A"}</div>
-                        <div><strong>Rama / Unidad:</strong> {selectedParticipante.rama || "N/A"}</div>
-                        <div><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</div>
-                        <div><strong>Tipo Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</div>
-                        <div><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</div>
-                        <div><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</div>
+                        <div><strong>Correo:</strong> {selectedProfile.correo || "N/A"}</div>
+                        <div><strong>Teléfono:</strong> {selectedProfile.telefono || "N/A"}</div>
+                        <div><strong>Región:</strong> {selectedProfile.region || "N/A"}</div>
+                        <div><strong>Distrito:</strong> {selectedProfile.distrito || "N/A"}</div>
+                        <div><strong>Grupo Scout:</strong> {selectedProfile.grupo_scout || "N/A"}</div>
+                        <div><strong>Rama / Unidad:</strong> {selectedProfile.rama || "N/A"}</div>
+                        <div><strong>Tipo Sangre:</strong> {selectedProfile.tipo_sangre || "N/A"}</div>
+                        <div><strong>Alergias:</strong> {selectedProfile.alergias || "Ninguna"}</div>
                       </div>
                     </div>
                   )}
 
-                  {/* SECCIÓN DE VALIDACIÓN DE CUOTAS / PAGOS */}
+                  {/* DOCUMENTOS Y HISTORIAL DE PAGOS ASOCIADOS */}
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 8 }}>
-                        <CreditCard size={18} color={ENJ_MAGENTA} /> Pagos Reportados y Validación
-                      </h3>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: ENJ_NAVY }}>
-                        Total Pagado: <span style={{ color: ENJ_MAGENTA }}>Bs. {modalTotalBs.toLocaleString('es-VE')}</span> (~ ${modalTotalUsd.toFixed(2)} USD)
-                      </div>
-                    </div>
-
+                    <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Pagos Registrados</h3>
                     {modalPagos.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No registra pagos cargados en el sistema.</p>
+                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No registra pagos adjuntos a este perfil.</p>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {modalPagos.map((pago) => {
-                          const bs = Number(pago.monto_bs) || 0;
-                          const tasa = Number(pago.tasa_cambio) || 1;
-                          const usd = tasa > 0 ? bs / tasa : 0;
-                          const estatus = (pago.estado || "pendiente").toLowerCase();
-                          const isValidado = estatus === "validado";
-                          const isRechazado = estatus === "rechazado";
-
-                          return (
-                            <div key={pago.id || pago.referencia} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 12, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                                  <strong style={{ fontSize: 14, color: ENJ_NAVY }}>{pago.concepto || pago.numero_cuota || "Cuota ENJ"}</strong>
-                                  <span style={{
-                                    fontSize: 11,
-                                    fontWeight: 800,
-                                    padding: "2px 8px",
-                                    borderRadius: 100,
-                                    background: isValidado ? "#DCFCE7" : isRechazado ? "#FEE2E2" : "#FEF3C7",
-                                    color: isValidado ? "#166534" : isRechazado ? "#991B1B" : "#92400E",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 4,
-                                    textTransform: "capitalize"
-                                  }}>
-                                    {isValidado && <CheckCircle size={12} />}
-                                    {isRechazado && <XCircle size={12} />}
-                                    {!isValidado && !isRechazado && <Clock size={12} />}
-                                    {estatus}
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: 12, color: "rgba(0,11,111,0.6)" }}>
-                                  Ref: <strong>{pago.referencia}</strong> | Fecha: {pago.fecha_pago}
-                                </div>
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                                <div style={{ textAlign: "right" }}>
-                                  <div style={{ fontWeight: 800, color: ENJ_MAGENTA, fontSize: 15 }}>
-                                    Bs. {bs.toLocaleString('es-VE')}
-                                  </div>
-                                  <div style={{ fontSize: 12, fontWeight: 700, color: ENJ_NAVY }}>
-                                    $ {usd.toFixed(2)} USD <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)", fontWeight: 400 }}>(Tasa: {tasa})</span>
-                                  </div>
-                                </div>
-
-                                {/* BOTONES DE VALIDACIÓN */}
-                                {pago.id && (
-                                  <div style={{ display: "flex", gap: 6 }}>
-                                    <button
-                                      disabled={actionLoading === pago.id || isValidado}
-                                      onClick={() => handleUpdateEstatusPago(pago.id!, "validado")}
-                                      style={{ background: isValidado ? "#E2E8F0" : "#16A34A", color: isValidado ? "#94A3B8" : "#fff", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: isValidado ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}
-                                    >
-                                      <CheckCircle size={14} /> Validar
-                                    </button>
-
-                                    <button
-                                      disabled={actionLoading === pago.id || isRechazado}
-                                      onClick={() => handleUpdateEstatusPago(pago.id!, "rechazado")}
-                                      style={{ background: isRechazado ? "#E2E8F0" : "#DC2626", color: isRechazado ? "#94A3B8" : "#fff", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: isRechazado ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 4 }}
-                                    >
-                                      <XCircle size={14} /> Rechazar
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* DOCUMENTOS ADJUNTOS */}
-                  <div>
-                    <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileText size={18} color={ENJ_NAVY} /> Documentos Adjuntos
-                    </h3>
-                    {modalDocs.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No hay documentos adjuntos en este expediente.</p>
-                    ) : (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-                        {modalDocs.map((doc, idx) => (
-                          <div key={idx} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.1)", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ overflow: "hidden" }}>
-                              <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 13, textTransform: "capitalize" }}>
-                                {doc.tipo_documento.replace('_', ' ')}
-                              </div>
-                              <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                                {doc.nombre_archivo || "Documento sin nombre"}
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => handleDownloadFile(doc)}
-                              style={{ display: "flex", alignItems: "center", gap: 6, background: ENJ_NAVY, color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-                            >
-                              <Download size={14} /> Descargar
-                            </button>
+                      modalPagos.map((pago) => (
+                        <div key={pago.id || pago.referencia} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <strong>{pago.concepto || pago.numero_cuota}</strong> - Ref: {pago.referencia}
+                            <div style={{ fontSize: 12, color: ENJ_MAGENTA, fontWeight: 700 }}>Bs. {pago.monto_bs}</div>
                           </div>
-                        ))}
-                      </div>
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: pago.estado === 'validado' ? '#DCFCE7' : '#FEF3C7', color: pago.estado === 'validado' ? '#166534' : '#92400E' }}>
+                            {pago.estado || 'pendiente'}
+                          </span>
+                        </div>
+                      ))
                     )}
                   </div>
 
