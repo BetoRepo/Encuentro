@@ -7,6 +7,7 @@ import desafioGeneracionZ from "../../assets/DesafíoGeneraciónZ.svg";
 import redEnVivo from "../../assets/LaRedEnVivo.svg";
 import vitamina from "../../assets/Vitamina.svg";
 import churuata from "../../assets/LaChuruatadelEncuentro.svg";
+import heroBanner from "../../assets/herobanner.png";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -34,7 +35,7 @@ interface BloquePrograma {
 
 export function ScoutsLogo({ size = 44 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnYAFnlVZFbKpjZnHwMM6uaVO5dD9KUgM4xRvt1KEM_g&s=10">
+    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="22" cy="22" r="22" fill={ENJ_YELLOW} />
       <path d="M22 8C22 8 14 15 14 22C14 26.4 17.6 30 22 30C26.4 30 30 26.4 30 22C30 15 22 8 22 8Z" fill={ENJ_NAVY} />
       <circle cx="22" cy="22" r="4" fill={ENJ_YELLOW} />
@@ -166,10 +167,13 @@ export function Home() {
 
   return (
     <div style={{ background: "#F5F7FB", minHeight: "100vh", width: "100%", maxWidth: "100vw", overflowX: "hidden", boxSizing: "border-box" }}>
-      {/* SECCIÓN HERO PRINCIPAL */}
+      {/* SECCIÓN HERO PRINCIPAL CON HEROBANNER DE FONDO */}
       <header
         style={{
-          background: `linear-gradient(135deg, ${ENJ_MAGENTA} 0%, #00063D 100%)`,
+          background: `linear-gradient(135deg, rgba(80, 3, 157, 0.85) 0%, rgba(0, 6, 61, 0.92) 100%), url(${heroBanner})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
           color: "white",
           padding: "90px 16px 70px",
           textAlign: "center",
@@ -443,7 +447,7 @@ export function Home() {
 
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
           <div style={{ filter: "blur(7px)", pointerEvents: "none", userSelect: "none" }} aria-hidden="true">
-            {/* PROGRAMA DE ACTIVIDADES VIRTUALES CORREGIDO */}
+            {/* PROGRAMA DE ACTIVIDADES VIRTUALES */}
             <div style={{ marginBottom: 80 }}>
               <div style={{ textAlign: "center", marginBottom: 40 }}>
                 <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Programa de Actividades Virtuales</h2>
@@ -473,7 +477,7 @@ export function Home() {
               </div>
             </div>
 
-            {/* CRONOGRAMA PRESENCIAL CORREGIDO */}
+            {/* CRONOGRAMA PRESENCIAL */}
             <div>
               <div style={{ textAlign: "center", marginBottom: 40 }}>
                 <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma General</h2>
@@ -511,7 +515,7 @@ export function Home() {
         </div>
       </main>
 
-      {/* Estilos CSS dinámicos inyectados para corregir el ancho en PC sin romper el móvil */}
+      {/* Estilos CSS dinámicos */}
       <style>{`
         @media (min-width: 768px) {
           .agenda-badge {

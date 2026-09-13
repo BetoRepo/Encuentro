@@ -8,12 +8,8 @@ import {
   ChevronRight, 
   Eye, 
   X, 
-  FileText, 
   AlertCircle,
-  Download,
   Building,
-  CheckCircle,
-  XCircle,
   Clock,
   FileSpreadsheet,
   MessageSquare,
@@ -37,13 +33,18 @@ export interface Profile {
   apellido: string;
   correo?: string;
   telefono?: string;
+  celular?: string;
+  phone?: string;
   region?: string;
   distrito?: string;
   grupo_scout?: string;
+  grupo?: string;
   rama?: string;
+  unidad?: string;
   tipo_participante?: string;
   talla_uniforme?: string;
   tipo_sangre?: string;
+  grupo_sanguineo?: string;
   alergias?: string;
   enfermedades?: string;
   medicamentos?: string;
@@ -63,6 +64,7 @@ export interface Pago {
   tasa_cambio: number;
   estado?: string;
   created_at?: string;
+  profile?: Profile | null;
 }
 
 export interface Documento {
@@ -92,6 +94,44 @@ export interface MensajeMuro {
   mensaje: string;
   created_at?: string;
 }
+
+// HELPER: Normalización de datos para resolver alías y separaciones N/A
+export const getProfileFields = (p: Partial<Profile> | null | undefined) => {
+  if (!p) return {
+    nombre: "", apellido: "", cedula: "N/A", correo: "N/A",
+    telefono: "N/A", region: "N/A", distrito: "N/A",
+    grupo_scout: "N/A", rama: "N/A", tipo_participante: "joven",
+    tipo_sangre: "N/A", alergias: "Ninguna"
+  };
+  
+  const rawRegion = (p as any).region || (p as any).region_scout || "";
+  const rawDistrito = (p as any).distrito || (p as any).distrito_scout || "";
+
+  let region = rawRegion;
+  let distrito = rawDistrito;
+
+  // Extrae Distrito si viene compuesto ("CARABOBO - VALENCIA NORTE")
+  if (rawRegion.includes("-") && (!rawDistrito || rawDistrito === "N/A")) {
+    const parts = rawRegion.split("-");
+    region = parts[0].trim();
+    distrito = parts.slice(1).join("-").trim();
+  }
+
+  return {
+    nombre: p.nombre || (p as any).first_name || "",
+    apellido: p.apellido || (p as any).last_name || "",
+    cedula: p.cedula || (p as any).dni || "N/A",
+    correo: p.correo || (p as any).email || "N/A",
+    telefono: p.telefono || (p as any).celular || (p as any).phone || "N/A",
+    region: region || "N/A",
+    distrito: distrito || "N/A",
+    grupo_scout: p.grupo_scout || (p as any).grupo || "N/A",
+    rama: p.rama || (p as any).unidad || (p as any).rama_scout || "N/A",
+    tipo_participante: p.tipo_participante || (p as any).tipo || "joven",
+    tipo_sangre: p.tipo_sangre || (p as any).grupo_sanguineo || "N/A",
+    alergias: p.alergias || "Ninguna",
+  };
+};
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState<"perfiles" | "pagos" | "anuncios" | "muro">("perfiles");
@@ -141,7 +181,7 @@ export function Dashboard() {
   const [mensajesMuro, setMensajesMuro] = useState<MensajeMuro[]>([]);
   const [loadingMuro, setLoadingMuro] = useState<boolean>(false);
 
-  // 1. CARGA DE PROFILES DESDE LA TABLA 'profiles'
+  // 1. CARGA DE PROFILES DESDE LA TABLA 'profiles' (CORREGIDO: count exact)
   const loadProfiles = useCallback(async () => {
     setLoadingProfiles(true);
     setErrorMsg(null);
@@ -152,7 +192,7 @@ export function Dashboard() {
 
       let query = supabase
         .from("profiles")
-        .select("*", { count: "planned" });
+        .select("*", { count: "exact" }); // Conteo exacto para corregir los 140 ficticios
 
       if (searchTerm.trim() !== "") {
         const cleanSearch = searchTerm.trim();
@@ -183,17 +223,50 @@ export function Dashboard() {
     }
   }, [page, searchTerm, selectedTipoFilter, selectedRegionFilter]);
 
-  // 2. CARGA GLOBAL DE PAGOS (SECCIÓN DEDICADA A PAGOS)
+  // 2. CARGA GLOBAL DE PAGOS CON VINCULACIÓN DE PARTICIPANTE
   const loadGlobalPagos = async () => {
     setLoadingPagos(true);
     try {
-      const { data, error } = await supabase
+      const { data: pagosData, error: pagosErr } = await supabase
         .from("pagos")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setTodosLosPagos(data);
+      if (pagosErr) throw pagosErr;
+
+      if (pagosData && pagosData.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("*");
+
+        const profilesMapByCedula: Record<string, Profile> = {};
+        const profilesMapById: Record<string, Profile> = {};
+
+        if (profilesData) {
+          profilesData.forEach((prof) => {
+            if (prof.cedula) {
+              const clean = prof.cedula.replace(/\D/g, "").trim();
+              profilesMapByCedula[clean] = prof;
+              profilesMapByCedula[prof.cedula.trim()] = prof;
+            }
+            if (prof.id) profilesMapById[prof.id] = prof;
+          });
+        }
+
+        const mergedPagos = pagosData.map((pago) => {
+          const cleanCedula = pago.cedula_participante?.replace(/\D/g, "").trim() || "";
+          const profile =
+            profilesMapByCedula[pago.cedula_participante?.trim()] ||
+            profilesMapByCedula[cleanCedula] ||
+            (pago.usuario_id ? profilesMapById[pago.usuario_id] : null) ||
+            null;
+
+          return { ...pago, profile };
+        });
+
+        setTodosLosPagos(mergedPagos);
+      } else {
+        setTodosLosPagos([]);
       }
     } catch (e) {
       console.warn("Error al cargar lista global de pagos:", e);
@@ -202,17 +275,17 @@ export function Dashboard() {
     }
   };
 
-  // 3. MÉTRICAS GENERALES Y TOTALES FINANCIEROS
+  // 3. MÉTRICAS GENERALES Y TOTALES FINANCIEROS (CORREGIDO: count exact)
   const loadMetricsAndFinances = async () => {
     try {
       const { count: jovenesCount } = await supabase
         .from("profiles")
-        .select("id", { count: "planned", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("tipo_participante", "joven");
 
       const { count: adultosCount } = await supabase
         .from("profiles")
-        .select("id", { count: "planned", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("tipo_participante", "adulto");
 
       setTotalJovenes(jovenesCount || 0);
@@ -386,19 +459,22 @@ export function Dashboard() {
       const headers = ["ID", "Cedula", "Nombre", "Apellido", "Correo", "Telefono", "Region", "Distrito", "Grupo", "Rama", "Tipo"];
       const csvRows = [
         headers.join(","),
-        ...data.map((p) => [
-          `"${p.id || ''}"`,
-          `"${p.cedula || ''}"`,
-          `"${p.nombre || ''}"`,
-          `"${p.apellido || ''}"`,
-          `"${p.correo || ''}"`,
-          `"${p.telefono || ''}"`,
-          `"${p.region || ''}"`,
-          `"${p.distrito || ''}"`,
-          `"${p.grupo_scout || ''}"`,
-          `"${p.rama || ''}"`,
-          `"${p.tipo_participante || ''}"`
-        ].join(","))
+        ...data.map((p) => {
+          const f = getProfileFields(p);
+          return [
+            `"${p.id || ''}"`,
+            `"${f.cedula}"`,
+            `"${f.nombre}"`,
+            `"${f.apellido}"`,
+            `"${f.correo}"`,
+            `"${f.telefono}"`,
+            `"${f.region}"`,
+            `"${f.distrito}"`,
+            `"${f.grupo_scout}"`,
+            `"${f.rama}"`,
+            `"${f.tipo_participante}"`
+          ].join(",");
+        })
       ];
 
       const blob = new Blob(["\uFEFF" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -499,7 +575,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* BARRA NAVEGACIÓN - SECCIÓN DE PESTAÑAS SEPARADAS */}
+        {/* NAVEGACIÓN */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <button
             onClick={() => setActiveTab("perfiles")}
@@ -655,44 +731,47 @@ export function Dashboard() {
                         </td>
                       </tr>
                     ) : (
-                      profiles.map((p) => (
-                        <tr key={p.id || p.cedula} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
-                          <td style={{ padding: "14px 18px" }}>
-                            <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 14 }}>{p.nombre} {p.apellido}</div>
-                            <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>{p.correo || "Sin correo"}</div>
-                          </td>
-                          <td style={{ padding: "14px 18px", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>{p.cedula || "N/A"}</td>
-                          <td style={{ padding: "14px 18px", fontSize: 13, color: "rgba(0,11,111,0.8)" }}>
-                            <div>{p.region || "N/A"}</div>
-                            <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>{p.distrito}</div>
-                          </td>
-                          <td style={{ padding: "14px 18px", fontSize: 13, color: "rgba(0,11,111,0.8)" }}>
-                            <div><strong>{p.rama || "N/A"}</strong></div>
-                            <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>{p.grupo_scout}</div>
-                          </td>
-                          <td style={{ padding: "14px 18px" }}>
-                            <span style={{ 
-                              fontSize: 11, 
-                              fontWeight: 800, 
-                              padding: "4px 10px", 
-                              borderRadius: 100, 
-                              textTransform: "uppercase",
-                              background: p.tipo_participante === "joven" ? "rgba(215,0,126,0.1)" : "rgba(0,11,111,0.1)",
-                              color: p.tipo_participante === "joven" ? ENJ_MAGENTA : ENJ_NAVY
-                            }}>
-                              {p.tipo_participante || "joven"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                            <button
-                              onClick={() => openExpediente(p)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                            >
-                              <Eye size={14} /> Expediente
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      profiles.map((p) => {
+                        const fields = getProfileFields(p);
+                        return (
+                          <tr key={p.id || p.cedula} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
+                            <td style={{ padding: "14px 18px" }}>
+                              <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 14 }}>{fields.nombre} {fields.apellido}</div>
+                              <div style={{ fontSize: 12, color: "rgba(0,11,111,0.5)" }}>{fields.correo}</div>
+                            </td>
+                            <td style={{ padding: "14px 18px", fontSize: 13, fontWeight: 600, color: ENJ_NAVY }}>{fields.cedula}</td>
+                            <td style={{ padding: "14px 18px", fontSize: 13, color: "rgba(0,11,111,0.8)" }}>
+                              <div>{fields.region}</div>
+                              <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>{fields.distrito}</div>
+                            </td>
+                            <td style={{ padding: "14px 18px", fontSize: 13, color: "rgba(0,11,111,0.8)" }}>
+                              <div><strong>{fields.rama}</strong></div>
+                              <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>{fields.grupo_scout}</div>
+                            </td>
+                            <td style={{ padding: "14px 18px" }}>
+                              <span style={{ 
+                                fontSize: 11, 
+                                fontWeight: 800, 
+                                padding: "4px 10px", 
+                                borderRadius: 100, 
+                                textTransform: "uppercase",
+                                background: fields.tipo_participante === "joven" ? "rgba(215,0,126,0.1)" : "rgba(0,11,111,0.1)",
+                                color: fields.tipo_participante === "joven" ? ENJ_MAGENTA : ENJ_NAVY
+                              }}>
+                                {fields.tipo_participante}
+                              </span>
+                            </td>
+                            <td style={{ padding: "14px 18px", textAlign: "right" }}>
+                              <button
+                                onClick={() => openExpediente(p)}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                              >
+                                <Eye size={14} /> Expediente
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -724,7 +803,7 @@ export function Dashboard() {
           </>
         )}
 
-        {/* PESTAÑA 2: SECCIÓN DEDICADA INDEPENDIENTE PARA PAGOS */}
+        {/* PESTAÑA 2: REPORTE DE PAGOS + PARTICIPANTE ASOCIADO */}
         {activeTab === "pagos" && (
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
             <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
@@ -743,7 +822,8 @@ export function Dashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead>
                     <tr style={{ background: "#F8FAFF", borderBottom: "1px solid rgba(0,11,111,0.08)" }}>
-                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Cédula Participante</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Participante</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Grupo / Región</th>
                       <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Concepto / Cuota</th>
                       <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Referencia</th>
                       <th style={{ padding: "12px 16px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Monto</th>
@@ -756,10 +836,22 @@ export function Dashboard() {
                       const estatus = (pago.estado || "pendiente").toLowerCase();
                       const isValidado = estatus === "validado";
                       const isRechazado = estatus === "rechazado";
+                      const pFields = getProfileFields(pago.profile);
 
                       return (
                         <tr key={pago.id || pago.referencia} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
-                          <td style={{ padding: "12px 16px", fontWeight: 700, color: ENJ_NAVY, fontSize: 13 }}>{pago.cedula_participante}</td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <div style={{ fontWeight: 700, color: ENJ_NAVY, fontSize: 13 }}>
+                              {pago.profile ? `${pFields.nombre} ${pFields.apellido}` : "Participante No Registrado"}
+                            </div>
+                            <div style={{ fontSize: 11, color: "rgba(0,11,111,0.6)" }}>
+                              C.I: {pago.cedula_participante} {pFields.correo !== "N/A" ? `• ${pFields.correo}` : ""}
+                            </div>
+                          </td>
+                          <td style={{ padding: "12px 16px", fontSize: 12, color: ENJ_NAVY }}>
+                            <div><strong>{pFields.grupo_scout}</strong></div>
+                            <div style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>{pFields.region}</div>
+                          </td>
                           <td style={{ padding: "12px 16px", fontSize: 13 }}>{pago.concepto || pago.numero_cuota}</td>
                           <td style={{ padding: "12px 16px", fontSize: 13, fontFamily: "monospace" }}>{pago.referencia}</td>
                           <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: ENJ_MAGENTA }}>Bs. {Number(pago.monto_bs).toLocaleString('es-VE')}</td>
@@ -876,7 +968,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* MODAL DE EDICIÓN Y EXPEDIENTE VINCULADO A LA TABLA PROFILES */}
+        {/* MODAL EXPEDIENTE / EDICIÓN PERFIL */}
         {selectedProfile && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
             <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 880, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
@@ -888,128 +980,134 @@ export function Dashboard() {
                 <X size={18} />
               </button>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid rgba(0,11,111,0.1)", paddingBottom: 20, flexWrap: "wrap", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: ENJ_NAVY, color: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900 }}>
-                    {selectedProfile.nombre?.charAt(0)}{selectedProfile.apellido?.charAt(0)}
-                  </div>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
-                      {selectedProfile.nombre} {selectedProfile.apellido}
-                    </h2>
-                    <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
-                      ID: {selectedProfile.id} | Cédula: {selectedProfile.cedula}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsEditingPerfil(!isEditingPerfil)}
-                  style={{ display: "flex", alignItems: "center", gap: 6, background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
-                >
-                  <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Perfil (profiles)"}
-                </button>
-              </div>
-
-              {loadingModal ? (
-                <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.6)" }}>
-                  <RefreshCw size={28} style={{ animation: "spin 1s linear infinite", margin: "0 auto 12px", display: "block" }} />
-                  Cargando información...
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                  
-                  {isEditingPerfil ? (
-                    <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14 }}>
-                      <h4 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Modificar Campos en `profiles`</h4>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Nombre</label>
-                          <input type="text" value={editPerfilData.nombre || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, nombre: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+              {(() => {
+                const modalFields = getProfileFields(selectedProfile);
+                return (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid rgba(0,11,111,0.1)", paddingBottom: 20, flexWrap: "wrap", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        <div style={{ width: 60, height: 60, borderRadius: "50%", background: ENJ_NAVY, color: ENJ_YELLOW, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900 }}>
+                          {modalFields.nombre.charAt(0)}{modalFields.apellido.charAt(0)}
                         </div>
-
                         <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Apellido</label>
-                          <input type="text" value={editPerfilData.apellido || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, apellido: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Correo Electrónico</label>
-                          <input type="email" value={editPerfilData.correo || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, correo: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Teléfono</label>
-                          <input type="text" value={editPerfilData.telefono || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, telefono: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Región</label>
-                          <input type="text" value={editPerfilData.region || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, region: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Distrito</label>
-                          <input type="text" value={editPerfilData.distrito || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, distrito: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Grupo Scout</label>
-                          <input type="text" value={editPerfilData.grupo_scout || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, grupo_scout: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
-                        </div>
-
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Rama / Unidad</label>
-                          <input type="text" value={editPerfilData.rama || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, rama: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
+                            {modalFields.nombre} {modalFields.apellido}
+                          </h2>
+                          <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(0,11,111,0.6)", fontWeight: 600 }}>
+                            ID: {selectedProfile.id} | Cédula: {modalFields.cedula}
+                          </p>
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-                        <button onClick={() => setIsEditingPerfil(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", background: "#fff", color: ENJ_NAVY, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
-                        <button disabled={actionLoading === "saving_profile"} onClick={handleSavePerfil} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
-                          <Save size={15} /> Actualizar Perfil
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setIsEditingPerfil(!isEditingPerfil)}
+                        style={{ display: "flex", alignItems: "center", gap: 6, background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}
+                      >
+                        <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Perfil"}
+                      </button>
                     </div>
-                  ) : (
-                    <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
-                      <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 14, textTransform: "uppercase" }}>Datos del Perfil</h4>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 13 }}>
-                        <div><strong>Correo:</strong> {selectedProfile.correo || "N/A"}</div>
-                        <div><strong>Teléfono:</strong> {selectedProfile.telefono || "N/A"}</div>
-                        <div><strong>Región:</strong> {selectedProfile.region || "N/A"}</div>
-                        <div><strong>Distrito:</strong> {selectedProfile.distrito || "N/A"}</div>
-                        <div><strong>Grupo Scout:</strong> {selectedProfile.grupo_scout || "N/A"}</div>
-                        <div><strong>Rama / Unidad:</strong> {selectedProfile.rama || "N/A"}</div>
-                        <div><strong>Tipo Sangre:</strong> {selectedProfile.tipo_sangre || "N/A"}</div>
-                        <div><strong>Alergias:</strong> {selectedProfile.alergias || "Ninguna"}</div>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* DOCUMENTOS Y HISTORIAL DE PAGOS ASOCIADOS */}
-                  <div>
-                    <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Pagos Registrados</h3>
-                    {modalPagos.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No registra pagos adjuntos a este perfil.</p>
+                    {loadingModal ? (
+                      <div style={{ padding: 40, textAlign: "center", color: "rgba(0,11,111,0.6)" }}>
+                        <RefreshCw size={28} style={{ animation: "spin 1s linear infinite", margin: "0 auto 12px", display: "block" }} />
+                        Cargando información...
+                      </div>
                     ) : (
-                      modalPagos.map((pago) => (
-                        <div key={pago.id || pago.referencia} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <strong>{pago.concepto || pago.numero_cuota}</strong> - Ref: {pago.referencia}
-                            <div style={{ fontSize: 12, color: ENJ_MAGENTA, fontWeight: 700 }}>Bs. {pago.monto_bs}</div>
-                          </div>
-                          <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: pago.estado === 'validado' ? '#DCFCE7' : '#FEF3C7', color: pago.estado === 'validado' ? '#166534' : '#92400E' }}>
-                            {pago.estado || 'pendiente'}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                        
+                        {isEditingPerfil ? (
+                          <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14 }}>
+                            <h4 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Modificar Campos en `profiles`</h4>
 
-                </div>
-              )}
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Nombre</label>
+                                <input type="text" value={editPerfilData.nombre || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, nombre: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Apellido</label>
+                                <input type="text" value={editPerfilData.apellido || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, apellido: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Correo Electrónico</label>
+                                <input type="email" value={editPerfilData.correo || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, correo: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Teléfono</label>
+                                <input type="text" value={editPerfilData.telefono || editPerfilData.celular || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, telefono: e.target.value, celular: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Región</label>
+                                <input type="text" value={editPerfilData.region || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, region: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Distrito</label>
+                                <input type="text" value={editPerfilData.distrito || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, distrito: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Grupo Scout</label>
+                                <input type="text" value={editPerfilData.grupo_scout || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, grupo_scout: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: ENJ_NAVY, marginBottom: 4 }}>Rama / Unidad</label>
+                                <input type="text" value={editPerfilData.rama || ""} onChange={(e) => setEditPerfilData({ ...editPerfilData, rama: e.target.value })} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", fontSize: 13, boxSizing: "border-box" }} />
+                              </div>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+                              <button onClick={() => setIsEditingPerfil(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(0,11,111,0.2)", background: "#fff", color: ENJ_NAVY, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
+                              <button disabled={actionLoading === "saving_profile"} onClick={handleSavePerfil} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+                                <Save size={15} /> Actualizar Perfil
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
+                            <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 14, textTransform: "uppercase" }}>Datos del Perfil</h4>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 13 }}>
+                              <div><strong>Correo:</strong> {modalFields.correo}</div>
+                              <div><strong>Teléfono:</strong> {modalFields.telefono}</div>
+                              <div><strong>Región:</strong> {modalFields.region}</div>
+                              <div><strong>Distrito:</strong> {modalFields.distrito}</div>
+                              <div><strong>Grupo Scout:</strong> {modalFields.grupo_scout}</div>
+                              <div><strong>Rama / Unidad:</strong> {modalFields.rama}</div>
+                              <div><strong>Tipo Sangre:</strong> {modalFields.tipo_sangre}</div>
+                              <div><strong>Alergias:</strong> {modalFields.alergias}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Pagos Registrados</h3>
+                          {modalPagos.length === 0 ? (
+                            <p style={{ fontSize: 13, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>No registra pagos adjuntos a este perfil.</p>
+                          ) : (
+                            modalPagos.map((pago) => (
+                              <div key={pago.id || pago.referencia} style={{ background: "#fff", border: "1px solid rgba(0,11,111,0.12)", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                  <strong>{pago.concepto || pago.numero_cuota}</strong> - Ref: {pago.referencia}
+                                  <div style={{ fontSize: 12, color: ENJ_MAGENTA, fontWeight: 700 }}>Bs. {pago.monto_bs}</div>
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: pago.estado === 'validado' ? '#DCFCE7' : '#FEF3C7', color: pago.estado === 'validado' ? '#166534' : '#92400E' }}>
+                                  {pago.estado || 'pendiente'}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
             </div>
           </div>

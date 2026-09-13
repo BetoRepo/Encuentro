@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
+import bannerImg from "../../assets/Bannerperfil.jpeg";
 
 // ==========================================
 // CONSTANTES DE DISEÑO ENJ 2026 (ASV)
@@ -634,14 +635,23 @@ export function Perfil() {
             {/* TARJETA PRINCIPAL */}
             <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", boxShadow: "0 10px 40px rgba(0,11,111,0.08)", position: "relative" }}>
               
-              {/* BANNER */}
-              <div style={{ height: 120, background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #0018B0 100%)`, position: "relative" }}>
+              {/* BANNER CON IMAGEN DE ASSETS */}
+              <div 
+                style={{ 
+                  height: 140, 
+                  backgroundImage: `url(${bannerImg})`, 
+                  backgroundSize: "cover", 
+                  backgroundPosition: "center", 
+                  backgroundRepeat: "no-repeat", 
+                  position: "relative" 
+                }}
+              >
                 <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 8 }}>
-                  <button type="button" onClick={copyProfileLink} title="Compartir Perfil" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)", border: "none", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
+                  <button type="button" onClick={copyProfileLink} title="Compartir Perfil" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", border: "none", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
                     <Share2 size={16} />
                   </button>
                   {isOwnProfile && (
-                    <button type="button" onClick={() => setIsEditing(true)} style={{ background: "#fff", border: "none", borderRadius: 20, padding: "0 14px", height: 34, display: "flex", alignItems: "center", gap: 6, color: ENJ_NAVY, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    <button type="button" onClick={() => setIsEditing(true)} style={{ background: "#fff", border: "none", borderRadius: 20, padding: "0 14px", height: 34, display: "flex", alignItems: "center", gap: 6, color: ENJ_NAVY, fontWeight: 700, fontSize: 12, cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.15)" }}>
                       <Edit3 size={14} /> Editar
                     </button>
                   )}
@@ -907,3 +917,5 @@ export function Perfil() {
     </div>
   );
 }
+
+export default Perfil;
