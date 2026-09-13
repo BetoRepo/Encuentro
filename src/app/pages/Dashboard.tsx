@@ -103,7 +103,6 @@ export const getProfileFields = (p: Partial<Profile> | null | undefined) => {
     distrito = parts.slice(1).join("-").trim();
   }
 
-  // Lógica para determinar si es Joven o Adulto
   let tipoPart = p.tipo_participante || (p as any).rol_evento || "joven";
   if (tipoPart.toLowerCase().includes("adulto") || tipoPart.toLowerCase().includes("staff")) {
     tipoPart = "adulto";
@@ -160,7 +159,7 @@ export function Dashboard() {
   const [totalBsValidado, setTotalBsValidado] = useState<number>(0);
   const [totalUsdValidado, setTotalUsdValidado] = useState<number>(0);
   const [totalPendientesValidacion, setTotalPendientesValidacion] = useState<number>(0);
-  const [tasaBcvActual, setTasaBcvActual] = useState<number>(36.5); // Placeholder para tu API del BCV
+  const [tasaBcvActual, setTasaBcvActual] = useState<number>(36.5);
 
   // MODAL EXPEDIENTE
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -191,10 +190,14 @@ export function Dashboard() {
         query = query.or(`cedula.ilike.%${searchTerm.trim()}%,nombre.ilike.%${searchTerm.trim()}%,apellido.ilike.%${searchTerm.trim()}%`);
       }
 
+      // Añadimos manejo de errores explícito para debug
       const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
-      if (error) throw error;
+      
+      if (error) {
+        console.error("🔥 Error de Supabase al cargar perfiles:", error.message, error.details);
+        throw error;
+      }
 
-      // Filtrado local de tipos (debido a la variabilidad de campos rol_evento vs tipo_participante)
       let filteredData = data || [];
       if (selectedTipoFilter) {
           filteredData = filteredData.filter(p => getProfileFields(p).tipo_participante === selectedTipoFilter);
@@ -206,7 +209,8 @@ export function Dashboard() {
       setProfiles(filteredData);
       setTotalCount(count || 0);
     } catch (err: any) {
-      setErrorMsg(err.message);
+      console.error("🔥 Excepción en loadProfiles:", err);
+      setErrorMsg(err.message || "Error al cargar perfiles");
     } finally {
       setLoadingProfiles(false);
     }
@@ -217,11 +221,17 @@ export function Dashboard() {
     setLoadingPagos(true);
     try {
       const { data: pagosData, error: pagosErr } = await supabase.from("pagos").select("*").order("created_at", { ascending: false });
-      if (pagosErr) throw pagosErr;
+      if (pagosErr) {
+        console.error("🔥 Error de Supabase al cargar pagos:", pagosErr.message);
+        throw pagosErr;
+      }
 
       if (pagosData && pagosData.length > 0) {
-        // Obtenemos todos los perfiles para enlazar la información
-        const { data: profilesData } = await supabase.from("profiles").select("*");
+        const { data: profilesData, error: profErr } = await supabase.from("profiles").select("*");
+        if (profErr) {
+           console.error("🔥 Error al cruzar pagos con perfiles:", profErr.message);
+        }
+
         const profilesMap: Record<string, Profile> = {};
         
         if (profilesData) {
@@ -240,7 +250,7 @@ export function Dashboard() {
         setTodosLosPagos([]);
       }
     } catch (e) {
-      console.warn("Error al cargar lista global de pagos:", e);
+      console.warn("Error general al cargar lista global de pagos:", e);
     } finally {
       setLoadingPagos(false);
     }
@@ -249,13 +259,12 @@ export function Dashboard() {
   // 3. MÉTRICAS
   const loadMetricsAndFinances = async () => {
     try {
-      // API DEL BCV AQUI - Reemplaza esta url por tu endpoint real
-      // const resBcv = await fetch("TU_ENDPOINT_API_BCV");
-      // const dataBcv = await resBcv.json();
-      // setTasaBcvActual(dataBcv.tasa);
-
-      const { data: profilesData } = await supabase.from("profiles").select("rol_evento, tipo_participante");
-      if (profilesData) {
+      // Usamos .select("*") en lugar de columnas específicas para evitar errores 400 si la columna no existe
+      const { data: profilesData, error: metProfErr } = await supabase.from("profiles").select("*");
+      
+      if (metProfErr) {
+        console.error("🔥 Error en métricas (profiles):", metProfErr.message);
+      } else if (profilesData) {
         let jov = 0; let adu = 0;
         profilesData.forEach(p => {
           getProfileFields(p).tipo_participante === 'joven' ? jov++ : adu++;
@@ -264,8 +273,10 @@ export function Dashboard() {
         setTotalAdultos(adu);
       }
 
-      const { data: pagosData } = await supabase.from("pagos").select("monto_bs, tasa_cambio, estado");
-      if (pagosData) {
+      const { data: pagosData, error: metPagosErr } = await supabase.from("pagos").select("*");
+      if (metPagosErr) {
+        console.error("🔥 Error en métricas (pagos):", metPagosErr.message);
+      } else if (pagosData) {
         let bsSum = 0, usdSum = 0, bsVal = 0, usdVal = 0, pendientesCount = 0;
         pagosData.forEach((pago) => {
           const bs = Number(pago.monto_bs) || 0;
@@ -284,21 +295,22 @@ export function Dashboard() {
         setTotalPendientesValidacion(pendientesCount);
       }
     } catch (e) {
-      console.warn("Error en métricas:", e);
+      console.warn("Excepción general en métricas:", e);
     }
   };
 
   const loadAnuncios = async () => {
     setLoadingAnuncios(true);
-    const { data } = await supabase.from("comunicaciones_anuncios").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("comunicaciones_anuncios").select("*").order("created_at", { ascending: false });
+    if (error) console.error("🔥 Error anuncios:", error.message);
     if (data) setAnuncios(data);
     setLoadingAnuncios(false);
   };
 
   const loadMensajesMuro = async () => {
     setLoadingMuro(true);
-    // Actualizado al nombre de tabla de tu esquema SQL (muro_social)
-    const { data } = await supabase.from("muro_social").select("*").order("fecha", { ascending: false });
+    const { data, error } = await supabase.from("muro_social").select("*").order("fecha", { ascending: false });
+    if (error) console.error("🔥 Error muro:", error.message);
     if (data) setMensajesMuro(data);
     setLoadingMuro(false);
   };
@@ -306,7 +318,7 @@ export function Dashboard() {
   useEffect(() => { loadProfiles(); }, [loadProfiles]);
   useEffect(() => { loadMetricsAndFinances(); loadGlobalPagos(); loadAnuncios(); loadMensajesMuro(); }, []);
 
-  // 4. EXPEDIENTE (PERFIL + PAGOS + DOCS)
+  // 4. EXPEDIENTE
   const openExpediente = async (profile: Profile) => {
     setSelectedProfile(profile);
     setEditPerfilData(profile);
@@ -335,7 +347,10 @@ export function Dashboard() {
     setActionLoading("saving_profile");
     try {
       const { error } = await supabase.from("profiles").update(editPerfilData).eq("id", selectedProfile.id);
-      if (error) throw error;
+      if (error) {
+        console.error("🔥 Error guardando perfil:", error.message);
+        throw error;
+      }
       const updated = { ...selectedProfile, ...editPerfilData } as Profile;
       setSelectedProfile(updated);
       setProfiles(prev => prev.map(p => p.id === selectedProfile.id ? updated : p));
@@ -353,8 +368,6 @@ export function Dashboard() {
     try {
       const { error } = await supabase.from("pagos").update({ estado: nuevoEstado }).eq("id", pagoId);
       if (error) throw error;
-
-      // Actualizar estados locales
       setModalPagos(prev => prev.map(p => p.id === pagoId ? { ...p, estado: nuevoEstado } : p));
       setTodosLosPagos(prev => prev.map(p => p.id === pagoId ? { ...p, estado: nuevoEstado } : p));
       loadMetricsAndFinances();
@@ -365,8 +378,6 @@ export function Dashboard() {
     }
   };
 
-  const exportToCSV = async () => { /* Logic remains the same */ };
-
   const pagosFiltrados = todosLosPagos.filter((pago) => {
     const f = getProfileFields(pago.profile);
     const search = pagoSearchTerm.toLowerCase().trim();
@@ -374,8 +385,6 @@ export function Dashboard() {
     const matchesEstado = !pagoEstadoFilter || (pago.estado || "pendiente").toLowerCase() === pagoEstadoFilter.toLowerCase();
     return matchesSearch && matchesEstado;
   });
-
-  const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "32px 24px 60px" }}>
@@ -394,9 +403,15 @@ export function Dashboard() {
           </div>
         </div>
 
+        {errorMsg && (
+          <div style={{ background: "#FEE2E2", color: "#B91C1C", padding: 16, borderRadius: 12, marginBottom: 20, fontWeight: "bold", display: "flex", alignItems: "center", gap: 10 }}>
+            <AlertCircle size={20} />
+            Error cargando datos: {errorMsg}. Por favor revisa la consola para más detalles.
+          </div>
+        )}
+
         {/* MÉTRICAS FINANCIERAS Y GENERALES */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
-          {/* ... Tarjetas de métricas (Igual que el original) ... */}
            <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Perfiles Activos</span><UserCheck size={18} color={ENJ_NAVY} /></div>
             <p style={{ margin: "10px 0 0", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
@@ -424,7 +439,7 @@ export function Dashboard() {
           ))}
         </div>
 
-        {/* ================= PESTAÑA PERFILES (Gestión Integral) ================= */}
+        {/* ================= PESTAÑA PERFILES ================= */}
         {activeTab === "perfiles" && (
            <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
@@ -437,7 +452,11 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {profiles.map((p) => {
+                  {loadingProfiles ? (
+                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "#666" }}>Cargando perfiles...</td></tr>
+                  ) : profiles.length === 0 ? (
+                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "#666" }}>No se encontraron perfiles.</td></tr>
+                  ) : profiles.map((p) => {
                     const fields = getProfileFields(p);
                     return (
                       <tr key={p.id || p.cedula} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
@@ -463,12 +482,10 @@ export function Dashboard() {
            </div>
         )}
 
-        {/* OTRAS PESTAÑAS SE MANTIENEN SIMILARES, MUESTRO EL MODAL UNIFICADO */}
-        {/* PESTAÑA 2: PAGOS GLOBALES */}
+        {/* PESTAÑA PAGOS */}
         {activeTab === "pagos" && (
            <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
              <h3 style={{ margin: "0 0 20px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800 }}>Historial Global de Pagos</h3>
-             {/* Renderizado de tabla de pagos similar al original, pero con botón para abrir expediente del participante asociado */}
              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead>
                   <tr style={{ background: "#F8FAFF", borderBottom: "1px solid rgba(0,11,111,0.08)" }}>
@@ -485,7 +502,9 @@ export function Dashboard() {
                        <td style={{ padding: "12px" }}>{pago.cedula_participante}</td>
                        <td style={{ padding: "12px" }}>{pago.referencia}</td>
                        <td style={{ padding: "12px" }}>Bs. {pago.monto_bs} (T: {pago.tasa_cambio})</td>
-                       <td style={{ padding: "12px" }}>{pago.estado}</td>
+                       <td style={{ padding: "12px", fontWeight: "bold", color: pago.estado === 'validado' ? 'green' : pago.estado === 'rechazado' ? 'red' : 'orange' }}>
+                         {(pago.estado || "pendiente").toUpperCase()}
+                       </td>
                        <td style={{ padding: "12px" }}>
                           {pago.profile && <button onClick={() => openExpediente(pago.profile!)} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>Ver Expediente</button>}
                        </td>
@@ -496,21 +515,7 @@ export function Dashboard() {
            </div>
         )}
 
-        {/* PESTAÑA MURO */}
-        {activeTab === "muro" && (
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24 }}>
-            <h3 style={{ color: ENJ_NAVY }}>Muro Social</h3>
-            {mensajesMuro.map(m => (
-              <div key={m.id} style={{ borderBottom: '1px solid #ccc', padding: '10px 0' }}>
-                <strong>{m.autor}</strong>: {m.mensaje}
-                <button onClick={() => supabase.from('muro_social').delete().eq('id', m.id).then(() => loadMensajesMuro())} style={{ marginLeft: 10, color: 'red', cursor: 'pointer', background: 'none', border: 'none' }}>Eliminar</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-
-        {/* ================= MODAL EXPEDIENTE UNIFICADO ================= */}
+        {/* ================= MODAL EXPEDIENTE ================= */}
         {selectedProfile && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
             <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1000, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
@@ -521,16 +526,9 @@ export function Dashboard() {
 
               {(() => {
                 const modalFields = getProfileFields(selectedProfile);
-                
-                // LÓGICA DE DEUDAS
                 const isJoven = modalFields.tipo_participante === 'joven';
                 const cuotaTotal = isJoven ? 145 : 100;
-                
-                // Sumar solo pagos VALIDADOS calculando su valor en USD al momento del pago
-                const totalPagadoUsd = modalPagos
-                  .filter(p => p.estado === 'validado')
-                  .reduce((acc, p) => acc + (Number(p.monto_bs) / Number(p.tasa_cambio || 1)), 0);
-                
+                const totalPagadoUsd = modalPagos.filter(p => p.estado === 'validado').reduce((acc, p) => acc + (Number(p.monto_bs) / Number(p.tasa_cambio || 1)), 0);
                 const deudaUsd = Math.max(0, cuotaTotal - totalPagadoUsd);
                 const deudaBsActual = deudaUsd * tasaBcvActual;
 
@@ -547,8 +545,6 @@ export function Dashboard() {
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-                      
-                      {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
                       <div>
                         <div style={{ background: "#F8FAFF", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
                           <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 16, fontWeight: 900 }}><DollarSign size={18} style={{ display: "inline" }}/> Estado de Cuenta</h3>
@@ -571,7 +567,7 @@ export function Dashboard() {
                         </div>
 
                         <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Gestión de Pagos</h3>
-                        {modalPagos.length === 0 ? <p style={{ color: "#888" }}>Sin pagos reportados.</p> : (
+                        {loadingModal ? <p>Cargando...</p> : modalPagos.length === 0 ? <p style={{ color: "#888" }}>Sin pagos reportados.</p> : (
                            modalPagos.map((pago) => {
                             const est = (pago.estado || "pendiente").toLowerCase();
                             const usdValue = Number(pago.monto_bs) / Number(pago.tasa_cambio || 1);
@@ -594,18 +590,14 @@ export function Dashboard() {
                         )}
                       </div>
 
-                      {/* COLUMNA DERECHA: DOCUMENTOS Y PERFIL */}
                       <div>
                         {isEditingPerfil ? (
                            <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14 }}>
                              <h4 style={{ margin: "0 0 16px", color: ENJ_NAVY }}>Modificar Perfil</h4>
-                             {/* Inputs de edición igual que el original, resumidos aquí por brevedad */}
                              <label style={{ fontSize: 12, fontWeight: 'bold' }}>Nombre</label>
                              <input type="text" value={editPerfilData.nombre || ""} onChange={e => setEditPerfilData({...editPerfilData, nombre: e.target.value})} style={{ width: '100%', marginBottom: 10, padding: 8, borderRadius: 6, border: '1px solid #ccc' }}/>
-                             
                              <label style={{ fontSize: 12, fontWeight: 'bold' }}>Apellido</label>
                              <input type="text" value={editPerfilData.apellido || ""} onChange={e => setEditPerfilData({...editPerfilData, apellido: e.target.value})} style={{ width: '100%', marginBottom: 10, padding: 8, borderRadius: 6, border: '1px solid #ccc' }}/>
-
                              <button onClick={handleSavePerfil} style={{ background: "#16A34A", color: "#fff", padding: "10px", width: "100%", border: "none", borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}>Guardar Cambios</button>
                            </div>
                         ) : (
@@ -618,8 +610,8 @@ export function Dashboard() {
                           </div>
                         )}
 
-                        <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Documentos Adjuntos (`documentos_participante`)</h3>
-                        {modalDocs.length === 0 ? <p style={{ color: "#888" }}>Sin documentos subidos.</p> : (
+                        <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Documentos Adjuntos</h3>
+                        {loadingModal ? <p>Cargando...</p> : modalDocs.length === 0 ? <p style={{ color: "#888" }}>Sin documentos subidos.</p> : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {modalDocs.map((doc) => (
                               <div key={doc.id} style={{ background: "#F8FAFF", border: "1px solid #eee", padding: 12, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -635,7 +627,6 @@ export function Dashboard() {
                           </div>
                         )}
                       </div>
-
                     </div>
                   </>
                 );
