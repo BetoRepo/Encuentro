@@ -176,7 +176,7 @@ export function Dashboard() {
   const [loadingAnuncios, setLoadingAnuncios] = useState<boolean>(false);
   const [loadingMuro, setLoadingMuro] = useState<boolean>(false);
 
-  // 1. CARGAR PERFILES
+  // 1. CARGAR PERFILES (PAGINADO OPTIMIZADO)
   const loadProfiles = useCallback(async () => {
     setLoadingProfiles(true);
     setErrorMsg(null);
@@ -190,13 +190,9 @@ export function Dashboard() {
         query = query.or(`cedula.ilike.%${searchTerm.trim()}%,nombre.ilike.%${searchTerm.trim()}%,apellido.ilike.%${searchTerm.trim()}%`);
       }
 
-      // Añadimos manejo de errores explícito para debug
       const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
       
-      if (error) {
-        console.error("🔥 Error de Supabase al cargar perfiles:", error.message, error.details);
-        throw error;
-      }
+      if (error) throw error;
 
       let filteredData = data || [];
       if (selectedTipoFilter) {
@@ -209,31 +205,32 @@ export function Dashboard() {
       setProfiles(filteredData);
       setTotalCount(count || 0);
     } catch (err: any) {
-      console.error("🔥 Excepción en loadProfiles:", err);
-      setErrorMsg(err.message || "Error al cargar perfiles");
+      console.error("🔥 Error en loadProfiles:", err);
+      setErrorMsg(err.message || "Error al cargar perfiles por timeout.");
     } finally {
       setLoadingProfiles(false);
     }
   }, [page, searchTerm, selectedTipoFilter, selectedRegionFilter]);
 
-  // 2. CARGAR PAGOS GLOBALES
+  // 2. CARGAR PAGOS GLOBALES (SOLO PERFILES CON PAGOS)
   const loadGlobalPagos = async () => {
     setLoadingPagos(true);
     try {
       const { data: pagosData, error: pagosErr } = await supabase.from("pagos").select("*").order("created_at", { ascending: false });
-      if (pagosErr) {
-        console.error("🔥 Error de Supabase al cargar pagos:", pagosErr.message);
-        throw pagosErr;
-      }
+      if (pagosErr) throw pagosErr;
 
       if (pagosData && pagosData.length > 0) {
-        const { data: profilesData, error: profErr } = await supabase.from("profiles").select("*");
-        if (profErr) {
-           console.error("🔥 Error al cruzar pagos con perfiles:", profErr.message);
-        }
+        // Extraer cédulas únicas asociadas a pagos para consulta puntual y evitar timeout
+        const cedulasUnicas = Array.from(new Set(pagosData.map(p => p.cedula_participante?.trim()).filter(Boolean)));
+        
+        const { data: profilesData, error: profErr } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("cedula", cedulasUnicas);
+
+        if (profErr) console.warn("Error al buscar perfiles para pagos:", profErr.message);
 
         const profilesMap: Record<string, Profile> = {};
-        
         if (profilesData) {
           profilesData.forEach((prof) => {
             if (prof.cedula) profilesMap[prof.cedula.trim()] = prof;
@@ -249,22 +246,20 @@ export function Dashboard() {
       } else {
         setTodosLosPagos([]);
       }
-    } catch (e) {
-      console.warn("Error general al cargar lista global de pagos:", e);
+    } catch (e: any) {
+      console.warn("Error general en pagos:", e);
     } finally {
       setLoadingPagos(false);
     }
   };
 
-  // 3. MÉTRICAS
+  // 3. MÉTRICAS (CONSULTAS LIGERAS)
   const loadMetricsAndFinances = async () => {
     try {
-      // Usamos .select("*") en lugar de columnas específicas para evitar errores 400 si la columna no existe
-      const { data: profilesData, error: metProfErr } = await supabase.from("profiles").select("*");
+      // Consulta ligera seleccionando únicamente campos de tipo de participante
+      const { data: profilesData } = await supabase.from("profiles").select("tipo_participante, rol_evento");
       
-      if (metProfErr) {
-        console.error("🔥 Error en métricas (profiles):", metProfErr.message);
-      } else if (profilesData) {
+      if (profilesData) {
         let jov = 0; let adu = 0;
         profilesData.forEach(p => {
           getProfileFields(p).tipo_participante === 'joven' ? jov++ : adu++;
@@ -273,10 +268,8 @@ export function Dashboard() {
         setTotalAdultos(adu);
       }
 
-      const { data: pagosData, error: metPagosErr } = await supabase.from("pagos").select("*");
-      if (metPagosErr) {
-        console.error("🔥 Error en métricas (pagos):", metPagosErr.message);
-      } else if (pagosData) {
+      const { data: pagosData } = await supabase.from("pagos").select("monto_bs, tasa_cambio, estado");
+      if (pagosData) {
         let bsSum = 0, usdSum = 0, bsVal = 0, usdVal = 0, pendientesCount = 0;
         pagosData.forEach((pago) => {
           const bs = Number(pago.monto_bs) || 0;
@@ -295,22 +288,20 @@ export function Dashboard() {
         setTotalPendientesValidacion(pendientesCount);
       }
     } catch (e) {
-      console.warn("Excepción general en métricas:", e);
+      console.warn("Excepción en métricas:", e);
     }
   };
 
   const loadAnuncios = async () => {
     setLoadingAnuncios(true);
-    const { data, error } = await supabase.from("comunicaciones_anuncios").select("*").order("created_at", { ascending: false });
-    if (error) console.error("🔥 Error anuncios:", error.message);
+    const { data } = await supabase.from("comunicaciones_anuncios").select("*").order("created_at", { ascending: false });
     if (data) setAnuncios(data);
     setLoadingAnuncios(false);
   };
 
   const loadMensajesMuro = async () => {
     setLoadingMuro(true);
-    const { data, error } = await supabase.from("muro_social").select("*").order("fecha", { ascending: false });
-    if (error) console.error("🔥 Error muro:", error.message);
+    const { data } = await supabase.from("muro_social").select("*").order("fecha", { ascending: false });
     if (data) setMensajesMuro(data);
     setLoadingMuro(false);
   };
@@ -318,7 +309,7 @@ export function Dashboard() {
   useEffect(() => { loadProfiles(); }, [loadProfiles]);
   useEffect(() => { loadMetricsAndFinances(); loadGlobalPagos(); loadAnuncios(); loadMensajesMuro(); }, []);
 
-  // 4. EXPEDIENTE
+  // 4. EXPEDIENTE UNIFICADO
   const openExpediente = async (profile: Profile) => {
     setSelectedProfile(profile);
     setEditPerfilData(profile);
@@ -347,10 +338,7 @@ export function Dashboard() {
     setActionLoading("saving_profile");
     try {
       const { error } = await supabase.from("profiles").update(editPerfilData).eq("id", selectedProfile.id);
-      if (error) {
-        console.error("🔥 Error guardando perfil:", error.message);
-        throw error;
-      }
+      if (error) throw error;
       const updated = { ...selectedProfile, ...editPerfilData } as Profile;
       setSelectedProfile(updated);
       setProfiles(prev => prev.map(p => p.id === selectedProfile.id ? updated : p));
@@ -386,6 +374,8 @@ export function Dashboard() {
     return matchesSearch && matchesEstado;
   });
 
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "32px 24px 60px" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -406,7 +396,7 @@ export function Dashboard() {
         {errorMsg && (
           <div style={{ background: "#FEE2E2", color: "#B91C1C", padding: 16, borderRadius: 12, marginBottom: 20, fontWeight: "bold", display: "flex", alignItems: "center", gap: 10 }}>
             <AlertCircle size={20} />
-            Error cargando datos: {errorMsg}. Por favor revisa la consola para más detalles.
+            Error de conexion: {errorMsg}
           </div>
         )}
 
@@ -453,9 +443,9 @@ export function Dashboard() {
                 </thead>
                 <tbody>
                   {loadingProfiles ? (
-                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "#666" }}>Cargando perfiles...</td></tr>
+                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "#666" }}>Cargando expediente scout...</td></tr>
                   ) : profiles.length === 0 ? (
-                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "#666" }}>No se encontraron perfiles.</td></tr>
+                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "#666" }}>No se encontraron registros.</td></tr>
                   ) : profiles.map((p) => {
                     const fields = getProfileFields(p);
                     return (
@@ -479,10 +469,19 @@ export function Dashboard() {
                   })}
                 </tbody>
               </table>
+
+              {/* PAGINACIÓN */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)" }}>
+                <span style={{ fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>Página {page + 1} de {totalPages}</span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: page === 0 ? "not-allowed" : "pointer" }}><ChevronLeft size={16}/></button>
+                  <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: page + 1 >= totalPages ? "not-allowed" : "pointer" }}><ChevronRight size={16}/></button>
+                </div>
+              </div>
            </div>
         )}
 
-        {/* PESTAÑA PAGOS */}
+        {/* ================= PESTAÑA PAGOS ================= */}
         {activeTab === "pagos" && (
            <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
              <h3 style={{ margin: "0 0 20px", color: ENJ_NAVY, fontSize: 18, fontWeight: 800 }}>Historial Global de Pagos</h3>
@@ -497,7 +496,9 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagosFiltrados.map(pago => (
+                  {loadingPagos ? (
+                    <tr><td colSpan={5} style={{ padding: 20, textAlign: "center" }}>Cargando pagos...</td></tr>
+                  ) : pagosFiltrados.map(pago => (
                      <tr key={pago.id} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
                        <td style={{ padding: "12px" }}>{pago.cedula_participante}</td>
                        <td style={{ padding: "12px" }}>{pago.referencia}</td>
@@ -515,7 +516,7 @@ export function Dashboard() {
            </div>
         )}
 
-        {/* ================= MODAL EXPEDIENTE ================= */}
+        {/* ================= MODAL EXPEDIENTE UNIFICADO ================= */}
         {selectedProfile && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
             <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1000, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
@@ -567,7 +568,7 @@ export function Dashboard() {
                         </div>
 
                         <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Gestión de Pagos</h3>
-                        {loadingModal ? <p>Cargando...</p> : modalPagos.length === 0 ? <p style={{ color: "#888" }}>Sin pagos reportados.</p> : (
+                        {loadingModal ? <p>Cargando pagos...</p> : modalPagos.length === 0 ? <p style={{ color: "#888" }}>Sin pagos reportados.</p> : (
                            modalPagos.map((pago) => {
                             const est = (pago.estado || "pendiente").toLowerCase();
                             const usdValue = Number(pago.monto_bs) / Number(pago.tasa_cambio || 1);
@@ -611,7 +612,7 @@ export function Dashboard() {
                         )}
 
                         <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Documentos Adjuntos</h3>
-                        {loadingModal ? <p>Cargando...</p> : modalDocs.length === 0 ? <p style={{ color: "#888" }}>Sin documentos subidos.</p> : (
+                        {loadingModal ? <p>Cargando documentos...</p> : modalDocs.length === 0 ? <p style={{ color: "#888" }}>Sin documentos subidos.</p> : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {modalDocs.map((doc) => (
                               <div key={doc.id} style={{ background: "#F8FAFF", border: "1px solid #eee", padding: 12, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
