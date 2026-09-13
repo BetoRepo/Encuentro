@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { 
-  Users, 
-  CreditCard, 
-  Search, 
-  RefreshCw, 
-  ChevronLeft, 
-  ChevronRight, 
-  Eye, 
-  X, 
+import {
+  Users,
+  CreditCard,
+  Search,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  X,
   AlertCircle,
   Building,
   Clock,
@@ -110,7 +110,6 @@ export const getProfileFields = (p: Partial<Profile> | null | undefined) => {
     tipo_sangre: "N/A", alergias: "Ninguna", enfermedades: "Ninguna",
     medicamentos: "Ninguno", contacto_emergencia: "N/A", talla_uniforme: "N/A"
   };
-  
   const rawRegion = (p as any).region || (p as any).region_scout || "";
   const rawDistrito = (p as any).distrito || (p as any).distrito_scout || "";
 
@@ -653,7 +652,7 @@ export function Dashboard() {
               boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
             }}
           >
-            <CreditCard size={16} /> Gestión y Validación de Pagos ({todosLosPagos.length})
+            <CreditCard size={16} /> Control de Pagos  ({todosLosPagos.length})
           </button>
 
           <button
