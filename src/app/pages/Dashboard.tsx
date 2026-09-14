@@ -3,7 +3,7 @@ import {
   Users, CreditCard, Search, RefreshCw, ChevronLeft, ChevronRight,
   Eye, X, AlertCircle, Building, Clock, FileSpreadsheet,
   MessageSquare, Trash2, ShieldCheck, Edit3, Save, MessageCircle,
-  UserCheck, FileText, CheckCircle2, XCircle, Filter, Phone, Mail, ShieldAlert, DollarSign
+  UserCheck, FileText, CheckCircle2, XCircle, Filter, Phone, Mail, ShieldAlert, DollarSign, User
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -51,8 +51,11 @@ export interface Profile {
   rama_scout?: string;
   descripcion?: string;
   instagram?: string;
+  gustos_evento?: any;
   foto?: string;
   rol_evento?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Pago {
@@ -108,14 +111,18 @@ export function Dashboard() {
   const [totalPendientesValidacion, setTotalPendientesValidacion] = useState<number>(0);
   const [tasaBcvActual, setTasaBcvActual] = useState<number>(36.5);
 
-  // MODAL EXPEDIENTE
+  // MODAL EXPEDIENTE & EDICIÓN DE PERFIL
   const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [modalPagos, setModalPagos] = useState<Pago[]>([]);
   const [modalDocs, setModalDocs] = useState<Documento[]>([]);
   const [loadingModal, setLoadingModal] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isEditingPerfil, setIsEditingPerfil] = useState<boolean>(false);
-  const [editData, setEditData] = useState<Partial<Participante>>({});
+  
+  // ESTADOS FORMULARIO EDICIÓN DUAL (`participantes` y `profiles`)
+  const [editPartData, setEditPartData] = useState<Partial<Participante>>({});
+  const [editProfileData, setEditProfileData] = useState<Partial<Profile>>({});
 
   // 1. CARGAR PARTICIPANTES DIRECTAMENTE DE LA TABLA `participantes`
   const loadParticipantes = useCallback(async () => {
@@ -156,7 +163,7 @@ export function Dashboard() {
     }
   }, [page, searchTerm, selectedTipoFilter, selectedRegionFilter]);
 
-  // 2. CARGAR HISTORIAL GLOBAL DE PAGOS CON JOIN A PARTICIPANTES
+  // 2. CARGAR HISTORIAL GLOBAL DE PAGOS
   const loadGlobalPagos = async () => {
     setLoadingPagos(true);
     try {
@@ -248,17 +255,44 @@ export function Dashboard() {
     loadGlobalPagos();
   }, []);
 
-  // 4. ABRIR EXPEDIENTE INDIVIDUAL (VÍNCULO DIRECTO POR CÉDULA)
+  // 4. ABRIR EXPEDIENTE Y VINCULAR PERFIL (TABLA `profiles`)
   const openExpediente = async (participante: Participante) => {
     setSelectedParticipante(participante);
-    setEditData(participante);
+    setEditPartData(participante);
     setIsEditingPerfil(false);
     setLoadingModal(true);
     setModalPagos([]);
     setModalDocs([]);
+    setSelectedProfile(null);
+    setEditProfileData({});
 
     try {
       const cleanCedula = participante.cedula.trim();
+
+      // Cargar Perfil de la tabla `profiles` por `id_usuario` o por `correo`
+      let profData: Profile | null = null;
+      if (participante.id_usuario) {
+        const { data: profileById } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", participante.id_usuario)
+          .maybeSingle();
+        profData = profileById;
+      }
+      
+      if (!profData && participante.correo) {
+        const { data: profileByMail } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("correo", participante.correo)
+          .maybeSingle();
+        profData = profileByMail;
+      }
+
+      if (profData) {
+        setSelectedProfile(profData);
+        setEditProfileData(profData);
+      }
 
       // Cargar pagos asociados a la cédula
       const { data: pagosData } = await supabase
@@ -283,25 +317,46 @@ export function Dashboard() {
     }
   };
 
-  // 5. GUARDAR EDICIÓN DE PARTICIPANTE
-  const handleSaveParticipante = async () => {
+  // Función auxiliar para actualizar campos compartidos
+  const handleDualChange = (field: string, value: any) => {
+    setEditPartData(prev => ({ ...prev, [field]: value }));
+    setEditProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 5. GUARDAR EDICIÓN DUAL EN `participantes` Y EN `profiles`
+  const handleSaveExpediente = async () => {
     if (!selectedParticipante) return;
-    setActionLoading("saving_participante");
+    setActionLoading("saving_all");
     try {
-      const { error } = await supabase
+      // A) Actualizar tabla `participantes`
+      const { error: partErr } = await supabase
         .from("participantes")
-        .update(editData)
+        .update(editPartData)
         .eq("cedula", selectedParticipante.cedula);
 
-      if (error) throw error;
+      if (partErr) throw partErr;
 
-      const updated = { ...selectedParticipante, ...editData } as Participante;
-      setSelectedParticipante(updated);
-      setParticipantes((prev) => prev.map((p) => (p.cedula === selectedParticipante.cedula ? updated : p)));
+      // B) Actualizar tabla `profiles` (si existe perfil vinculado)
+      if (selectedProfile?.id) {
+        const { error: profErr } = await supabase
+          .from("profiles")
+          .update(editProfileData)
+          .eq("id", selectedProfile.id);
+
+        if (profErr) throw profErr;
+
+        const updatedProfile = { ...selectedProfile, ...editProfileData } as Profile;
+        setSelectedProfile(updatedProfile);
+      }
+
+      const updatedPart = { ...selectedParticipante, ...editPartData } as Participante;
+      setSelectedParticipante(updatedPart);
+      setParticipantes((prev) => prev.map((p) => (p.cedula === selectedParticipante.cedula ? updatedPart : p)));
+
       setIsEditingPerfil(false);
-      alert("¡Expediente Scout actualizado con éxito!");
+      alert("¡Expediente y Perfil actualizados correctamente!");
     } catch (err: any) {
-      alert("Error actualizando expediente: " + err.message);
+      alert("Error actualizando la información: " + err.message);
     } finally {
       setActionLoading(null);
     }
@@ -373,7 +428,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* MÉTICIS GENERALES */}
+        {/* MÉTRICAS GENERALES */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
           <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -430,7 +485,7 @@ export function Dashboard() {
         {activeTab === "participantes" && (
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
             
-            {/* BUSCADOR Y FILTROS */}
+            {/* BUSCADOR */}
             <div style={{ padding: 16, borderBottom: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap" }}>
               <div style={{ position: "relative", flex: 1, minWidth: 240 }}>
                 <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "#888" }} />
@@ -556,11 +611,10 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT ================= */}
+        {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT CON EDICIÓN COMPLETA ================= */}
         {selectedParticipante && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1000, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
-              
+            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1050, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
               <button onClick={() => setSelectedParticipante(null)} style={{ position: "absolute", right: 20, top: 20, background: "#F4F5FA", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer" }}>
                 <X size={18} />
               </button>
@@ -576,22 +630,32 @@ export function Dashboard() {
                 return (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid #eee", paddingBottom: 20 }}>
-                      <div>
-                        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: ENJ_NAVY }}>
-                          {selectedParticipante.nombre} {selectedParticipante.apellido}
-                        </h2>
-                        <p style={{ margin: "4px 0 0", color: "#666" }}>
-                          Cédula: <strong>{selectedParticipante.cedula}</strong> | Tipo: <span style={{ color: ENJ_MAGENTA, fontWeight: "bold", textTransform: "uppercase" }}>{isJoven ? "Jóven" : "Adulto / Staff"}</span>
-                        </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        {selectedProfile?.foto ? (
+                          <img src={selectedProfile.foto} alt="Foto Perfil" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${ENJ_NAVY}` }} />
+                        ) : (
+                          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", color: ENJ_NAVY }}>
+                            <User size={28} />
+                          </div>
+                        )}
+                        <div>
+                          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: ENJ_NAVY }}>
+                            {selectedProfile?.nombre || selectedParticipante.nombre} {selectedProfile?.apellido || selectedParticipante.apellido}
+                          </h2>
+                          <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
+                            Cédula: <strong>{selectedParticipante.cedula}</strong> | Rol Evento: <span style={{ color: ENJ_MAGENTA, fontWeight: "bold" }}>{selectedProfile?.rol_evento || selectedParticipante.tipo_participante || "Joven Participante"}</span>
+                          </p>
+                        </div>
                       </div>
-                      <button onClick={() => setIsEditingPerfil(!isEditingPerfil)} style={{ background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 800, cursor: "pointer" }}>
-                        <Edit3 size={16} style={{ display: "inline", marginRight: 6 }} /> {isEditingPerfil ? "Cerrar Edición" : "Editar Expediente"}
+
+                      <button onClick={() => setIsEditingPerfil(!isEditingPerfil)} style={{ background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+                        <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Expediente & Perfil"}
                       </button>
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
                       
-                      {/* COLUMNA IZQUIERDA: FINANZAS Y PAGOS */}
+                      {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
                       <div>
                         <div style={{ background: "#F8FAFF", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
                           <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 16, fontWeight: 900 }}>
@@ -617,7 +681,7 @@ export function Dashboard() {
 
                         <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Gestión de Pagos Registrados</h3>
                         {loadingModal ? (
-                          <p>Cargando pagos...</p>
+                          <p style={{ fontSize: 13, color: "#666" }}>Cargando pagos...</p>
                         ) : modalPagos.length === 0 ? (
                           <p style={{ color: "#888", fontSize: 13 }}>Sin reportes de pago asociados.</p>
                         ) : (
@@ -644,41 +708,161 @@ export function Dashboard() {
                         )}
                       </div>
 
-                      {/* COLUMNA DERECHA: DATOS MÉDICOS E INSTITUCIONALES / EDICIÓN */}
+                      {/* COLUMNA DERECHA: EDICIÓN COMPLETA */}
                       <div>
                         {isEditingPerfil ? (
-                          <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14 }}>
-                            <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY }}>Editar Datos del Participante</h4>
+                          <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14, maxHeight: "55vh", overflowY: "auto" }}>
+                            <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 16, fontWeight: 900 }}>
+                              Edición de Expediente Completo
+                            </h4>
                             
-                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Nombre</label>
-                            <input type="text" value={editData.nombre || ""} onChange={(e) => setEditData({ ...editData, nombre: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
+                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Nombre</label>
+                                <input type="text" value={editPartData.nombre || ""} onChange={(e) => handleDualChange("nombre", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Apellido</label>
+                                <input type="text" value={editPartData.apellido || ""} onChange={(e) => handleDualChange("apellido", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Correo</label>
+                                <input type="email" value={editPartData.correo || ""} onChange={(e) => handleDualChange("correo", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Teléfono</label>
+                                <input type="text" value={editPartData.telefono || ""} onChange={(e) => handleDualChange("telefono", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
                             
-                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Apellido</label>
-                            <input type="text" value={editData.apellido || ""} onChange={(e) => setEditData({ ...editData, apellido: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Fecha de Nacimiento</label>
+                                <input type="date" value={editPartData.fecha_nacimiento || editProfileData.birth_date || ""} onChange={(e) => {
+                                  setEditPartData({ ...editPartData, fecha_nacimiento: e.target.value });
+                                  setEditProfileData({ ...editProfileData, birth_date: e.target.value });
+                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Dirección</label>
+                                <input type="text" value={editPartData.direccion || ""} onChange={(e) => setEditPartData({ ...editPartData, direccion: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
+
+                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Información Scout</h5>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Región</label>
+                                <input type="text" value={editPartData.region || ""} onChange={(e) => {
+                                  setEditPartData({ ...editPartData, region: e.target.value });
+                                  setEditProfileData({ ...editProfileData, selected_region: e.target.value });
+                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Distrito</label>
+                                <input type="text" value={editPartData.distrito || ""} onChange={(e) => {
+                                  setEditPartData({ ...editPartData, distrito: e.target.value });
+                                  setEditProfileData({ ...editProfileData, distrito: e.target.value, selected_district: e.target.value });
+                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Grupo Scout</label>
+                                <input type="text" value={editPartData.grupo_scout || ""} onChange={(e) => handleDualChange("grupo_scout", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Rama Scout</label>
+                                <input type="text" value={editPartData.rama || ""} onChange={(e) => {
+                                  setEditPartData({ ...editPartData, rama: e.target.value });
+                                  setEditProfileData({ ...editProfileData, rama_scout: e.target.value });
+                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
                             
-                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Tipo Sangre</label>
-                            <input type="text" value={editData.tipo_sangre || ""} onChange={(e) => setEditData({ ...editData, tipo_sangre: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Rol en el Evento</label>
+                                <input type="text" value={editPartData.tipo_participante || ""} onChange={(e) => {
+                                  setEditPartData({ ...editPartData, tipo_participante: e.target.value });
+                                  setEditProfileData({ ...editProfileData, rol_evento: e.target.value });
+                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Talla de Uniforme</label>
+                                <input type="text" value={editPartData.talla_uniforme || ""} onChange={(e) => setEditPartData({ ...editPartData, talla_uniforme: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
+
+                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Perfil Social</h5>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Instagram</label>
+                                <input type="text" value={editProfileData.instagram || ""} onChange={(e) => setEditProfileData({ ...editProfileData, instagram: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Descripción / Bio</label>
+                                <input type="text" value={editProfileData.descripcion || ""} onChange={(e) => setEditProfileData({ ...editProfileData, descripcion: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
+
+                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Información Médica</h5>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Tipo de Sangre</label>
+                                <input type="text" value={editPartData.tipo_sangre || ""} onChange={(e) => setEditPartData({ ...editPartData, tipo_sangre: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Contacto Emergencia</label>
+                                <input type="text" value={editPartData.contacto_emergencia || ""} onChange={(e) => setEditPartData({ ...editPartData, contacto_emergencia: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                              </div>
+                            </div>
 
                             <label style={{ fontSize: 11, fontWeight: "bold" }}>Alergias</label>
-                            <input type="text" value={editData.alergias || ""} onChange={(e) => setEditData({ ...editData, alergias: e.target.value })} style={{ width: "100%", marginBottom: 12, padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
+                            <input type="text" value={editPartData.alergias || ""} onChange={(e) => setEditPartData({ ...editPartData, alergias: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                            
+                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Enfermedades</label>
+                            <input type="text" value={editPartData.enfermedades || ""} onChange={(e) => setEditPartData({ ...editPartData, enfermedades: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                            
+                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Medicamentos</label>
+                            <input type="text" value={editPartData.medicamentos || ""} onChange={(e) => setEditPartData({ ...editPartData, medicamentos: e.target.value })} style={{ width: "100%", marginBottom: 14, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
 
-                            <button onClick={handleSaveParticipante} style={{ background: "#16A34A", color: "#fff", padding: "10px", width: "100%", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer" }}>Guardar Cambios</button>
+                            <button onClick={handleSaveExpediente} disabled={actionLoading === "saving_all"} style={{ background: "#16A34A", color: "#fff", padding: "12px", width: "100%", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}>
+                              <Save size={16} /> {actionLoading === "saving_all" ? "Guardando cambios en Supabase..." : "Guardar Todos los Cambios"}
+                            </button>
                           </div>
                         ) : (
-                          <div style={{ background: "#FAFAFA", padding: 20, borderRadius: 14, border: "1px solid #eee", marginBottom: 20 }}>
-                            <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY }}>Información Médica e Institucional</h4>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Grupo Scout:</strong> {selectedParticipante.grupo_scout || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Región / Distrito:</strong> {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Tipo de Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Medicamentos:</strong> {selectedParticipante.medicamentos || "Ninguno"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</p>
+                          <div style={{ background: "#FAFAFA", padding: 20, borderRadius: 14, border: "1px solid #eee", marginBottom: 20, maxHeight: "55vh", overflowY: "auto" }}>
+                            
+                            <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Información Scout y Personal</h4>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Correo / Tlf:</strong> {selectedParticipante.correo || "N/A"} - {selectedParticipante.telefono || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Dirección:</strong> {selectedParticipante.direccion || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>F. Nacimiento:</strong> {selectedParticipante.fecha_nacimiento || selectedProfile?.birth_date || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Región / Distrito / Grupo:</strong> {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"} - {selectedParticipante.grupo_scout || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Rama Scout:</strong> {selectedParticipante.rama || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Instagram:</strong> {selectedProfile?.instagram ? `@${selectedProfile.instagram}` : "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Descripción:</strong> {selectedProfile?.descripcion || "Sin descripción."}</p>
+                            
+                            <hr style={{ border: "0.5px solid #eee", margin: "14px 0" }} />
+                            
+                            <h5 style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: 13, fontWeight: 800 }}>Información Médica</h5>
+                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Tipo de Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</p>
+                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Enfermedades:</strong> {selectedParticipante.enfermedades || "Ninguna"}</p>
+                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Medicamentos:</strong> {selectedParticipante.medicamentos || "Ninguno"}</p>
+                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</p>
                           </div>
                         )}
 
-                        <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Documentos Adjuntos</h3>
+                        <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY, marginTop: 16 }}>Documentos Adjuntos</h3>
                         {loadingModal ? (
-                          <p>Cargando documentos...</p>
+                          <p style={{ fontSize: 13, color: "#666" }}>Cargando documentos...</p>
                         ) : modalDocs.length === 0 ? (
                           <p style={{ color: "#888", fontSize: 13 }}>Sin documentos subidos.</p>
                         ) : (
