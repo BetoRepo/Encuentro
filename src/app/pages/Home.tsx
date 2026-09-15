@@ -460,7 +460,7 @@ export function Home() {
           {/* AQUÍ ESTÁN LOS TEXTOS DEL ENCABEZADO SUPERIOR */}
           <div style={{ textAlign: "center", marginBottom: 36 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(80,3,157,0.08)", padding: "6px 16px", borderRadius: 100, color: ENJ_MAGENTA, fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
-              <Video size={16} color={ENJ_MAGENTA} /> Multimedia ENJ
+              <Video size={16} color={ENJ_MAGENTA} />
             </div>
             <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Spoilers</h2>
             <p style={{ color: "#666", fontSize: 15 }}>Un vistazo furtivo a la gran aventura que nos espera en Aguirre</p>
