@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
-import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone, LogOut, RefreshCw } from 'lucide-react';
 
 interface Alarma {
   id: string;
@@ -68,7 +68,14 @@ export const PanelPrograma: React.FC = () => {
       setNotifPermission(Notification.permission);
     }
 
-    // Canal de alarmas en tiempo real
+    // Registrar Service Worker con alcance explícito en la raíz
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+        console.warn('Error al registrar Service Worker:', err);
+      });
+    }
+
+    // Canal en tiempo real de alarmas
     const channelAlarmas = supabase
       .channel('realtime-programa-alarmas')
       .on(
@@ -77,28 +84,7 @@ export const PanelPrograma: React.FC = () => {
         (payload) => {
           fetchAlarmas();
           const nuevaAlarma = payload.new as Alarma;
-
-          // 1. Vibración para móviles
-          if ('vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200, 100, 300]);
-          }
-
-          // 2. Notificación del Navegador
-          if ('Notification' in window && Notification.permission === 'granted') {
-            try {
-              new Notification(`🚨 ENJ 2026: ${nuevaAlarma.titulo}`, {
-                body: nuevaAlarma.descripcion,
-                icon: '/favicon.ico',
-                tag: nuevaAlarma.id
-              });
-            } catch (e) {
-              console.warn('Error al desplegar notificación nativa', e);
-            }
-          }
-
-          // 3. Banner flotante (Toast)
-          setToastAlarma(nuevaAlarma);
-          setTimeout(() => setToastAlarma(null), 8000);
+          procesarAlarmaEntrante(nuevaAlarma);
         }
       )
       .on(
@@ -123,16 +109,71 @@ export const PanelPrograma: React.FC = () => {
     };
   }, []);
 
-  // Función explícita para solicitar permisos de notificación en móvil mediante toque
+  const procesarAlarmaEntrante = async (nuevaAlarma: Alarma) => {
+    // 1. Vibración para móviles
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate([300, 100, 300, 100, 500]);
+      } catch (e) {
+        console.warn('Vibración bloqueada');
+      }
+    }
+
+    // 2. Disparo de Notificación Nativa a la BARRA del teléfono mediante Service Worker
+    if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const options: NotificationOptions & { vibrate?: number[]; tag?: string; renotify?: boolean } = {
+          body: nuevaAlarma.descripcion,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          vibrate: [300, 100, 300, 100, 500],
+          tag: nuevaAlarma.id,
+          renotify: true
+        };
+        registration.showNotification(`🚨 ENJ 2026: ${nuevaAlarma.titulo}`, options as NotificationOptions);
+      } catch (e) {
+        console.warn('Error al enviar a la barra móvil:', e);
+      }
+    }
+
+    // 3. Banner flotante en pantalla
+    setToastAlarma(nuevaAlarma);
+    setTimeout(() => setToastAlarma(null), 12000);
+  };
+
+  // Solicitar permiso expreso e inscribir el teléfono en las notificaciones
   const solicitarPermisoNotificaciones = async () => {
-    if ('Notification' in window) {
+    if (!('Notification' in window)) {
+      alert('Tu dispositivo no soporta notificaciones nativas.');
+      return;
+    }
+
+    try {
       const permiso = await Notification.requestPermission();
       setNotifPermission(permiso);
+
       if (permiso === 'granted') {
-        alert('¡Notificaciones móviles activadas exitosamente!');
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          await navigator.serviceWorker.ready;
+          
+          const options: NotificationOptions & { vibrate?: number[] } = {
+            body: '¡Listo! Ahora recibirás las alarmas del campamento en la barra de tu teléfono.',
+            icon: '/favicon.ico',
+            vibrate: [200, 100, 200]
+          };
+
+          // Muestra una prueba en la barra del teléfono inmediatamente
+          registration.showNotification('🚨 ENJ 2026 Activado', options as NotificationOptions);
+        }
+        alert('¡Notificaciones en barra de estado activadas exitosamente!');
+      } else {
+        alert('Permiso denegado. Debes habilitar las notificaciones desde los ajustes de tu navegador en el teléfono.');
       }
-    } else {
-      alert('Tu navegador móvil no soporta notificaciones nativas.');
+    } catch (error) {
+      console.error('Error al solicitar permiso:', error);
+      alert('No se pudo activar las notificaciones.');
     }
   };
 
@@ -175,8 +216,22 @@ export const PanelPrograma: React.FC = () => {
     setFeedback({ type: '', message: '' });
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado. Por favor inicia sesión.');
+      let userId: string | null = null;
+      
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        userId = authData.user.id;
+      } else {
+        const localUserStr = localStorage.getItem("enj_user");
+        if (localUserStr) {
+          const localUser = JSON.parse(localUserStr);
+          userId = localUser.id || localUser.email || "usuario_programa";
+        }
+      }
+
+      if (!userId) {
+        throw new Error('No se pudo verificar la sesión. Por favor inicia sesión nuevamente.');
+      }
 
       const { error } = await supabase.from('programa_alarmas').insert([{
         titulo: formData.titulo.trim(),
@@ -184,12 +239,14 @@ export const PanelPrograma: React.FC = () => {
         prioridad: formData.prioridad,
         audiencia: formData.audiencia,
         estado: 'publicada',
-        creado_por: user.id
+        creado_por: userId
       }]);
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Error al emitir alarma: ${error.message}`);
+      }
 
-      setFeedback({ type: 'success', message: '🚨 ¡Alarma emitida al campamento ENJ 2026!' });
+      setFeedback({ type: 'success', message: '🚨 ¡Alarma emitida a todos los participantes del ENJ 2026!' });
       setFormData({ titulo: '', descripcion: '', prioridad: 'informativa', audiencia: 'todos' });
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Error al emitir la alarma' });
@@ -229,40 +286,59 @@ export const PanelPrograma: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("enj_user");
+    window.location.href = "/login";
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-3 md:p-6 font-sans relative">
-      {/* Toast Flotante Optimizado para Pantallas Móviles */}
+      {/* Toast Flotante */}
       {toastAlarma && (
-        <div className="fixed top-3 left-3 right-3 md:left-auto md:right-5 md:max-w-sm z-50 bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-2 border-blue-500 animate-bounce">
-          <div className="flex items-center gap-2 mb-1">
-            <Volume2 className="text-yellow-400 animate-pulse" size={20} />
-            <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Nueva Alarma ENJ 2026</span>
+        <div className="fixed top-4 left-3 right-3 md:left-auto md:right-5 md:max-w-md z-[100] bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-2 border-amber-400 animate-bounce">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Volume2 className="text-amber-400 animate-pulse" size={20} />
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-400">🚨 ALARMA ENJ 2026</span>
+            </div>
+            <button onClick={() => setToastAlarma(null)} className="text-slate-400 hover:text-white text-xs font-bold px-1">✕</button>
           </div>
-          <h4 className="font-bold text-sm">{toastAlarma.titulo}</h4>
-          <p className="text-xs text-slate-300 mt-1">{toastAlarma.descripcion}</p>
+          <h4 className="font-bold text-sm text-amber-200">{toastAlarma.titulo}</h4>
+          <p className="text-xs text-slate-200 mt-1 leading-relaxed">{toastAlarma.descripcion}</p>
         </div>
       )}
 
       <header className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
-        <div className="w-full md:w-auto flex justify-between items-center">
+        <div className="w-full md:w-auto flex justify-between items-center gap-3">
           <div>
             <span className="text-xs font-bold text-blue-700 tracking-wider">ENJ 2026 • ASV</span>
             <h1 className="text-xl md:text-2xl font-black text-slate-900">Panel de Programa ⚜️</h1>
           </div>
 
-          {/* Botón Móvil de Activación de Notificaciones */}
-          {notifPermission === 'default' && (
+          <div className="flex items-center gap-2">
+            {/* Botón Móvil de Activación Push */}
+            {notifPermission !== 'granted' && (
+              <button
+                onClick={solicitarPermisoNotificaciones}
+                className="flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-3 rounded-lg shadow transition-colors active:scale-95"
+                title="Activar notificaciones en la barra del teléfono"
+              >
+                <Smartphone size={15} /> Activar Alert
+              </button>
+            )}
+
             <button
-              onClick={solicitarPermisoNotificaciones}
-              className="flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-2.5 rounded-lg shadow transition-colors active:scale-95"
-              title="Activar notificaciones push en el teléfono"
+              onClick={handleLogout}
+              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Cerrar Sesión"
             >
-              <Smartphone size={15} /> Activar Alert
+              <LogOut size={18} />
             </button>
-          )}
+          </div>
         </div>
         
-        {/* Navegación por Tabs con Scroll Horizontal Móvil */}
+        {/* Navegación por Tabs */}
         <div className="w-full md:w-auto flex bg-slate-200 p-1 rounded-lg overflow-x-auto touch-pan-x">
           <button
             onClick={() => setActiveTab('alarmas')}
@@ -307,7 +383,6 @@ export const PanelPrograma: React.FC = () => {
               <form onSubmit={handleSubmitAlarma} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">TÍTULO</label>
-                  {/* text-base evita el zoom automático de Safari iOS al enfocar */}
                   <input type="text" required maxLength={120} className="w-full px-3 py-2.5 border rounded-lg text-base md:text-sm" value={formData.titulo} onChange={(e) => setFormData({ ...formData, titulo: e.target.value })} placeholder="Ej: Inicio de Gran Juego Central" />
                 </div>
                 <div>
@@ -365,8 +440,8 @@ export const PanelPrograma: React.FC = () => {
           <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg md:text-xl font-bold text-slate-800">Archivos y Acuerdos Distritales</h2>
-              <button onClick={fetchConsultas} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
-                ↻ Refrescar
+              <button onClick={fetchConsultas} className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
+                <RefreshCw size={13} /> Refrescar
               </button>
             </div>
             
@@ -436,8 +511,8 @@ export const PanelPrograma: React.FC = () => {
           <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg md:text-xl font-bold text-slate-800">Aprobación de Logros Virtuales</h2>
-              <button onClick={fetchSolicitudes} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
-                ↻ Refrescar
+              <button onClick={fetchSolicitudes} className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
+                <RefreshCw size={13} /> Refrescar
               </button>
             </div>
 
