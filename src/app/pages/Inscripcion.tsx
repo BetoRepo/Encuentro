@@ -872,7 +872,7 @@ export function Inscripcion() {
               <SectionDivider title="Registrar Siguiente Cuota" icon={<CreditCard size={16} color={ENJ_NAVY} />} />
               <BankDetailsCard />
 
-              <SelectField label="¿Qué cuota estás reportando?" options={["Segunda Cuota", "Tercera Cuota / Saldo Final"]} value={numCuota} onChange={setNumCuota} />
+              <SelectField label="¿Qué cuota estás reportando?" options={["Segunda Cuota","Tercera Cuota", "Cuarta Cuota","Quinta Cuota", "Saldo Final"]} value={numCuota} onChange={setNumCuota} />
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <InputField label="Fecha del Pago" type="date" value={fechaPago} onChange={setFechaPago} />

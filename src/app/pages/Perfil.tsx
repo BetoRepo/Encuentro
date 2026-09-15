@@ -365,6 +365,9 @@ export function Perfil() {
     if (!targetUserId) return;
 
     const loadProfileAndData = async () => {
+      // Variable para almacenar la cédula del usuario y poder buscar sus pagos
+      let userCedula = currentUser?.cedula || null;
+
       // 1. Cargar datos del perfil
       const { data } = await supabase.from("profiles").select("*").eq("id", targetUserId).single();
       if (data) {
@@ -381,16 +384,22 @@ export function Perfil() {
         setGustos(data.gustos_evento || []);
         setFoto(data.foto || "");
         setApretonesCount(data.apretones_count || 0);
+
+        // Intentamos obtener la cédula desde el perfil si existe
+        if (data.cedula) userCedula = data.cedula;
+        else if (data.cedula_participante) userCedula = data.cedula_participante;
       } else if (isOwnProfile) {
         setIsEditing(true);
       }
 
       // 2. Cargar pagos si es perfil propio
       if (isOwnProfile) {
+        // Usamos la cédula obtenida, o fallback al targetUserId si por algún motivo la id de usuario en profiles hace las veces de cédula
+        const identifierToUse = userCedula || targetUserId;
         const { data: pagosData } = await supabase
           .from("pagos")
           .select("*")
-          .eq("usuario_id", targetUserId)
+          .eq("cedula_participante", identifierToUse)
           .order("fecha_pago", { ascending: false });
         if (pagosData) setMisPagos(pagosData);
       }
@@ -934,7 +943,9 @@ export function Perfil() {
                           return (
                             <div key={pago.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FAFBFF", padding: "12px 16px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
                               <div>
-                                <strong style={{ fontSize: 13, color: ENJ_NAVY, display: "block", fontWeight: 800 }}>{pago.concepto || "Cuota ENJ 2026"}</strong>
+                                <strong style={{ fontSize: 13, color: ENJ_NAVY, display: "block", fontWeight: 800 }}>
+                                  {pago.numero_cuota ? `Cuota ${pago.numero_cuota}` : "Cuota ENJ 2026"}
+                                </strong>
                                 <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>
                                   {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString("es-VE") : "Sin fecha"}
                                 </span>
