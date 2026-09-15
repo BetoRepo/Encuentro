@@ -1,13 +1,16 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
-import { Calendar, Users, ChevronRight, Clock } from "lucide-react";
+import { Calendar, Users, ChevronRight, Clock, Video } from "lucide-react";
 import logoImage from "../../assets/logonacional.svg";
 import desafioGeneracionZ from "../../assets/DesafíoGeneraciónZ.svg";
 import redEnVivo from "../../assets/LaRedEnVivo.svg";
 import vitamina from "../../assets/Vitamina.svg";
 import churuata from "../../assets/LaChuruatadelEncuentro.svg";
 import heroBanner from "../../assets/herobanner.png";
+
+// Importación del video local desde assets
+import trailerVideo from "../../assets/trailer.mp4";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -87,6 +90,13 @@ export function Home() {
       logoAlt: "Logo La Churuata del Encuentro"
     }
   ];
+
+  // Configuración de video único
+  const trailer = {
+    title: "Trailer Oficial ENJ 2026",
+    description: "Descubre lo que nos espera en el escenario principal del evento scout más grande del año.",
+    videoUrl: trailerVideo
+  };
 
   const agendaVirtual: AgendaDay[] = [
     {
@@ -170,7 +180,7 @@ export function Home() {
       {/* SECCIÓN HERO PRINCIPAL CON HEROBANNER DE FONDO */}
       <header
         style={{
-          background: `linear-gradient(135deg, rgba(80, 3, 157, 0.85) 0%, rgba(0, 6, 61, 0.92) 100%), url(${heroBanner})`,
+          background: `linear-gradient(135deg, rgba(80, 3, 157, 0.55) 0%, rgba(0, 6, 61, 0.70) 100%), url(${heroBanner})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -187,7 +197,7 @@ export function Home() {
             Scouts de Venezuela · Movimiento Scout Mundial
           </p>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-            <span className="hero-badge" style={{ background: "rgba(255,255,255,0.1)", color: "white", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: "0.05em" }}>
+            <span className="hero-badge" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", color: "white", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: "0.05em" }}>
               INSCRIPCIONES ABIERTAS 2026
             </span>
           </div>
@@ -202,23 +212,23 @@ export function Home() {
             </div>
           </div>
 
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.85)", maxWidth: 580, margin: "0 auto 36px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.9)", maxWidth: 580, margin: "0 auto 36px", lineHeight: 1.6 }}>
             El show más grande del escultismo venezolano. Tres días donde tú eres el protagonista de la aventura, el liderazgo y la hermandad scout.
           </p>
 
           <div className="hero-meta" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 44 }}>
-            <div className="hero-meta-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
+            <div className="hero-meta-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.12)", backdropFilter: "blur(4px)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Calendar size={16} color={ENJ_YELLOW} />
               <span>30 Oct - 1 Nov · Aguirre</span>
             </div>
-            <div className="hero-meta-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.08)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
+            <div className="hero-meta-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.12)", backdropFilter: "blur(4px)", padding: "10px 18px", borderRadius: 12, fontSize: 14 }}>
               <Users size={16} color={ENJ_YELLOW} />
               <span>+70 Jóvenes</span>
             </div>
           </div>
 
           <div className="countdown-wrapper" style={{ marginBottom: 44 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>
               Cuenta regresiva al evento
             </p>
             <Countdown targetDate={targetDate} />
@@ -235,14 +245,14 @@ export function Home() {
             <button
               className="hero-secondary-btn"
               onClick={() => navigate("/consultas")}
-              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", color: "white", border: "1px solid rgba(255,255,255,0.25)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
               Ver consultas
             </button>
             <button
               className="hero-secondary-btn"
               onClick={scrollToInfo}
-              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", color: "white", border: "1px solid rgba(255,255,255,0.25)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >
               Ver información
             </button>
@@ -250,7 +260,7 @@ export function Home() {
         </div>
       </header>
 
-      {/* Contenido Principal */}
+      {/* CONTENIDO PRINCIPAL */}
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 16px", boxSizing: "border-box" }}>
         <div ref={infoRef} style={{ textAlign: "center", marginBottom: 70, paddingTop: "20px", boxSizing: "border-box" }}>
           <h2 style={{ color: "#000B6F", fontSize: "clamp(28px, 4.5vw, 36px)", fontWeight: 800, margin: "0 0 16px" }}>
@@ -276,7 +286,7 @@ export function Home() {
           </p>
         </div>
 
-        {/* Ejes Temáticos */}
+        {/* EJES TEMÁTICOS */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>4 Realities, Una Sola Aventura</h2>
           <p style={{ color: "#666", fontSize: 15 }}>Sintoniza las grandes experiencias que tenemos preparadas para ti</p>
@@ -445,6 +455,56 @@ export function Home() {
           </div>
         </div>
 
+        {/* SECCIÓN TRAILER (VIDEO ÚNICO LOCAL) */}
+        <section style={{ marginBottom: 80 }}>
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(80,3,157,0.08)", padding: "6px 16px", borderRadius: 100, color: ENJ_MAGENTA, fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
+              <Video size={16} color={ENJ_MAGENTA} /> Multimedia ENJ
+            </div>
+            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Trailer Oficial</h2>
+            <p style={{ color: "#666", fontSize: 15 }}>Revive la emoción y prepárate para la experiencia con el video oficial del evento</p>
+          </div>
+
+          <div
+            style={{
+              maxWidth: 760,
+              margin: "0 auto",
+              background: "#ffffff",
+              borderRadius: 24,
+              overflow: "hidden",
+              boxShadow: "0 10px 30px rgba(80, 3, 157, 0.08)",
+              border: "1px solid rgba(80, 3, 157, 0.08)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000" }}>
+              <video
+                src={trailer.videoUrl}
+                controls
+                preload="metadata"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            </div>
+            <div style={{ padding: "24px", textAlign: "center" }}>
+              <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>
+                {trailer.title}
+              </h3>
+              <p style={{ color: "#555", fontSize: 15, margin: 0, lineHeight: 1.6 }}>
+                {trailer.description}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* PROGRAMAS Y CRONOGRAMA */}
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
           <div style={{ filter: "blur(7px)", pointerEvents: "none", userSelect: "none" }} aria-hidden="true">
             {/* PROGRAMA DE ACTIVIDADES VIRTUALES */}
@@ -515,7 +575,7 @@ export function Home() {
         </div>
       </main>
 
-      {/* Estilos CSS dinámicos */}
+      {/* ESTILOS RESPONSIVOS */}
       <style>{`
         @media (min-width: 768px) {
           .agenda-badge {
@@ -630,3 +690,5 @@ export function Home() {
     </div>
   );
 }
+
+export default Home;

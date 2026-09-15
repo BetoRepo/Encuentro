@@ -384,23 +384,47 @@ export function Perfil() {
         setGustos(data.gustos_evento || []);
         setFoto(data.foto || "");
         setApretonesCount(data.apretones_count || 0);
-
-        // Intentamos obtener la cédula desde el perfil si existe
-        if (data.cedula) userCedula = data.cedula;
-        else if (data.cedula_participante) userCedula = data.cedula_participante;
       } else if (isOwnProfile) {
         setIsEditing(true);
       }
 
-      // 2. Cargar pagos si es perfil propio
+      // 2. Cargar pagos si es perfil propio (CORRECCIÓN APLICADA AQUÍ)
       if (isOwnProfile) {
-        // Usamos la cédula obtenida, o fallback al targetUserId si por algún motivo la id de usuario en profiles hace las veces de cédula
-        const identifierToUse = userCedula || targetUserId;
+        let finalCedula = userCedula;
+        
+        // Si no tenemos la cédula registrada en caché, buscamos en la tabla de participantes
+        if (!finalCedula) {
+          const { data: partData } = await supabase
+            .from("participantes")
+            .select("cedula")
+            .eq("id", targetUserId)
+            .maybeSingle(); // maybeSingle para no lanzar excepción si no lo encuentra
+
+          if (partData?.cedula) {
+            finalCedula = partData.cedula;
+          } else if (currentUser?.email) {
+            // Plan b: Buscar por correo en participantes
+            const { data: partDataByEmail } = await supabase
+              .from("participantes")
+              .select("cedula")
+              .eq("correo", currentUser.email)
+              .maybeSingle();
+              
+            if (partDataByEmail?.cedula) {
+              finalCedula = partDataByEmail.cedula;
+            }
+          }
+        }
+
+        // Ahora sí, si conseguimos la cédula, la usamos; si no, fallback (aunque lo ideal es tener la cédula)
+        const identifierToUse = finalCedula || targetUserId;
+        
         const { data: pagosData } = await supabase
           .from("pagos")
           .select("*")
           .eq("cedula_participante", identifierToUse)
           .order("fecha_pago", { ascending: false });
+          
         if (pagosData) setMisPagos(pagosData);
       }
 
@@ -535,7 +559,6 @@ export function Perfil() {
 
   return (
     <div style={{ background: "#F0F3F9", minHeight: "100vh", padding: "32px 16px 80px", fontFamily: "Inter, sans-serif" }}>
-      {/* AMPLIA EL MAX-WIDTH PARA PERMITIR 2 COLUMNAS CÓMODAS EN DESKTOP */}
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         
         {/* BOTÓN VOLVER */}
