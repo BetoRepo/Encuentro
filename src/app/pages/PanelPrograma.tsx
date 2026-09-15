@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
-import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2 } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone } from 'lucide-react';
 
 interface Alarma {
   id: string;
@@ -42,6 +42,7 @@ export const PanelPrograma: React.FC = () => {
   const [loadingAlarma, setLoadingAlarma] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: string; message: string }>({ type: '', message: '' });
   const [toastAlarma, setToastAlarma] = useState<Alarma | null>(null);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
   
   const [formData, setFormData] = useState({
     titulo: '',
@@ -63,12 +64,11 @@ export const PanelPrograma: React.FC = () => {
     fetchConsultas();
     fetchSolicitudes();
 
-    // Solicitar permisos de notificación nativa del navegador
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if ('Notification' in window) {
+      setNotifPermission(Notification.permission);
     }
 
-    // Canal de alarmas con captura de eventos de inserción en vivo
+    // Canal de alarmas en tiempo real
     const channelAlarmas = supabase
       .channel('realtime-programa-alarmas')
       .on(
@@ -78,17 +78,27 @@ export const PanelPrograma: React.FC = () => {
           fetchAlarmas();
           const nuevaAlarma = payload.new as Alarma;
 
-          // 1. Notificación Nativa del Navegador
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`🚨 ENJ 2026: ${nuevaAlarma.titulo}`, {
-              body: nuevaAlarma.descripcion,
-              icon: '/favicon.ico'
-            });
+          // 1. Vibración para móviles
+          if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200, 100, 300]);
           }
 
-          // 2. Banner flotante (Toast) en pantalla
+          // 2. Notificación del Navegador
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(`🚨 ENJ 2026: ${nuevaAlarma.titulo}`, {
+                body: nuevaAlarma.descripcion,
+                icon: '/favicon.ico',
+                tag: nuevaAlarma.id
+              });
+            } catch (e) {
+              console.warn('Error al desplegar notificación nativa', e);
+            }
+          }
+
+          // 3. Banner flotante (Toast)
           setToastAlarma(nuevaAlarma);
-          setTimeout(() => setToastAlarma(null), 7000);
+          setTimeout(() => setToastAlarma(null), 8000);
         }
       )
       .on(
@@ -112,6 +122,19 @@ export const PanelPrograma: React.FC = () => {
       supabase.removeChannel(channelLogros);
     };
   }, []);
+
+  // Función explícita para solicitar permisos de notificación en móvil mediante toque
+  const solicitarPermisoNotificaciones = async () => {
+    if ('Notification' in window) {
+      const permiso = await Notification.requestPermission();
+      setNotifPermission(permiso);
+      if (permiso === 'granted') {
+        alert('¡Notificaciones móviles activadas exitosamente!');
+      }
+    } else {
+      alert('Tu navegador móvil no soporta notificaciones nativas.');
+    }
+  };
 
   const fetchAlarmas = async () => {
     const { data, error } = await supabase
@@ -207,13 +230,13 @@ export const PanelPrograma: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans relative">
-      {/* Toast Flotante de Notificación en Vivo */}
+    <div className="min-h-screen bg-slate-50 p-3 md:p-6 font-sans relative">
+      {/* Toast Flotante Optimizado para Pantallas Móviles */}
       {toastAlarma && (
-        <div className="fixed top-5 right-5 z-50 max-w-sm bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-2 border-blue-500 animate-bounce">
+        <div className="fixed top-3 left-3 right-3 md:left-auto md:right-5 md:max-w-sm z-50 bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-2 border-blue-500 animate-bounce">
           <div className="flex items-center gap-2 mb-1">
             <Volume2 className="text-yellow-400 animate-pulse" size={20} />
-            <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Nueva Alarma Recibida</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Nueva Alarma ENJ 2026</span>
           </div>
           <h4 className="font-bold text-sm">{toastAlarma.titulo}</h4>
           <p className="text-xs text-slate-300 mt-1">{toastAlarma.descripcion}</p>
@@ -221,37 +244,51 @@ export const PanelPrograma: React.FC = () => {
       )}
 
       <header className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
-        <div>
-          <span className="text-xs font-bold text-blue-700 tracking-wider">ENJ 2026 • ASV</span>
-          <h1 className="text-2xl font-black text-slate-900">Panel de Programa ⚜️</h1>
+        <div className="w-full md:w-auto flex justify-between items-center">
+          <div>
+            <span className="text-xs font-bold text-blue-700 tracking-wider">ENJ 2026 • ASV</span>
+            <h1 className="text-xl md:text-2xl font-black text-slate-900">Panel de Programa ⚜️</h1>
+          </div>
+
+          {/* Botón Móvil de Activación de Notificaciones */}
+          {notifPermission === 'default' && (
+            <button
+              onClick={solicitarPermisoNotificaciones}
+              className="flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-2.5 rounded-lg shadow transition-colors active:scale-95"
+              title="Activar notificaciones push en el teléfono"
+            >
+              <Smartphone size={15} /> Activar Alert
+            </button>
+          )}
         </div>
         
-        <div className="flex bg-slate-200 p-1 rounded-lg overflow-x-auto">
+        {/* Navegación por Tabs con Scroll Horizontal Móvil */}
+        <div className="w-full md:w-auto flex bg-slate-200 p-1 rounded-lg overflow-x-auto touch-pan-x">
           <button
             onClick={() => setActiveTab('alarmas')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap active:scale-95 ${
               activeTab === 'alarmas' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Bell size={16} /> Central de Alarmas
+            <Bell size={16} /> Alarmas
           </button>
           <button
             onClick={() => setActiveTab('consultas')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap active:scale-95 ${
               activeTab === 'consultas' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <FileText size={16} /> Consultas de Distrito
+            <FileText size={16} /> Consultas
           </button>
           <button
             onClick={() => setActiveTab('logros')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap active:scale-95 ${
               activeTab === 'logros' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Award size={16} /> Logros Virtuales
+            <Award size={16} /> Logros
             {solicitudes.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{solicitudes.length}</span>
+              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">{solicitudes.length}</span>
             )}
           </button>
         </div>
@@ -260,7 +297,7 @@ export const PanelPrograma: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {activeTab === 'alarmas' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <section className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <section className="lg:col-span-5 bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
               <h2 className="text-lg font-bold mb-4 text-slate-800">📢 Emitir Alarma</h2>
               {feedback.message && (
                 <div className={`p-3 rounded-lg text-xs font-semibold mb-4 ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'} border`}>
@@ -270,16 +307,17 @@ export const PanelPrograma: React.FC = () => {
               <form onSubmit={handleSubmitAlarma} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">TÍTULO</label>
-                  <input type="text" required maxLength={120} className="w-full px-3 py-2 border rounded-lg text-sm" value={formData.titulo} onChange={(e) => setFormData({ ...formData, titulo: e.target.value })} placeholder="Ej: Inicio de Gran Juego Central" />
+                  {/* text-base evita el zoom automático de Safari iOS al enfocar */}
+                  <input type="text" required maxLength={120} className="w-full px-3 py-2.5 border rounded-lg text-base md:text-sm" value={formData.titulo} onChange={(e) => setFormData({ ...formData, titulo: e.target.value })} placeholder="Ej: Inicio de Gran Juego Central" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">MENSAJE / INSTRUCCIÓN</label>
-                  <textarea required rows={3} className="w-full px-3 py-2 border rounded-lg text-sm" value={formData.descripcion} onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} placeholder="Detalles o material necesario..." />
+                  <textarea required rows={3} className="w-full px-3 py-2.5 border rounded-lg text-base md:text-sm" value={formData.descripcion} onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} placeholder="Detalles o material necesario..." />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">PRIORIDAD</label>
-                    <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white" value={formData.prioridad} onChange={(e) => setFormData({ ...formData, prioridad: e.target.value as any })}>
+                    <select className="w-full px-3 py-2.5 border rounded-lg text-base md:text-sm bg-white" value={formData.prioridad} onChange={(e) => setFormData({ ...formData, prioridad: e.target.value as any })}>
                       <option value="informativa">Informativa</option>
                       <option value="importante">Importante</option>
                       <option value="critica">🚨 Crítica</option>
@@ -287,7 +325,7 @@ export const PanelPrograma: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">AUDIENCIA</label>
-                    <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white" value={formData.audiencia} onChange={(e) => setFormData({ ...formData, audiencia: e.target.value })}>
+                    <select className="w-full px-3 py-2.5 border rounded-lg text-base md:text-sm bg-white" value={formData.audiencia} onChange={(e) => setFormData({ ...formData, audiencia: e.target.value })}>
                       <option value="todos">Todo el Campamento</option>
                       <option value="subcampo_1">Subcampo 1</option>
                       <option value="subcampo_2">Subcampo 2</option>
@@ -296,17 +334,17 @@ export const PanelPrograma: React.FC = () => {
                     </select>
                   </div>
                 </div>
-                <button type="submit" disabled={loadingAlarma} className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition disabled:opacity-50">
+                <button type="submit" disabled={loadingAlarma} className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition active:scale-98 disabled:opacity-50">
                   {loadingAlarma ? 'Lanzando...' : '🚀 Lanzar Alarma'}
                 </button>
               </form>
             </section>
 
-            <section className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[550px]">
+            <section className="lg:col-span-7 bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-auto min-h-[400px] lg:h-[550px]">
               <h2 className="text-lg font-bold mb-4 text-slate-800">📡 Historial Reciente</h2>
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[450px] lg:max-h-none">
                 {alarmas.map((item) => (
-                  <div key={item.id} className={`p-3 rounded-lg border ${item.prioridad === 'critica' ? 'border-red-300 bg-red-50/40' : 'border-slate-200 bg-white'}`}>
+                  <div key={item.id} className={`p-3.5 rounded-lg border ${item.prioridad === 'critica' ? 'border-red-300 bg-red-50/40' : 'border-slate-200 bg-white'}`}>
                     <div className="flex justify-between items-start">
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${item.prioridad === 'critica' ? 'bg-red-200 text-red-800' : 'bg-slate-100 text-slate-700'}`}>{item.prioridad}</span>
                       <span className="text-[10px] text-slate-400">{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -324,10 +362,10 @@ export const PanelPrograma: React.FC = () => {
         )}
 
         {activeTab === 'consultas' && (
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800">Archivos y Acuerdos Distritales</h2>
-              <button onClick={fetchConsultas} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200">
+              <h2 className="text-lg md:text-xl font-bold text-slate-800">Archivos y Acuerdos Distritales</h2>
+              <button onClick={fetchConsultas} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
                 ↻ Refrescar
               </button>
             </div>
@@ -340,8 +378,8 @@ export const PanelPrograma: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-600">Aún no hay documentos cargados por los distritos.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+                <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
                     <tr className="border-b-2 border-slate-100">
                       <th className="p-3 text-xs font-bold text-slate-500 uppercase">Región / Distrito</th>
@@ -363,7 +401,7 @@ export const PanelPrograma: React.FC = () => {
                             href={fileData.file_url || fileData.drive_file_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors font-semibold text-xs"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors font-semibold text-xs active:scale-95"
                             title={fileData.file_name || 'Descargar archivo'}
                           >
                             <Download size={14} /> Bajar
@@ -395,10 +433,10 @@ export const PanelPrograma: React.FC = () => {
         )}
 
         {activeTab === 'logros' && (
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800">Aprobación de Logros Virtuales</h2>
-              <button onClick={fetchSolicitudes} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-200">
+              <h2 className="text-lg md:text-xl font-bold text-slate-800">Aprobación de Logros Virtuales</h2>
+              <button onClick={fetchSolicitudes} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
                 ↻ Refrescar
               </button>
             </div>
@@ -427,20 +465,20 @@ export const PanelPrograma: React.FC = () => {
                       <p className="text-xs text-slate-500 mb-1"><strong>ID Usuario:</strong> {sol.user_id}</p>
                       <div className="bg-white p-3 rounded border border-slate-200 my-3 text-sm text-slate-700 shadow-sm">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Prueba / Detalle enviado:</p>
-                        <p>{sol.detalles || "Sin detalles adicionales proporcionados."}</p>
+                        <p className="break-words">{sol.detalles || "Sin detalles adicionales proporcionados."}</p>
                       </div>
                     </div>
 
                     <div className="flex gap-2 mt-2">
                       <button 
                         onClick={() => handleAprobarLogro(sol)}
-                        className="flex-1 flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-bold transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold transition-colors active:scale-95"
                       >
                         <CheckCircle size={16} /> Aprobar
                       </button>
                       <button
                         onClick={() => handleRechazarLogro(sol.id)}
-                        className="flex-1 flex items-center justify-center gap-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg text-sm font-bold transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg text-sm font-bold transition-colors active:scale-95"
                       >
                         <XCircle size={16} /> Rechazar
                       </button>
