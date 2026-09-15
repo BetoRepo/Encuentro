@@ -91,10 +91,10 @@ export function Home() {
     }
   ];
 
-  // Configuración de video único
+  // AQUÍ ESTÁN LOS TEXTOS DE LA PARTE INFERIOR DEL VIDEO
   const trailer = {
-    title: "Trailer Oficial ENJ 2026",
-    description: "Descubre lo que nos espera en el escenario principal del evento scout más grande del año.",
+    title: "Spoiler - Desafio Generacion Z",
+    description: "¿List@ para encarar la vida adulta sin pánico? Descubre la Aldea Global en el Encuentro Nacional de Jóvenes y súmate al Desafío Generación Z. Aprende, crea y pásala bien mientras te preparas para el futuro.¡Únete y acepta el desafío!",
     videoUrl: trailerVideo
   };
 
@@ -455,14 +455,15 @@ export function Home() {
           </div>
         </div>
 
-        {/* SECCIÓN TRAILER (VIDEO ÚNICO LOCAL) */}
+        {/* SECCIÓN SPOILERS (VIDEO ÚNICO LOCAL) */}
         <section style={{ marginBottom: 80 }}>
+          {/* AQUÍ ESTÁN LOS TEXTOS DEL ENCABEZADO SUPERIOR */}
           <div style={{ textAlign: "center", marginBottom: 36 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(80,3,157,0.08)", padding: "6px 16px", borderRadius: 100, color: ENJ_MAGENTA, fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
               <Video size={16} color={ENJ_MAGENTA} /> Multimedia ENJ
             </div>
-            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Trailer Oficial</h2>
-            <p style={{ color: "#666", fontSize: 15 }}>Revive la emoción y prepárate para la experiencia con el video oficial del evento</p>
+            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Spoilers</h2>
+            <p style={{ color: "#666", fontSize: 15 }}>Un vistazo furtivo a la gran aventura que nos espera en Aguirre</p>
           </div>
 
           <div
@@ -478,18 +479,17 @@ export function Home() {
               flexDirection: "column",
             }}
           >
-            <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000" }}>
+            {/* Contenedor flexible del video para evitar cortes */}
+            <div style={{ width: "100%", background: "#000", display: "flex", justifyContent: "center", maxHeight: "600px" }}>
               <video
                 src={trailer.videoUrl}
                 controls
                 preload="metadata"
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
                   width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
+                  maxHeight: "600px",
+                  objectFit: "contain",
+                  display: "block"
                 }}
               />
             </div>
