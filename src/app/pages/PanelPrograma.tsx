@@ -21,7 +21,6 @@ interface Consulta {
   updated_at: string;
 }
 
-// Nueva interfaz para Logros
 interface SolicitudLogro {
   id: string;
   user_id: string;
@@ -36,7 +35,6 @@ interface SolicitudLogro {
 }
 
 export const PanelPrograma: React.FC = () => {
-  // Se añade 'logros' a las pestañas activas
   const [activeTab, setActiveTab] = useState<'alarmas' | 'consultas' | 'logros'>('alarmas');
   
   // Estado Alarmas
@@ -61,24 +59,19 @@ export const PanelPrograma: React.FC = () => {
   useEffect(() => {
     fetchAlarmas();
     fetchConsultas();
-    fetchSolicitudes(); // Cargar solicitudes iniciales
+    fetchSolicitudes();
 
-    // Canal original de alarmas
     const channelAlarmas = supabase
       .channel('realtime-programa-alarmas')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'programa_alarmas' }, () => fetchAlarmas())
       .subscribe();
 
-    // NUEVO: Canal para escuchar solicitudes de logros en tiempo real
     const channelLogros = supabase
       .channel('realtime-solicitudes')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'solicitudes_logros' },
-        (payload) => {
-          // Recargar para obtener el nombre de la insignia unida o añadir manual
-          fetchSolicitudes();
-        }
+        () => fetchSolicitudes()
       )
       .subscribe();
 
@@ -89,18 +82,26 @@ export const PanelPrograma: React.FC = () => {
   }, []);
 
   const fetchAlarmas = async () => {
-    const { data, error } = await supabase.from('programa_alarmas').select('*').order('created_at', { ascending: false }).limit(15);
+    const { data, error } = await supabase
+      .from('programa_alarmas')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(15);
+      
     if (!error && data) setAlarmas(data as Alarma[]);
   };
 
   const fetchConsultas = async () => {
     setLoadingConsultas(true);
-    const { data, error } = await supabase.from('consultas_distritales').select('*').order('distrito', { ascending: true });
+    const { data, error } = await supabase
+      .from('consultas_distritales')
+      .select('*')
+      .order('distrito', { ascending: true });
+      
     if (!error && data) setConsultas(data as Consulta[]);
     setLoadingConsultas(false);
   };
 
-  // NUEVO: Función para buscar las solicitudes pendientes
   const fetchSolicitudes = async () => {
     setLoadingSolicitudes(true);
     const { data, error } = await supabase
@@ -120,7 +121,7 @@ export const PanelPrograma: React.FC = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
+      if (!user) throw new Error('Usuario no autenticado. Por favor inicia sesión nuevamente.');
 
       const { error } = await supabase.from('programa_alarmas').insert([{
         titulo: formData.titulo.trim(),
@@ -131,7 +132,13 @@ export const PanelPrograma: React.FC = () => {
         creado_por: user.id
       }]);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          throw new Error('No tienes permisos en la base de datos (RLS) para emitir alarmas.');
+        }
+        throw error;
+      }
+
       setFeedback({ type: 'success', message: '🚨 ¡Alarma emitida al campamento ENJ 2026!' });
       setFormData({ titulo: '', descripcion: '', prioridad: 'informativa', audiencia: 'todos' });
     } catch (err: any) {
@@ -147,19 +154,14 @@ export const PanelPrograma: React.FC = () => {
     if (!error) fetchAlarmas();
   };
 
-  // NUEVO: Funciones para aprobar y rechazar logros
   const handleAprobarLogro = async (solicitud: SolicitudLogro) => {
     try {
-      // 1. Asignar insignia al usuario
       const { error: insertError } = await supabase.from('participante_insignias').insert([
         { user_id: solicitud.user_id, insignia_id: solicitud.insignia_id, otorgado_por: 'PANEL_PROGRAMA' }
       ]);
-      if (insertError && insertError.code !== '23505') throw insertError; // Ignora error si ya la tenía (23505)
+      if (insertError && insertError.code !== '23505') throw insertError;
 
-      // 2. Actualizar estado de solicitud
       await supabase.from('solicitudes_logros').update({ estado: 'aprobado' }).eq('id', solicitud.id);
-      
-      // 3. Remover de la lista actual
       setSolicitudes(prev => prev.filter(s => s.id !== solicitud.id));
     } catch (error) {
       alert("Error al aprobar el logro.");
@@ -185,7 +187,6 @@ export const PanelPrograma: React.FC = () => {
           <h1 className="text-2xl font-black text-slate-900">Panel de Programa ⚜️</h1>
         </div>
         
-        {/* Navegación por Tabs Actualizada */}
         <div className="flex bg-slate-200 p-1 rounded-lg overflow-x-auto">
           <button
             onClick={() => setActiveTab('alarmas')}
@@ -203,7 +204,6 @@ export const PanelPrograma: React.FC = () => {
           >
             <FileText size={16} /> Consultas de Distrito
           </button>
-          {/* NUEVA PESTAÑA: LOGROS */}
           <button
             onClick={() => setActiveTab('logros')}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
@@ -219,7 +219,6 @@ export const PanelPrograma: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto">
-        {/* VISTA DE ALARMAS */}
         {activeTab === 'alarmas' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <section className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -285,7 +284,6 @@ export const PanelPrograma: React.FC = () => {
           </div>
         )}
 
-        {/* VISTA DE CONSULTAS */}
         {activeTab === 'consultas' && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -357,7 +355,6 @@ export const PanelPrograma: React.FC = () => {
           </div>
         )}
 
-        {/* NUEVA VISTA DE LOGROS */}
         {activeTab === 'logros' && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -388,7 +385,6 @@ export const PanelPrograma: React.FC = () => {
                           +{sol.insignias?.puntos || 0} pts
                         </span>
                       </div>
-                      {/* Aquí idealmente mostraríamos el nombre del joven uniéndolo con la tabla de perfiles */}
                       <p className="text-xs text-slate-500 mb-1"><strong>ID Usuario:</strong> {sol.user_id}</p>
                       <div className="bg-white p-3 rounded border border-slate-200 my-3 text-sm text-slate-700 shadow-sm">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Prueba / Detalle enviado:</p>
