@@ -526,7 +526,8 @@ export function Perfil() {
 
   return (
     <div style={{ background: "#F0F3F9", minHeight: "100vh", padding: "32px 16px 80px", fontFamily: "Inter, sans-serif" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto" }}>
+      {/* AMPLIA EL MAX-WIDTH PARA PERMITIR 2 COLUMNAS CÓMODAS EN DESKTOP */}
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
         
         {/* BOTÓN VOLVER */}
         <button 
@@ -567,7 +568,7 @@ export function Perfil() {
             </div>
 
             <form style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* FOTO DE EDICIÓN (MÁS GRANDE) */}
+              {/* FOTO DE EDICIÓN */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                 <label htmlFor="foto-upload" style={{ cursor: "pointer", position: "relative" }}>
                   <div style={{ 
@@ -590,12 +591,12 @@ export function Perfil() {
 
               {/* SECCIÓN 1: DATOS PERSONALES */}
               <SectionDivider title="1. Datos Personales" icon={<User size={16} color={ENJ_NAVY} />} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
                 <InputField label="Nombre(s)" placeholder="María" value={nombre} onChange={setNombre} />
                 <InputField label="Apellido(s)" placeholder="González" value={apellido} onChange={setApellido} />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
                 <InputField label="Fecha de Nacimiento" type="date" value={birthDate} onChange={setBirthDate} required={false} />
                 <SelectField label="Rol en el Evento" options={tiposRol} value={rolEvento} onChange={setRolEvento} />
               </div>
@@ -603,7 +604,7 @@ export function Perfil() {
               {/* SECCIÓN 2: ESTRUCTURA SCOUT */}
               <SectionDivider title="2. Estructura Scout" icon={<MapPin size={16} color={ENJ_NAVY} />} />
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
                 <SelectField
                   label="Región Scout"
                   options={scoutRegions.map((r) => r.region)}
@@ -619,7 +620,7 @@ export function Perfil() {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
                 <InputField
                   label="Grupo Scout / Instancia"
                   placeholder="Ej. Grupo San Jorge 12"
@@ -660,12 +661,13 @@ export function Perfil() {
           </div>
         ) : (
 
-          /* VISTA PÚBLICA / TARJETA SOCIAL COOL Y MEJORADA */
+          /* VISTA PÚBLICA CON LAYOUT OPTIMIZADO */
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {/* TARJETA PRINCIPAL */}
+            
+            {/* 1. BANNER & TARJETA PRINCIPAL DEL SCOUT */}
             <div style={{ background: "#fff", borderRadius: 28, overflow: "hidden", boxShadow: "0 15px 45px rgba(0,11,111,0.08)", border: "1px solid rgba(0,11,111,0.05)", position: "relative" }}>
               
-              {/* BANNER REFORZADO Y MÁS ALTO CON OVERLAY GRADIENTE */}
+              {/* BANNER SCOUT CON OVERLAY */}
               <div 
                 style={{ 
                   height: 190, 
@@ -676,7 +678,7 @@ export function Perfil() {
                   position: "relative" 
                 }}
               >
-                {/* BOTONES ACCIÓN SUPERIOR CON GLASSMORPHISM */}
+                {/* BOTONES ACCIÓN SUPERIOR */}
                 <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 10, zIndex: 2 }}>
                   <button 
                     type="button" 
@@ -726,10 +728,10 @@ export function Perfil() {
                 </div>
               </div>
 
-              {/* CONTENIDO DEL PERFIL & FOTO AGRANDADA */}
+              {/* CONTENIDO PRINCIPAL DE PERFIL */}
               <div style={{ padding: "0 28px 32px", marginTop: -64, textAlign: "center", position: "relative", zIndex: 1 }}>
                 
-                {/* FOTO DE PERFIL CON ANILLO DE GRADIENTE Y MÁS GRANDE (128px) */}
+                {/* AVATAR DESTACADO (128px) */}
                 <div 
                   style={{ 
                     width: 128, 
@@ -764,7 +766,7 @@ export function Perfil() {
                   )}
                 </div>
 
-                {/* BOTÓN INTERACTIVO APRETÓN DE MANOS ESTILIZADO */}
+                {/* BOTÓN APRETÓN DE MANOS */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
                   <button
                     type="button"
@@ -797,8 +799,8 @@ export function Perfil() {
                   </div>
                 )}
 
-                {/* INFO ESTRUCTURA SCOUT EN CONTENEDOR TIPO TARJETA */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, background: "#FAFBFF", padding: 16, borderRadius: 20, border: "1.5px solid rgba(0,11,111,0.06)", marginBottom: 20, textAlign: "left" }}>
+                {/* INFO ESTRUCTURA SCOUT */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, background: "#FAFBFF", padding: 16, borderRadius: 20, border: "1.5px solid rgba(0,11,111,0.06)", marginBottom: 20, textAlign: "left" }}>
                   <div>
                     <span style={{ fontSize: 10, color: "rgba(0,11,111,0.5)", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", display: "block", marginBottom: 3 }}>Grupo / Instancia</span>
                     <strong style={{ fontSize: 14, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 6, fontWeight: 800 }}>
@@ -831,7 +833,7 @@ export function Perfil() {
               </div>
             </div>
 
-            {/* SECCIÓN GAMIFICACIÓN: INSIGNIAS Y LOGROS */}
+            {/* 2. CATÁLOGO DE INSIGNIAS (ANCHO COMPLETO PARA MOSTRAR TODAS DE MANERA HORIZONTAL) */}
             <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                 <div style={{ background: "rgba(215,0,126,0.1)", padding: 8, borderRadius: 12 }}>
@@ -848,7 +850,7 @@ export function Perfil() {
                   Cargando insignias disponibles...
                 </p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))", gap: 18 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 18 }}>
                   {catalogoInsignias.map((insignia) => {
                     const isUnlocked = misInsigniasIds.includes(insignia.id);
                     return (
@@ -900,98 +902,113 @@ export function Perfil() {
               )}
             </div>
 
-            {/* SECCIÓN PRIVADA: ESTADO DE CUOTAS */}
-            {isOwnProfile && (
-              <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
+            {/* 3. GRID RESPONSIVO (2 COLUMNAS EN DESKTOP, 1 EN MÓVIL) */}
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", 
+              gap: 24,
+              alignItems: "stretch"
+            }}>
+              
+              {/* COLUMNA IZQUIERDA: CUOTAS PRIVADAS + CREDENCIAL QR DIGITAL */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                
+                {/* ESTADO DE CUOTAS (PRIVADO) */}
+                {isOwnProfile && (
+                  <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                      <div style={{ background: "rgba(0,11,111,0.08)", padding: 8, borderRadius: 12 }}>
+                        <ShieldCheck size={20} color={ENJ_NAVY} />
+                      </div>
+                      <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Mis Cuotas ENJ 2026</h3>
+                    </div>
+                    {misPagos.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.6)", fontStyle: "italic" }}>
+                        No has reportado cuotas todavía.
+                      </p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {misPagos.map((pago) => {
+                          const isValidado = pago.estado === "validado" || pago.estatus_validacion === "Validado";
+                          const isRechazado = pago.estado === "rechazado" || pago.estatus_validacion === "Rechazado";
+                          return (
+                            <div key={pago.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FAFBFF", padding: "12px 16px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
+                              <div>
+                                <strong style={{ fontSize: 13, color: ENJ_NAVY, display: "block", fontWeight: 800 }}>{pago.concepto || "Cuota ENJ 2026"}</strong>
+                                <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>
+                                  {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString("es-VE") : "Sin fecha"}
+                                </span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 900, color: isValidado ? "#16A34A" : isRechazado ? "#DC2626" : "#D97706", background: isValidado ? "rgba(22,163,74,0.1)" : isRechazado ? "rgba(220,38,38,0.1)" : "rgba(217,119,6,0.1)", padding: "4px 12px", borderRadius: 100 }}>
+                                {isValidado && <CheckCircle size={15} />}
+                                {isRechazado && <AlertCircle size={15} />}
+                                {!isValidado && !isRechazado && <Clock size={15} />}
+                                {isValidado ? "Validado" : isRechazado ? "Rechazado" : "Pendiente"}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* PASE QR DIGITAL SCOUT */}
+                <div style={{ background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #0F172A 100%)`, borderRadius: 24, padding: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, boxShadow: "0 12px 32px rgba(0,11,111,0.2)" }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 10, fontWeight: 900, padding: "3px 10px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.05em" }}>Credencial Digital</span>
+                    <h4 style={{ margin: "6px 0 4px", fontSize: 17, fontWeight: 900, color: "#fff" }}>Pase QR Scout</h4>
+                    <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Escanéame para ver mi perfil oficial.</p>
+                  </div>
+                  <div style={{ background: "#fff", padding: 10, borderRadius: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+                    <QRCodeSVG value={qrPublicUrl} size={80} fgColor={ENJ_NAVY} />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* COLUMNA DERECHA: MURO SOCIAL DE INTERACCIÓN */}
+              <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   <div style={{ background: "rgba(0,11,111,0.08)", padding: 8, borderRadius: 12 }}>
-                    <ShieldCheck size={20} color={ENJ_NAVY} />
+                    <Users size={20} color={ENJ_NAVY} />
                   </div>
-                  <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Estado Privado de Cuotas ENJ 2026</h3>
+                  <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Muro del Elenco ENJ</h3>
                 </div>
-                {misPagos.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.6)", fontStyle: "italic" }}>
-                    No has reportado cuotas todavía.
-                  </p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {misPagos.map((pago) => {
-                      const isValidado = pago.estado === "validado" || pago.estatus_validacion === "Validado";
-                      const isRechazado = pago.estado === "rechazado" || pago.estatus_validacion === "Rechazado";
-                      return (
-                        <div key={pago.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FAFBFF", padding: "12px 16px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
-                          <div>
-                            <strong style={{ fontSize: 13, color: ENJ_NAVY, display: "block", fontWeight: 800 }}>{pago.concepto || "Cuota ENJ 2026"}</strong>
-                            <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>
-                              {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString("es-VE") : "Sin fecha"}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 900, color: isValidado ? "#16A34A" : isRechazado ? "#DC2626" : "#D97706", background: isValidado ? "rgba(22,163,74,0.1)" : isRechazado ? "rgba(220,38,38,0.1)" : "rgba(217,119,6,0.1)", padding: "4px 12px", borderRadius: 100 }}>
-                            {isValidado && <CheckCircle size={15} />}
-                            {isRechazado && <AlertCircle size={15} />}
-                            {!isValidado && !isRechazado && <Clock size={15} />}
-                            {isValidado ? "Validado" : isRechazado ? "Rechazado" : "Pendiente"}
-                          </div>
+
+                <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                  <input
+                    type="text"
+                    placeholder="Escribe un mensaje en el muro..."
+                    value={nuevoMensaje}
+                    onChange={(e) => setNuevoMensaje(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleEnviarMensajeMuro())}
+                    style={{ flex: 1, padding: "12px 16px", borderRadius: 14, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif" }}
+                  />
+                  <button type="button" onClick={handleEnviarMensajeMuro} style={{ background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #1A269B 100%)`, color: "#fff", border: "none", borderRadius: 14, padding: "0 18px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,11,111,0.2)" }}>
+                    <Send size={16} />
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 380, overflowY: "auto", flex: 1 }}>
+                  {comentarios.length === 0 ? (
+                    <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>Aún no hay mensajes en el muro. ¡Sé el primero!</span>
+                  ) : (
+                    comentarios.map((c, idx) => (
+                      <div key={c.id || idx} style={{ background: "#FAFBFF", padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.06)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                          <strong style={{ fontSize: 12.5, color: ENJ_NAVY, fontWeight: 800 }}>{c.autor}</strong>
+                          <span style={{ fontSize: 10, color: "rgba(0,11,111,0.4)" }}>
+                            {c.fecha ? new Date(c.fecha).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* CREDENCIAL QR PÚBLICA ESTILO PASE SCOUT */}
-            <div style={{ background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #0F172A 100%)`, borderRadius: 24, padding: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, boxShadow: "0 12px 32px rgba(0,11,111,0.2)" }}>
-              <div>
-                <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 10, fontWeight: 900, padding: "3px 10px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.05em" }}>Credencial Digital</span>
-                <h4 style={{ margin: "6px 0 4px", fontSize: 17, fontWeight: 900, color: "#fff" }}>Pase QR Scout</h4>
-                <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.7)", maxWidth: 260 }}>Escanéame en el evento para acceder a mi perfil público.</p>
-              </div>
-              <div style={{ background: "#fff", padding: 10, borderRadius: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
-                <QRCodeSVG value={qrPublicUrl} size={82} fgColor={ENJ_NAVY} />
-              </div>
-            </div>
-
-            {/* MURO SOCIAL DE INTERACCIÓN */}
-            <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{ background: "rgba(0,11,111,0.08)", padding: 8, borderRadius: 12 }}>
-                  <Users size={20} color={ENJ_NAVY} />
-                </div>
-                <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Muro del Elenco ENJ</h3>
-              </div>
-
-              <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-                <input
-                  type="text"
-                  placeholder="Saluda o deja un mensaje para los Scouts..."
-                  value={nuevoMensaje}
-                  onChange={(e) => setNuevoMensaje(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleEnviarMensajeMuro())}
-                  style={{ flex: 1, padding: "12px 16px", borderRadius: 14, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif" }}
-                />
-                <button type="button" onClick={handleEnviarMensajeMuro} style={{ background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #1A269B 100%)`, color: "#fff", border: "none", borderRadius: 14, padding: "0 18px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,11,111,0.2)" }}>
-                  <Send size={16} />
-                </button>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflowY: "auto" }}>
-                {comentarios.length === 0 ? (
-                  <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>Aún no hay mensajes en el muro.</span>
-                ) : (
-                  comentarios.map((c, idx) => (
-                    <div key={c.id || idx} style={{ background: "#FAFBFF", padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.06)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <strong style={{ fontSize: 12.5, color: ENJ_NAVY, fontWeight: 800 }}>{c.autor}</strong>
-                        <span style={{ fontSize: 10, color: "rgba(0,11,111,0.4)" }}>
-                          {c.fecha ? new Date(c.fecha).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                        </span>
+                        <p style={{ margin: 0, fontSize: 12.5, color: "#334155", lineHeight: 1.4 }}>{c.mensaje}</p>
                       </div>
-                      <p style={{ margin: 0, fontSize: 12.5, color: "#334155", lineHeight: 1.4 }}>{c.mensaje}</p>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
+
             </div>
 
           </div>
@@ -1004,7 +1021,7 @@ export function Perfil() {
             userId={currentUser.id}
             onClose={() => setInsigniaParaSolicitar(null)}
             onSuccess={() => {
-              // Notificación o refresco opcional tras enviar
+              // Notificación o refresco opcional
             }}
           />
         )}
