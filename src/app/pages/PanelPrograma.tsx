@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
-import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2 } from 'lucide-react';
 
 interface Alarma {
   id: string;
@@ -41,6 +41,8 @@ export const PanelPrograma: React.FC = () => {
   const [alarmas, setAlarmas] = useState<Alarma[]>([]);
   const [loadingAlarma, setLoadingAlarma] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: string; message: string }>({ type: '', message: '' });
+  const [toastAlarma, setToastAlarma] = useState<Alarma | null>(null);
+  
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
@@ -61,9 +63,39 @@ export const PanelPrograma: React.FC = () => {
     fetchConsultas();
     fetchSolicitudes();
 
+    // Solicitar permisos de notificación nativa del navegador
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Canal de alarmas con captura de eventos de inserción en vivo
     const channelAlarmas = supabase
       .channel('realtime-programa-alarmas')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'programa_alarmas' }, () => fetchAlarmas())
+      .on(
+        'postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'programa_alarmas' }, 
+        (payload) => {
+          fetchAlarmas();
+          const nuevaAlarma = payload.new as Alarma;
+
+          // 1. Notificación Nativa del Navegador
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`🚨 ENJ 2026: ${nuevaAlarma.titulo}`, {
+              body: nuevaAlarma.descripcion,
+              icon: '/favicon.ico'
+            });
+          }
+
+          // 2. Banner flotante (Toast) en pantalla
+          setToastAlarma(nuevaAlarma);
+          setTimeout(() => setToastAlarma(null), 7000);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'programa_alarmas' },
+        () => fetchAlarmas()
+      )
       .subscribe();
 
     const channelLogros = supabase
@@ -121,7 +153,7 @@ export const PanelPrograma: React.FC = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado. Por favor inicia sesión nuevamente.');
+      if (!user) throw new Error('Usuario no autenticado. Por favor inicia sesión.');
 
       const { error } = await supabase.from('programa_alarmas').insert([{
         titulo: formData.titulo.trim(),
@@ -132,12 +164,7 @@ export const PanelPrograma: React.FC = () => {
         creado_por: user.id
       }]);
 
-      if (error) {
-        if (error.code === '42501') {
-          throw new Error('No tienes permisos en la base de datos (RLS) para emitir alarmas.');
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       setFeedback({ type: 'success', message: '🚨 ¡Alarma emitida al campamento ENJ 2026!' });
       setFormData({ titulo: '', descripcion: '', prioridad: 'informativa', audiencia: 'todos' });
@@ -180,7 +207,19 @@ export const PanelPrograma: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans">
+    <div className="min-h-screen bg-slate-50 p-6 font-sans relative">
+      {/* Toast Flotante de Notificación en Vivo */}
+      {toastAlarma && (
+        <div className="fixed top-5 right-5 z-50 max-w-sm bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-2 border-blue-500 animate-bounce">
+          <div className="flex items-center gap-2 mb-1">
+            <Volume2 className="text-yellow-400 animate-pulse" size={20} />
+            <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Nueva Alarma Recibida</span>
+          </div>
+          <h4 className="font-bold text-sm">{toastAlarma.titulo}</h4>
+          <p className="text-xs text-slate-300 mt-1">{toastAlarma.descripcion}</p>
+        </div>
+      )}
+
       <header className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
         <div>
           <span className="text-xs font-bold text-blue-700 tracking-wider">ENJ 2026 • ASV</span>
