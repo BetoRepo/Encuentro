@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Users, CreditCard, Search, RefreshCw, ChevronLeft, ChevronRight,
-  Eye, X, AlertCircle, Building, Clock, FileSpreadsheet,
-  MessageSquare, Trash2, ShieldCheck, Edit3, Save, MessageCircle,
-  UserCheck, FileText, CheckCircle2, XCircle, Filter, Phone, Mail, ShieldAlert, DollarSign, User
+  Eye, X, AlertCircle, Building, Clock,
+  ShieldCheck, Edit3, Save,
+  UserCheck, FileText, DollarSign, User
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -82,8 +82,6 @@ export interface Documento {
 }
 
 export function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"participantes" | "pagos">("participantes");
-
   // ESTADOS DE PARTICIPANTES
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [loadingParticipantes, setLoadingParticipantes] = useState<boolean>(true);
@@ -94,22 +92,13 @@ export function Dashboard() {
 
   // FILTROS DE BÚSQUEDA
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedTipoFilter, setSelectedTipoFilter] = useState<string>("");
-  const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>("");
-
-  // ESTADOS DE PAGOS
-  const [todosLosPagos, setTodosLosPagos] = useState<Pago[]>([]);
-  const [loadingPagos, setLoadingPagos] = useState<boolean>(false);
-  const [pagoSearchTerm, setPagoSearchTerm] = useState<string>("");
-  const [pagoEstadoFilter, setPagoEstadoFilter] = useState<string>("");
 
   // MÉTRICAS Y FINANZAS
   const [totalJovenes, setTotalJovenes] = useState<number>(0);
   const [totalAdultos, setTotalAdultos] = useState<number>(0);
-  const [totalBsValidado, setTotalBsValidado] = useState<number>(0);
   const [totalUsdValidado, setTotalUsdValidado] = useState<number>(0);
   const [totalPendientesValidacion, setTotalPendientesValidacion] = useState<number>(0);
-  const [tasaBcvActual, setTasaBcvActual] = useState<number>(36.5);
+  const [tasaBcvActual] = useState<number>(36.5);
 
   // MODAL EXPEDIENTE & EDICIÓN DE PERFIL
   const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null);
@@ -119,7 +108,7 @@ export function Dashboard() {
   const [loadingModal, setLoadingModal] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isEditingPerfil, setIsEditingPerfil] = useState<boolean>(false);
-  
+
   // ESTADOS FORMULARIO EDICIÓN DUAL (`participantes` y `profiles`)
   const [editPartData, setEditPartData] = useState<Partial<Participante>>({});
   const [editProfileData, setEditProfileData] = useState<Partial<Profile>>({});
@@ -139,14 +128,6 @@ export function Dashboard() {
         query = query.or(`cedula.ilike.${term},nombre.ilike.${term},apellido.ilike.${term},correo.ilike.${term}`);
       }
 
-      if (selectedTipoFilter) {
-        query = query.ilike("tipo_participante", `%${selectedTipoFilter}%`);
-      }
-
-      if (selectedRegionFilter) {
-        query = query.ilike("region", `%${selectedRegionFilter}%`);
-      }
-
       const { data, count, error } = await query
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -161,53 +142,9 @@ export function Dashboard() {
     } finally {
       setLoadingParticipantes(false);
     }
-  }, [page, searchTerm, selectedTipoFilter, selectedRegionFilter]);
+  }, [page, searchTerm]);
 
-  // 2. CARGAR HISTORIAL GLOBAL DE PAGOS
-  const loadGlobalPagos = async () => {
-    setLoadingPagos(true);
-    try {
-      const { data: pagosData, error: pagosErr } = await supabase
-        .from("pagos")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (pagosErr) throw pagosErr;
-
-      if (pagosData && pagosData.length > 0) {
-        const cedulasUnicas = Array.from(new Set(pagosData.map((p) => p.cedula_participante?.trim()).filter(Boolean)));
-
-        let partMap: Record<string, Participante> = {};
-        if (cedulasUnicas.length > 0) {
-          const { data: partData } = await supabase
-            .from("participantes")
-            .select("*")
-            .in("cedula", cedulasUnicas);
-
-          if (partData) {
-            partData.forEach((p) => {
-              partMap[p.cedula.trim()] = p;
-            });
-          }
-        }
-
-        const mergedPagos: Pago[] = pagosData.map((pago) => ({
-          ...pago,
-          participante: partMap[pago.cedula_participante?.trim()] || null,
-        }));
-
-        setTodosLosPagos(mergedPagos);
-      } else {
-        setTodosLosPagos([]);
-      }
-    } catch (e: any) {
-      console.warn("Error cargando pagos globales:", e.message);
-    } finally {
-      setLoadingPagos(false);
-    }
-  };
-
-  // 3. CARGAR MÉTRICAS Y ESTADÍSTICAS FINANCIERAS
+  // 2. CARGAR MÉTRICAS Y ESTADÍSTICAS FINANCIERAS
   const loadMetricsAndFinances = async () => {
     try {
       const { data: partData } = await supabase.from("participantes").select("tipo_participante");
@@ -237,7 +174,6 @@ export function Dashboard() {
             pendientesCount++;
           }
         });
-        setTotalBsValidado(bsVal);
         setTotalUsdValidado(usdVal);
         setTotalPendientesValidacion(pendientesCount);
       }
@@ -252,10 +188,9 @@ export function Dashboard() {
 
   useEffect(() => {
     loadMetricsAndFinances();
-    loadGlobalPagos();
   }, []);
 
-  // 4. ABRIR EXPEDIENTE Y VINCULAR PERFIL (TABLA `profiles`)
+  // 3. ABRIR EXPEDIENTE Y VINCULAR PERFIL (TABLA `profiles`)
   const openExpediente = async (participante: Participante) => {
     setSelectedParticipante(participante);
     setEditPartData(participante);
@@ -279,7 +214,7 @@ export function Dashboard() {
           .maybeSingle();
         profData = profileById;
       }
-      
+
       if (!profData && participante.correo) {
         const { data: profileByMail } = await supabase
           .from("profiles")
@@ -319,11 +254,11 @@ export function Dashboard() {
 
   // Función auxiliar para actualizar campos compartidos
   const handleDualChange = (field: string, value: any) => {
-    setEditPartData(prev => ({ ...prev, [field]: value }));
-    setEditProfileData(prev => ({ ...prev, [field]: value }));
+    setEditPartData((prev) => ({ ...prev, [field]: value }));
+    setEditProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // 5. GUARDAR EDICIÓN DUAL EN `participantes` Y EN `profiles`
+  // 4. GUARDAR EDICIÓN DUAL EN `participantes` Y EN `profiles`
   const handleSaveExpediente = async () => {
     if (!selectedParticipante) return;
     setActionLoading("saving_all");
@@ -362,7 +297,7 @@ export function Dashboard() {
     }
   };
 
-  // 6. CAMBIAR ESTATUS DE PAGO EN SUPABASE
+  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: "validado" | "rechazado" | "pendiente") => {
     setActionLoading(pagoId);
     try {
@@ -370,7 +305,6 @@ export function Dashboard() {
       if (error) throw error;
 
       setModalPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p)));
-      setTodosLosPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p)));
       loadMetricsAndFinances();
     } catch (err: any) {
       alert("Error al actualizar pago: " + err.message);
@@ -379,41 +313,118 @@ export function Dashboard() {
     }
   };
 
-  const pagosFiltrados = todosLosPagos.filter((pago) => {
-    const search = pagoSearchTerm.toLowerCase().trim();
-    const part = pago.participante;
-    const matchesSearch =
-      !search ||
-      (pago.referencia || "").toLowerCase().includes(search) ||
-      pago.cedula_participante.toLowerCase().includes(search) ||
-      (part?.nombre || "").toLowerCase().includes(search) ||
-      (part?.apellido || "").toLowerCase().includes(search);
-    const matchesEstado = !pagoEstadoFilter || pago.estado === pagoEstadoFilter;
-    return matchesSearch && matchesEstado;
-  });
-
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
   return (
-    <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "32px 24px 60px" }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        
+    <div className="dash-container">
+      {/* ESTILOS RESPONSIVOS MÓVILES */}
+      <style>{`
+        .dash-container {
+          background: #F0F2FA;
+          min-height: 100vh;
+          padding: 24px 16px 50px;
+        }
+        .dash-content {
+          max-width: 1280px;
+          margin: 0 auto;
+        }
+        .dash-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 14px;
+          margin-bottom: 24px;
+        }
+        .desktop-table-container {
+          display: block;
+          overflow-x: auto;
+        }
+        .desktop-table {
+          width: 100%;
+          border-collapse: collapse;
+          text-align: left;
+        }
+        .mobile-cards-container {
+          display: none;
+        }
+        .modal-body-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+          .dash-container {
+            padding: 16px 12px 40px;
+          }
+          .dash-header-title {
+            font-size: 22px !important;
+          }
+          .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+          }
+          .metric-card-p {
+            font-size: 20px !important;
+          }
+          .desktop-table-container {
+            display: none;
+          }
+          .mobile-cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+          .modal-overlay {
+            padding: 10px !important;
+          }
+          .modal-window {
+            padding: 18px 16px !important;
+            max-height: 94vh !important;
+            border-radius: 16px !important;
+          }
+          .modal-body-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .modal-header-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .metrics-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      <div className="dash-content">
         {/* ENCABEZADO SCOUT ENJ 2026 */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, flexWrap: "wrap", gap: 16 }}>
+        <div className="dash-header">
           <div>
             <span style={{ background: ENJ_NAVY, color: ENJ_YELLOW, fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 100 }}>
               ASOCIACIÓN DE SCOUTS DE VENEZUELA • ENJ 2026
             </span>
-            <h1 style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_NAVY }}>
+            <h1 className="dash-header-title" style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: ENJ_NAVY }}>
               Panel General de Control y Gestión
             </h1>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div>
             <button
               onClick={() => {
                 loadParticipantes();
                 loadMetricsAndFinances();
-                loadGlobalPagos();
               }}
               style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid rgba(0,11,111,0.15)", borderRadius: 10, padding: "10px 18px", color: ENJ_NAVY, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
@@ -429,77 +440,69 @@ export function Dashboard() {
         )}
 
         {/* MÉTRICAS GENERALES */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16, marginBottom: 24 }}>
-          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
+        <div className="metrics-grid">
+          <div style={{ background: "#fff", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Participantes</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Participantes</span>
               <UserCheck size={18} color={ENJ_NAVY} />
             </div>
-            <p style={{ margin: "10px 0 0", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
+            <p className="metric-card-p" style={{ margin: "8px 0 0", fontSize: 26, fontWeight: 900, color: ENJ_NAVY }}>{totalCount}</p>
           </div>
 
-          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
+          <div style={{ background: "#fff", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Jóvenes / Adultos</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Jóvenes / Adultos</span>
               <Building size={18} color={ENJ_MAGENTA} />
             </div>
-            <p style={{ margin: "10px 0 0", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
+            <p className="metric-card-p" style={{ margin: "8px 0 0", fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
               <span style={{ color: ENJ_MAGENTA }}>{totalJovenes}</span> / {totalAdultos}
             </p>
           </div>
 
-          <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
+          <div style={{ background: "#fff", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Pagos por Validar</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,11,111,0.6)", textTransform: "uppercase" }}>Pagos por Validar</span>
               <Clock size={18} color="#D97706" />
             </div>
-            <p style={{ margin: "10px 0 0", fontSize: 26, fontWeight: 900, color: "#D97706" }}>{totalPendientesValidacion}</p>
+            <p className="metric-card-p" style={{ margin: "8px 0 0", fontSize: 26, fontWeight: 900, color: "#D97706" }}>{totalPendientesValidacion}</p>
           </div>
 
-          <div style={{ background: "linear-gradient(135deg, #000B6F 0%, #0015B8 100%)", padding: 20, borderRadius: 16, color: "#fff" }}>
+          <div style={{ background: "linear-gradient(135deg, #000B6F 0%, #0015B8 100%)", padding: 18, borderRadius: 16, color: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase" }}>Total Validado ($)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: ENJ_YELLOW, textTransform: "uppercase" }}>Total Validado ($)</span>
               <ShieldCheck size={18} color={ENJ_YELLOW} />
             </div>
-            <p style={{ margin: "8px 0 0", fontSize: 22, fontWeight: 900, color: "#fff" }}>${totalUsdValidado.toFixed(2)} USD</p>
+            <p className="metric-card-p" style={{ margin: "8px 0 0", fontSize: 20, fontWeight: 900, color: "#fff" }}>${totalUsdValidado.toFixed(2)} USD</p>
           </div>
         </div>
 
-        {/* SELECCIÓN DE PESTAÑAS */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-          <button
-            onClick={() => setActiveTab("participantes")}
-            style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: activeTab === "participantes" ? ENJ_NAVY : "#fff", color: activeTab === "participantes" ? "#fff" : ENJ_NAVY, fontWeight: 800, fontSize: 14, cursor: "pointer" }}
-          >
+        {/* ETIQUETA SECCIÓN ÚNICA */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <div style={{ padding: "10px 20px", borderRadius: 12, background: ENJ_NAVY, color: "#fff", fontWeight: 800, fontSize: 14 }}>
             Expedientes de Participantes ({totalCount})
-          </button>
-          <button
-            onClick={() => setActiveTab("pagos")}
-            style={{ padding: "10px 20px", borderRadius: 12, border: "none", background: activeTab === "pagos" ? ENJ_NAVY : "#fff", color: activeTab === "pagos" ? "#fff" : ENJ_NAVY, fontWeight: 800, fontSize: 14, cursor: "pointer" }}
-          >
-            Gestión Global de Pagos
-          </button>
+          </div>
         </div>
 
-        {/* ================= TAB 1: LISTA DE PARTICIPANTES ================= */}
-        {activeTab === "participantes" && (
-          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
-            
-            {/* BUSCADOR */}
-            <div style={{ padding: 16, borderBottom: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ position: "relative", flex: 1, minWidth: 240 }}>
-                <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "#888" }} />
-                <input
-                  type="text"
-                  placeholder="Buscar por cédula, nombre, apellido o correo..."
-                  value={searchTerm}
-                  onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
-                  style={{ width: "100%", padding: "10px 10px 10px 36px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13 }}
-                />
-              </div>
+        {/* LISTA DE PARTICIPANTES */}
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
+          
+          {/* BUSCADOR */}
+          <div style={{ padding: 16, borderBottom: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+              <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "#888" }} />
+              <input
+                type="text"
+                placeholder="Buscar por cédula, nombre, apellido o correo..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+                style={{ width: "100%", padding: "10px 10px 10px 36px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13 }}
+              />
             </div>
+          </div>
 
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          {/* VISTA ESCRITORIO (TABLA ADAPTATIVA CON DESPLAZAMIENTO HORIZONTAL) */}
+          <div className="desktop-table-container">
+            <table className="desktop-table">
               <thead>
                 <tr style={{ background: "#F8FAFF", borderBottom: "1px solid rgba(0,11,111,0.08)" }}>
                   <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 800, color: ENJ_NAVY }}>Participante</th>
@@ -533,7 +536,7 @@ export function Dashboard() {
                       <td style={{ padding: "14px 18px", textAlign: "right" }}>
                         <button
                           onClick={() => openExpediente(p)}
-                          style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                          style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
                         >
                           Ver Expediente
                         </button>
@@ -543,79 +546,89 @@ export function Dashboard() {
                 )}
               </tbody>
             </table>
+          </div>
 
-            {/* CONTROLES DE PAGINACIÓN */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)" }}>
-              <span style={{ fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>Página {page + 1} de {totalPages}</span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: page === 0 ? "not-allowed" : "pointer" }}><ChevronLeft size={16} /></button>
-                <button disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: page + 1 >= totalPages ? "not-allowed" : "pointer" }}><ChevronRight size={16} /></button>
-              </div>
+          {/* VISTA MÓVIL (TARJETAS INDIVIDUALES CON BOTÓN DESTACADO) */}
+          <div className="mobile-cards-container">
+            {loadingParticipantes ? (
+              <div style={{ padding: 20, textAlign: "center", color: "#666" }}>Cargando participantes...</div>
+            ) : participantes.length === 0 ? (
+              <div style={{ padding: 20, textAlign: "center", color: "#666" }}>No se encontraron participantes.</div>
+            ) : (
+              participantes.map((p) => (
+                <div
+                  key={p.cedula}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,11,111,0.1)",
+                    padding: 14,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 800, color: ENJ_NAVY, fontSize: 15 }}>
+                        {p.nombre} {p.apellido}
+                      </div>
+                      <div style={{ fontSize: 11, color: ENJ_MAGENTA, fontWeight: "bold", marginTop: 2 }}>
+                        {(p.tipo_participante || "joven").toUpperCase()}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, background: "#F0F2FA", padding: "4px 8px", borderRadius: 6, color: ENJ_NAVY }}>
+                      {p.cedula}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: "#444", borderTop: "1px solid #f0f0f0", borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>
+                    <div><strong>Grupo:</strong> {p.grupo_scout || "Sin Grupo"} ({p.region || "Sin Región"})</div>
+                    <div style={{ marginTop: 2 }}><strong>Teléfono:</strong> {p.telefono || "N/A"}</div>
+                    <div style={{ marginTop: 2, wordBreak: "break-all" }}><strong>Correo:</strong> {p.correo || "N/A"}</div>
+                  </div>
+
+                  <button
+                    onClick={() => openExpediente(p)}
+                    style={{
+                      width: "100%",
+                      background: ENJ_NAVY,
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "10px",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6
+                    }}
+                  >
+                    <Eye size={16} /> Ver Expediente
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* CONTROLES DE PAGINACIÓN */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)" }}>
+            <span style={{ fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>Página {page + 1} de {totalPages}</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: page === 0 ? "not-allowed" : "pointer" }}><ChevronLeft size={16} /></button>
+              <button disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: page + 1 >= totalPages ? "not-allowed" : "pointer" }}><ChevronRight size={16} /></button>
             </div>
           </div>
-        )}
-
-        {/* ================= TAB 2: HISTORIAL GLOBAL DE PAGOS ================= */}
-        {activeTab === "pagos" && (
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid rgba(0,11,111,0.08)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, color: ENJ_NAVY, fontSize: 18, fontWeight: 800 }}>Historial Global de Pagos</h3>
-              <input
-                type="text"
-                placeholder="Filtrar referencia o cédula..."
-                value={pagoSearchTerm}
-                onChange={(e) => setPagoSearchTerm(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13, width: 250 }}
-              />
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-              <thead>
-                <tr style={{ background: "#F8FAFF", borderBottom: "1px solid rgba(0,11,111,0.08)" }}>
-                  <th style={{ padding: "12px" }}>Cédula / Nombre</th>
-                  <th style={{ padding: "12px" }}>Referencia</th>
-                  <th style={{ padding: "12px" }}>Monto / Tasa</th>
-                  <th style={{ padding: "12px" }}>Equivalente</th>
-                  <th style={{ padding: "12px" }}>Estado</th>
-                  <th style={{ padding: "12px", textAlign: "right" }}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingPagos ? (
-                  <tr><td colSpan={6} style={{ padding: 20, textAlign: "center" }}>Cargando pagos...</td></tr>
-                ) : pagosFiltrados.map((pago) => {
-                  const usd = Number(pago.monto_bs) / (Number(pago.tasa_cambio) || 1);
-                  return (
-                    <tr key={pago.id} style={{ borderBottom: "1px solid rgba(0,11,111,0.05)" }}>
-                      <td style={{ padding: "12px" }}>
-                        <strong>{pago.cedula_participante}</strong>
-                        {pago.participante && <div style={{ fontSize: 11, color: "#666" }}>{pago.participante.nombre} {pago.participante.apellido}</div>}
-                      </td>
-                      <td style={{ padding: "12px", fontWeight: "bold" }}>{pago.referencia || "N/A"}</td>
-                      <td style={{ padding: "12px" }}>Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} <br/><span style={{ fontSize: 11, color: "#777" }}>Tasa: {pago.tasa_cambio}</span></td>
-                      <td style={{ padding: "12px", fontWeight: "bold", color: ENJ_NAVY }}>${usd.toFixed(2)} USD</td>
-                      <td style={{ padding: "12px", fontWeight: "bold", color: pago.estado === "validado" ? "#16A34A" : pago.estado === "rechazado" ? "#DC2626" : "#D97706" }}>
-                        {pago.estado.toUpperCase()}
-                      </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
-                        {pago.participante && (
-                          <button onClick={() => openExpediente(pago.participante!)} style={{ background: ENJ_NAVY, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
-                            Ver Expediente
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        </div>
 
         {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT CON EDICIÓN COMPLETA ================= */}
         {selectedParticipante && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-            <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1050, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
-              <button onClick={() => setSelectedParticipante(null)} style={{ position: "absolute", right: 20, top: 20, background: "#F4F5FA", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer" }}>
+          <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
+            <div className="modal-window" style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1050, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
+              <button onClick={() => setSelectedParticipante(null)} style={{ position: "absolute", right: 16, top: 16, background: "#F4F5FA", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <X size={18} />
               </button>
 
@@ -629,7 +642,7 @@ export function Dashboard() {
 
                 return (
                   <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid #eee", paddingBottom: 20 }}>
+                    <div className="modal-header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid #eee", paddingBottom: 20 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                         {selectedProfile?.foto ? (
                           <img src={selectedProfile.foto} alt="Foto Perfil" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${ENJ_NAVY}` }} />
@@ -639,11 +652,11 @@ export function Dashboard() {
                           </div>
                         )}
                         <div>
-                          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: ENJ_NAVY }}>
+                          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
                             {selectedProfile?.nombre || selectedParticipante.nombre} {selectedProfile?.apellido || selectedParticipante.apellido}
                           </h2>
                           <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
-                            Cédula: <strong>{selectedParticipante.cedula}</strong> | Rol Evento: <span style={{ color: ENJ_MAGENTA, fontWeight: "bold" }}>{selectedProfile?.rol_evento || selectedParticipante.tipo_participante || "Joven Participante"}</span>
+                            Cédula: <strong>{selectedParticipante.cedula}</strong> | Rol: <span style={{ color: ENJ_MAGENTA, fontWeight: "bold" }}>{selectedProfile?.rol_evento || selectedParticipante.tipo_participante || "Joven Participante"}</span>
                           </p>
                         </div>
                       </div>
@@ -653,27 +666,27 @@ export function Dashboard() {
                       </button>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                    <div className="modal-body-grid">
                       
                       {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
                       <div>
-                        <div style={{ background: "#F8FAFF", padding: 20, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
-                          <h3 style={{ margin: "0 0 16px", color: ENJ_NAVY, fontSize: 16, fontWeight: 900 }}>
-                            <DollarSign size={18} style={{ display: "inline" }} /> Estado de Cuenta
+                        <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
+                          <h3 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
+                            <DollarSign size={18} style={{ display: "inline", verticalAlign: "middle" }} /> Estado de Cuenta
                           </h3>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Costo Evento:</span>
                             <strong>${cuotaTotal.toFixed(2)} USD</strong>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Pagado (Validado):</span>
                             <strong style={{ color: "#16A34A" }}>${totalPagadoUsd.toFixed(2)} USD</strong>
                           </div>
                           <hr style={{ border: "0.5px solid #ddd", margin: "10px 0" }} />
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
                             <span style={{ color: ENJ_NAVY, fontWeight: 800 }}>Deuda Restante:</span>
                             <div style={{ textAlign: "right" }}>
-                              <strong style={{ color: deudaUsd > 0 ? ENJ_MAGENTA : "#16A34A", fontSize: 18 }}>${deudaUsd.toFixed(2)} USD</strong>
+                              <strong style={{ color: deudaUsd > 0 ? ENJ_MAGENTA : "#16A34A", fontSize: 17 }}>${deudaUsd.toFixed(2)} USD</strong>
                               <div style={{ fontSize: 11, color: "#777" }}>~ Bs. {deudaBsActual.toLocaleString("es-VE")}</div>
                             </div>
                           </div>
@@ -688,14 +701,14 @@ export function Dashboard() {
                           modalPagos.map((pago) => {
                             const usdValue = Number(pago.monto_bs) / (Number(pago.tasa_cambio) || 1);
                             return (
-                              <div key={pago.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                              <div key={pago.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 12, marginBottom: 10 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                                   <strong>Ref: {pago.referencia || "S/N"}</strong>
                                   <span style={{ color: pago.estado === "validado" ? "#16A34A" : pago.estado === "rechazado" ? "#DC2626" : "#D97706", fontWeight: "bold" }}>
                                     {pago.estado.toUpperCase()}
                                   </span>
                                 </div>
-                                <div style={{ fontSize: 13, color: "#555", margin: "6px 0" }}>
+                                <div style={{ fontSize: 12, color: "#555", margin: "6px 0" }}>
                                   Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} (Tasa: {pago.tasa_cambio}) = <strong style={{ color: ENJ_NAVY }}>${usdValue.toFixed(2)} USD</strong>
                                 </div>
                                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
@@ -711,11 +724,11 @@ export function Dashboard() {
                       {/* COLUMNA DERECHA: EDICIÓN COMPLETA */}
                       <div>
                         {isEditingPerfil ? (
-                          <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 20, borderRadius: 14, maxHeight: "55vh", overflowY: "auto" }}>
-                            <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 16, fontWeight: 900 }}>
+                          <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 18, borderRadius: 14, maxHeight: "55vh", overflowY: "auto" }}>
+                            <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
                               Edición de Expediente Completo
                             </h4>
-                            
+
                             <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                               <div>
@@ -738,10 +751,10 @@ export function Dashboard() {
                                 <input type="text" value={editPartData.telefono || ""} onChange={(e) => handleDualChange("telefono", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
                               </div>
                             </div>
-                            
+
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                               <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Fecha de Nacimiento</label>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Fecha Nacimiento</label>
                                 <input type="date" value={editPartData.fecha_nacimiento || editProfileData.birth_date || ""} onChange={(e) => {
                                   setEditPartData({ ...editPartData, fecha_nacimiento: e.target.value });
                                   setEditProfileData({ ...editProfileData, birth_date: e.target.value });
@@ -784,17 +797,17 @@ export function Dashboard() {
                                 }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
                               </div>
                             </div>
-                            
+
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                               <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Rol en el Evento</label>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Rol en Evento</label>
                                 <input type="text" value={editPartData.tipo_participante || ""} onChange={(e) => {
                                   setEditPartData({ ...editPartData, tipo_participante: e.target.value });
                                   setEditProfileData({ ...editProfileData, rol_evento: e.target.value });
                                 }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Talla de Uniforme</label>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Talla Uniforme</label>
                                 <input type="text" value={editPartData.talla_uniforme || ""} onChange={(e) => setEditPartData({ ...editPartData, talla_uniforme: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
                               </div>
                             </div>
@@ -825,22 +838,22 @@ export function Dashboard() {
 
                             <label style={{ fontSize: 11, fontWeight: "bold" }}>Alergias</label>
                             <input type="text" value={editPartData.alergias || ""} onChange={(e) => setEditPartData({ ...editPartData, alergias: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                            
+
                             <label style={{ fontSize: 11, fontWeight: "bold" }}>Enfermedades</label>
                             <input type="text" value={editPartData.enfermedades || ""} onChange={(e) => setEditPartData({ ...editPartData, enfermedades: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                            
+
                             <label style={{ fontSize: 11, fontWeight: "bold" }}>Medicamentos</label>
                             <input type="text" value={editPartData.medicamentos || ""} onChange={(e) => setEditPartData({ ...editPartData, medicamentos: e.target.value })} style={{ width: "100%", marginBottom: 14, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
 
                             <button onClick={handleSaveExpediente} disabled={actionLoading === "saving_all"} style={{ background: "#16A34A", color: "#fff", padding: "12px", width: "100%", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}>
-                              <Save size={16} /> {actionLoading === "saving_all" ? "Guardando cambios en Supabase..." : "Guardar Todos los Cambios"}
+                              <Save size={16} /> {actionLoading === "saving_all" ? "Guardando cambios..." : "Guardar Todos los Cambios"}
                             </button>
                           </div>
                         ) : (
-                          <div style={{ background: "#FAFAFA", padding: 20, borderRadius: 14, border: "1px solid #eee", marginBottom: 20, maxHeight: "55vh", overflowY: "auto" }}>
+                          <div style={{ background: "#FAFAFA", padding: 18, borderRadius: 14, border: "1px solid #eee", marginBottom: 20, maxHeight: "55vh", overflowY: "auto" }}>
                             
                             <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Información Scout y Personal</h4>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Correo / Tlf:</strong> {selectedParticipante.correo || "N/A"} - {selectedParticipante.telefono || "N/A"}</p>
+                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Correo / Tel:</strong> {selectedParticipante.correo || "N/A"} - {selectedParticipante.telefono || "N/A"}</p>
                             <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Dirección:</strong> {selectedParticipante.direccion || "N/A"}</p>
                             <p style={{ fontSize: 13, margin: "6px 0" }}><strong>F. Nacimiento:</strong> {selectedParticipante.fecha_nacimiento || selectedProfile?.birth_date || "N/A"}</p>
                             <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Región / Distrito / Grupo:</strong> {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"} - {selectedParticipante.grupo_scout || "N/A"}</p>
@@ -850,7 +863,7 @@ export function Dashboard() {
                             <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Descripción:</strong> {selectedProfile?.descripcion || "Sin descripción."}</p>
                             
                             <hr style={{ border: "0.5px solid #eee", margin: "14px 0" }} />
-                            
+
                             <h5 style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: 13, fontWeight: 800 }}>Información Médica</h5>
                             <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Tipo de Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</p>
                             <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</p>
