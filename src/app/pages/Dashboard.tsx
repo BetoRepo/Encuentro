@@ -32,7 +32,8 @@ export interface Participante {
   rama?: string;
   tipo_participante?: string;
   id_usuario?: string;
-  aplica_pronto_pago?: boolean; // NUEVO CAMPO PARA PROMOCION
+  aplica_pronto_pago?: boolean; // PROMOCIÓN PRONTO PAGO
+  monto_cuota?: number; // CAMPO PARA PERSONALIZAR MONTO DE DEUDA
   created_at?: string;
   updated_at?: string;
 }
@@ -68,7 +69,7 @@ export interface Pago {
   fecha_pago?: string;
   tasa_cambio: number;
   estado: "pendiente" | "validado" | "rechazado";
-  validado_por?: string; // NUEVO CAMPO AUDITORIA
+  validado_por?: string; // CAMPO AUDITORIA
   created_at?: string;
   participante?: Participante | null;
 }
@@ -299,17 +300,35 @@ export function Dashboard() {
     }
   };
 
-  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE (Y REGISTRAR QUIÉN LO VALIDA)
+  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE (Y DETECTAR AUDITOR REAL)
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: "validado" | "rechazado" | "pendiente") => {
     setActionLoading(pagoId);
     try {
-      let auditorEmail = "Desconocido";
+      let auditorEmail = "Administrador ENJ";
+
+      // Intentar obtener usuario desde la sesión activa de Supabase
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.email) auditorEmail = user.email;
+      if (user) {
+        auditorEmail = user.email || user.user_metadata?.full_name || user.user_metadata?.name || user.id;
+      } else {
+        // Fallback: verificar usuario guardado en localStorage (tabla public.user)
+        const localUserStr = localStorage.getItem("scout_user") || localStorage.getItem("user") || localStorage.getItem("sb_user");
+        if (localUserStr) {
+          try {
+            const parsed = JSON.parse(localUserStr);
+            auditorEmail = parsed.email || parsed.nombre || parsed.name || auditorEmail;
+          } catch (e) {
+            // Manejar string simple si aplica
+            if (typeof localUserStr === "string" && localUserStr.includes("@")) {
+              auditorEmail = localUserStr;
+            }
+          }
+        }
+      }
 
       const updatePayload: Partial<Pago> = { estado: nuevoEstado };
-      
-      // Si el pago es validado, guardamos quién lo aprobó
+
+      // Si el pago es validado, guardamos el auditor detectado
       if (nuevoEstado === "validado") {
         updatePayload.validado_por = auditorEmail;
       }
@@ -498,7 +517,7 @@ export function Dashboard() {
 
         {/* LISTA DE PARTICIPANTES */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
-          
+
           {/* BUSCADOR */}
           <div style={{ padding: 16, borderBottom: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
@@ -513,7 +532,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* VISTA ESCRITORIO (TABLA ADAPTATIVA CON DESPLAZAMIENTO HORIZONTAL) */}
+          {/* VISTA ESCRITORIO */}
           <div className="desktop-table-container">
             <table className="desktop-table">
               <thead>
@@ -561,7 +580,7 @@ export function Dashboard() {
             </table>
           </div>
 
-          {/* VISTA MÓVIL (TARJETAS INDIVIDUALES CON BOTÓN DESTACADO) */}
+          {/* VISTA MÓVIL */}
           <div className="mobile-cards-container">
             {loadingParticipantes ? (
               <div style={{ padding: 20, textAlign: "center", color: "#666" }}>Cargando participantes...</div>
@@ -627,7 +646,7 @@ export function Dashboard() {
             )}
           </div>
 
-          {/* CONTROLES DE PAGINACIÓN */}
+          {/* PAGINACIÓN */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)" }}>
             <span style={{ fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>Página {page + 1} de {totalPages}</span>
             <div style={{ display: "flex", gap: 8 }}>
@@ -646,11 +665,14 @@ export function Dashboard() {
               </button>
 
               {(() => {
-                // LÓGICA DE CUOTAS ACTUALIZADA
+                // LÓGICA DE CUOTAS Y PRECIO PERSONALIZADO
                 const tipoPart = (selectedParticipante.tipo_participante || "").toLowerCase();
                 let cuotaTotal = 145; // Base joven
 
-                if (tipoPart.includes("staff")) {
+                // Si se asignó un monto personalizado individual, tiene prioridad
+                if (selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null && Number(selectedParticipante.monto_cuota) >= 0) {
+                  cuotaTotal = Number(selectedParticipante.monto_cuota);
+                } else if (tipoPart.includes("staff")) {
                   cuotaTotal = 50;
                 } else if (tipoPart.includes("adulto")) {
                   cuotaTotal = 100;
@@ -698,7 +720,9 @@ export function Dashboard() {
                           </h3>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Costo Evento:</span>
-                            <strong>${cuotaTotal.toFixed(2)} USD {selectedParticipante.aplica_pronto_pago && <span style={{ color: "#16A34A", fontSize: 10 }}>(Promoción)</span>}</strong>
+                            <strong>
+                              ${cuotaTotal.toFixed(2)} USD {selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null ? <span style={{ color: ENJ_MAGENTA, fontSize: 10 }}>(Personalizado)</span> : selectedParticipante.aplica_pronto_pago ? <span style={{ color: "#16A34A", fontSize: 10 }}>(Pronto Pago)</span> : null}
+                            </strong>
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Pagado (Validado):</span>
@@ -722,6 +746,8 @@ export function Dashboard() {
                         ) : (
                           modalPagos.map((pago) => {
                             const usdValue = Number(pago.monto_bs) / (Number(pago.tasa_cambio) || 1);
+                            const auditorNombre = pago.validado_por && pago.validado_por !== "Desconocido" ? pago.validado_por : "Administrador ENJ";
+
                             return (
                               <div key={pago.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 12, marginBottom: 10 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
@@ -734,10 +760,10 @@ export function Dashboard() {
                                   Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} (Tasa: {pago.tasa_cambio}) = <strong style={{ color: ENJ_NAVY }}>${usdValue.toFixed(2)} USD</strong>
                                 </div>
                                 
-                                {/* NUEVO: Muestra quién lo validó */}
-                                {pago.estado === "validado" && pago.validado_por && (
-                                  <div style={{ fontSize: 10, color: "#16A34A", marginTop: 4 }}>
-                                    Aprobado por: <strong>{pago.validado_por}</strong>
+                                {/* APROBADO POR DETECTADO */}
+                                {pago.estado === "validado" && (
+                                  <div style={{ fontSize: 11, color: "#16A34A", marginTop: 4, fontWeight: "600" }}>
+                                    Aprobado por: <strong>{auditorNombre}</strong>
                                   </div>
                                 )}
 
@@ -759,18 +785,30 @@ export function Dashboard() {
                               Edición de Expediente Completo
                             </h4>
 
-                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Financieros</h5>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, background: "#fff", padding: "10px", borderRadius: 8, border: "1px solid #ccc" }}>
-                              <input 
-                                type="checkbox" 
-                                id="chkProntoPago"
-                                checked={!!editPartData.aplica_pronto_pago}
-                                onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
-                                style={{ width: 16, height: 16 }}
-                              />
-                              <label htmlFor="chkProntoPago" style={{ fontSize: 12, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
-                                Aplica Promoción "Pronto Pago" ($115 USD)
-                              </label>
+                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Financieros y Tarifas</h5>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Monto Cuota USD ($)</label>
+                                <input 
+                                  type="number" 
+                                  placeholder="Auto por categoría"
+                                  value={editPartData.monto_cuota !== undefined && editPartData.monto_cuota !== null ? editPartData.monto_cuota : ""}
+                                  onChange={(e) => setEditPartData({ ...editPartData, monto_cuota: e.target.value === "" ? undefined : Number(e.target.value) })}
+                                  style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} 
+                                />
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18 }}>
+                                <input 
+                                  type="checkbox" 
+                                  id="chkProntoPago"
+                                  checked={!!editPartData.aplica_pronto_pago}
+                                  onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
+                                  style={{ width: 16, height: 16 }}
+                                />
+                                <label htmlFor="chkProntoPago" style={{ fontSize: 11, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
+                                  Pronto Pago ($115 USD)
+                                </label>
+                              </div>
                             </div>
 
                             <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
