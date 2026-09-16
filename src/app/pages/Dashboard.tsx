@@ -32,6 +32,7 @@ export interface Participante {
   rama?: string;
   tipo_participante?: string;
   id_usuario?: string;
+  aplica_pronto_pago?: boolean; // NUEVO CAMPO PARA PROMOCION
   created_at?: string;
   updated_at?: string;
 }
@@ -67,6 +68,7 @@ export interface Pago {
   fecha_pago?: string;
   tasa_cambio: number;
   estado: "pendiente" | "validado" | "rechazado";
+  validado_por?: string; // NUEVO CAMPO AUDITORIA
   created_at?: string;
   participante?: Participante | null;
 }
@@ -297,14 +299,25 @@ export function Dashboard() {
     }
   };
 
-  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE
+  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE (Y REGISTRAR QUIÉN LO VALIDA)
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: "validado" | "rechazado" | "pendiente") => {
     setActionLoading(pagoId);
     try {
-      const { error } = await supabase.from("pagos").update({ estado: nuevoEstado }).eq("id", pagoId);
+      let auditorEmail = "Desconocido";
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.email) auditorEmail = user.email;
+
+      const updatePayload: Partial<Pago> = { estado: nuevoEstado };
+      
+      // Si el pago es validado, guardamos quién lo aprobó
+      if (nuevoEstado === "validado") {
+        updatePayload.validado_por = auditorEmail;
+      }
+
+      const { error } = await supabase.from("pagos").update(updatePayload).eq("id", pagoId);
       if (error) throw error;
 
-      setModalPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, estado: nuevoEstado } : p)));
+      setModalPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, ...updatePayload } : p)));
       loadMetricsAndFinances();
     } catch (err: any) {
       alert("Error al actualizar pago: " + err.message);
@@ -633,9 +646,18 @@ export function Dashboard() {
               </button>
 
               {(() => {
+                // LÓGICA DE CUOTAS ACTUALIZADA
                 const tipoPart = (selectedParticipante.tipo_participante || "").toLowerCase();
-                const isJoven = !tipoPart.includes("adulto") && !tipoPart.includes("staff");
-                const cuotaTotal = isJoven ? 145 : 100;
+                let cuotaTotal = 145; // Base joven
+
+                if (tipoPart.includes("staff")) {
+                  cuotaTotal = 50;
+                } else if (tipoPart.includes("adulto")) {
+                  cuotaTotal = 100;
+                } else if (selectedParticipante.aplica_pronto_pago) {
+                  cuotaTotal = 115;
+                }
+
                 const totalPagadoUsd = modalPagos.filter((p) => p.estado === "validado").reduce((acc, p) => acc + Number(p.monto_bs) / (Number(p.tasa_cambio) || 1), 0);
                 const deudaUsd = Math.max(0, cuotaTotal - totalPagadoUsd);
                 const deudaBsActual = deudaUsd * tasaBcvActual;
@@ -676,7 +698,7 @@ export function Dashboard() {
                           </h3>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Costo Evento:</span>
-                            <strong>${cuotaTotal.toFixed(2)} USD</strong>
+                            <strong>${cuotaTotal.toFixed(2)} USD {selectedParticipante.aplica_pronto_pago && <span style={{ color: "#16A34A", fontSize: 10 }}>(Promoción)</span>}</strong>
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Pagado (Validado):</span>
@@ -711,6 +733,14 @@ export function Dashboard() {
                                 <div style={{ fontSize: 12, color: "#555", margin: "6px 0" }}>
                                   Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} (Tasa: {pago.tasa_cambio}) = <strong style={{ color: ENJ_NAVY }}>${usdValue.toFixed(2)} USD</strong>
                                 </div>
+                                
+                                {/* NUEVO: Muestra quién lo validó */}
+                                {pago.estado === "validado" && pago.validado_por && (
+                                  <div style={{ fontSize: 10, color: "#16A34A", marginTop: 4 }}>
+                                    Aprobado por: <strong>{pago.validado_por}</strong>
+                                  </div>
+                                )}
+
                                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                                   <button disabled={pago.estado === "validado"} onClick={() => handleUpdateEstatusPago(pago.id, "validado")} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: "bold", cursor: "pointer", opacity: pago.estado === "validado" ? 0.5 : 1 }}>Validar</button>
                                   <button disabled={pago.estado === "rechazado"} onClick={() => handleUpdateEstatusPago(pago.id, "rechazado")} style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: "bold", cursor: "pointer", opacity: pago.estado === "rechazado" ? 0.5 : 1 }}>Rechazar</button>
@@ -728,6 +758,20 @@ export function Dashboard() {
                             <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
                               Edición de Expediente Completo
                             </h4>
+
+                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Financieros</h5>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, background: "#fff", padding: "10px", borderRadius: 8, border: "1px solid #ccc" }}>
+                              <input 
+                                type="checkbox" 
+                                id="chkProntoPago"
+                                checked={!!editPartData.aplica_pronto_pago}
+                                onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
+                                style={{ width: 16, height: 16 }}
+                              />
+                              <label htmlFor="chkProntoPago" style={{ fontSize: 12, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
+                                Aplica Promoción "Pronto Pago" ($115 USD)
+                              </label>
+                            </div>
 
                             <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -804,7 +848,7 @@ export function Dashboard() {
                                 <input type="text" value={editPartData.tipo_participante || ""} onChange={(e) => {
                                   setEditPartData({ ...editPartData, tipo_participante: e.target.value });
                                   setEditProfileData({ ...editProfileData, rol_evento: e.target.value });
-                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} placeholder="Ej: Joven, Adulto, Staff" />
                               </div>
                               <div>
                                 <label style={{ fontSize: 11, fontWeight: "bold" }}>Talla Uniforme</label>
