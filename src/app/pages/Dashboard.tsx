@@ -3,7 +3,7 @@ import {
   Users, CreditCard, Search, RefreshCw, ChevronLeft, ChevronRight,
   Eye, X, AlertCircle, Building, Clock,
   ShieldCheck, Edit3, Save,
-  UserCheck, FileText, DollarSign, User
+  UserCheck, FileText, DollarSign, User, CheckCircle
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -32,8 +32,8 @@ export interface Participante {
   rama?: string;
   tipo_participante?: string;
   id_usuario?: string;
-  aplica_pronto_pago?: boolean; // PROMOCIÓN PRONTO PAGO
-  monto_cuota?: number; // CAMPO PARA PERSONALIZAR MONTO DE DEUDA
+  aplica_pronto_pago?: boolean;
+  monto_cuota?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -69,7 +69,7 @@ export interface Pago {
   fecha_pago?: string;
   tasa_cambio: number;
   estado: "pendiente" | "validado" | "rechazado";
-  validado_por?: string; // CAMPO AUDITORIA
+  validado_por?: string;
   created_at?: string;
   participante?: Participante | null;
 }
@@ -84,6 +84,64 @@ export interface Documento {
   created_at?: string;
 }
 
+// FUNCION AUXILIAR ROBUSTA PARA DETECTAR EL AUDITOR / VALIDADOR
+const detectarAuditorActual = async (): Promise<string> => {
+  try {
+    // 1. Intentar por Sesión activa de Supabase
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session?.user) {
+      const u = sessionData.session.user;
+      const emailOrName = u.email || u.user_metadata?.full_name || u.user_metadata?.name;
+      if (emailOrName) return emailOrName;
+    }
+
+    // 2. Intentar por getUser
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const u = userData.user;
+      const emailOrName = u.email || u.user_metadata?.full_name || u.user_metadata?.name;
+      if (emailOrName) return emailOrName;
+    }
+
+    // 3. Inspeccionar LocalStorage y SessionStorage dinámicamente
+    const storages = [localStorage, sessionStorage];
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+
+    for (const storage of storages) {
+      const keysToTry = ["scout_user", "user", "usuario", "admin", "profile", "sb_user", "session", "auth_user"];
+      for (const key of keysToTry) {
+        const val = storage.getItem(key);
+        if (val) {
+          try {
+            const parsed = JSON.parse(val);
+            if (parsed.email) return parsed.email;
+            if (parsed.nombre || parsed.name) return parsed.nombre || parsed.name;
+            if (parsed.user?.email) return parsed.user.email;
+          } catch {
+            if (emailRegex.test(val)) return val;
+          }
+        }
+      }
+
+      // Escaneo profundo de llaves en Storage buscando un patrón de correo
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key) {
+          const val = storage.getItem(key);
+          if (val) {
+            const match = val.match(emailRegex);
+            if (match && match[0]) return match[0];
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ No se pudo resolver automáticamente el auditor:", err);
+  }
+
+  return "Administrador ENJ";
+};
+
 export function Dashboard() {
   // ESTADOS DE PARTICIPANTES
   const [participantes, setParticipantes] = useState<Participante[]>([]);
@@ -92,6 +150,9 @@ export function Dashboard() {
   const [page, setPage] = useState<number>(0);
   const [totalCount, setTotalCount] = useState<number>(0);
   const pageSize = 15;
+
+  // ESTADO DE AUDITOR / ADMINISTRADOR ACTIVO
+  const [auditorActual, setAuditorActual] = useState<string>("Cargando...");
 
   // FILTROS DE BÚSQUEDA
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -115,6 +176,11 @@ export function Dashboard() {
   // ESTADOS FORMULARIO EDICIÓN DUAL (`participantes` y `profiles`)
   const [editPartData, setEditPartData] = useState<Partial<Participante>>({});
   const [editProfileData, setEditProfileData] = useState<Partial<Profile>>({});
+
+  // INICIALIZAR IDENTIDAD DEL AUDITOR
+  useEffect(() => {
+    detectarAuditorActual().then((auditor) => setAuditorActual(auditor));
+  }, []);
 
   // 1. CARGAR PARTICIPANTES DIRECTAMENTE DE LA TABLA `participantes`
   const loadParticipantes = useCallback(async () => {
@@ -193,7 +259,7 @@ export function Dashboard() {
     loadMetricsAndFinances();
   }, []);
 
-  // 3. ABRIR EXPEDIENTE Y VINCULAR PERFIL (TABLA `profiles`)
+  // 3. ABRIR EXPEDIENTE Y VINCULAR PERFIL
   const openExpediente = async (participante: Participante) => {
     setSelectedParticipante(participante);
     setEditPartData(participante);
@@ -207,7 +273,6 @@ export function Dashboard() {
     try {
       const cleanCedula = participante.cedula.trim();
 
-      // Cargar Perfil de la tabla `profiles` por `id_usuario` o por `correo`
       let profData: Profile | null = null;
       if (participante.id_usuario) {
         const { data: profileById } = await supabase
@@ -232,7 +297,6 @@ export function Dashboard() {
         setEditProfileData(profData);
       }
 
-      // Cargar pagos asociados a la cédula
       const { data: pagosData } = await supabase
         .from("pagos")
         .select("*")
@@ -241,7 +305,6 @@ export function Dashboard() {
 
       if (pagosData) setModalPagos(pagosData);
 
-      // Cargar documentos adjuntos
       const { data: docsData } = await supabase
         .from("documentos_participante")
         .select("*")
@@ -255,7 +318,6 @@ export function Dashboard() {
     }
   };
 
-  // Función auxiliar para actualizar campos compartidos
   const handleDualChange = (field: string, value: any) => {
     setEditPartData((prev) => ({ ...prev, [field]: value }));
     setEditProfileData((prev) => ({ ...prev, [field]: value }));
@@ -266,7 +328,6 @@ export function Dashboard() {
     if (!selectedParticipante) return;
     setActionLoading("saving_all");
     try {
-      // A) Actualizar tabla `participantes`
       const { error: partErr } = await supabase
         .from("participantes")
         .update(editPartData)
@@ -274,7 +335,6 @@ export function Dashboard() {
 
       if (partErr) throw partErr;
 
-      // B) Actualizar tabla `profiles` (si existe perfil vinculado)
       if (selectedProfile?.id) {
         const { error: profErr } = await supabase
           .from("profiles")
@@ -300,37 +360,17 @@ export function Dashboard() {
     }
   };
 
-  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE (Y DETECTAR AUDITOR REAL)
+  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE CON ASIGNACIÓN DE AUDITOR GARANTIZADA
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: "validado" | "rechazado" | "pendiente") => {
     setActionLoading(pagoId);
     try {
-      let auditorEmail = "Administrador ENJ";
-
-      // Intentar obtener usuario desde la sesión activa de Supabase
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        auditorEmail = user.email || user.user_metadata?.full_name || user.user_metadata?.name || user.id;
-      } else {
-        // Fallback: verificar usuario guardado en localStorage (tabla public.user)
-        const localUserStr = localStorage.getItem("scout_user") || localStorage.getItem("user") || localStorage.getItem("sb_user");
-        if (localUserStr) {
-          try {
-            const parsed = JSON.parse(localUserStr);
-            auditorEmail = parsed.email || parsed.nombre || parsed.name || auditorEmail;
-          } catch (e) {
-            // Manejar string simple si aplica
-            if (typeof localUserStr === "string" && localUserStr.includes("@")) {
-              auditorEmail = localUserStr;
-            }
-          }
-        }
-      }
+      // Nombre/Correo final del auditor a persistir
+      const firmaValidador = auditorActual.trim() !== "" ? auditorActual.trim() : "Administrador ENJ";
 
       const updatePayload: Partial<Pago> = { estado: nuevoEstado };
 
-      // Si el pago es validado, guardamos el auditor detectado
       if (nuevoEstado === "validado") {
-        updatePayload.validado_por = auditorEmail;
+        updatePayload.validado_por = firmaValidador;
       }
 
       const { error } = await supabase.from("pagos").update(updatePayload).eq("id", pagoId);
@@ -349,7 +389,6 @@ export function Dashboard() {
 
   return (
     <div className="dash-container">
-      {/* ESTILOS RESPONSIVOS MÓVILES */}
       <style>{`
         .dash-container {
           background: #F0F2FA;
@@ -508,14 +547,14 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ETIQUETA SECCIÓN ÚNICA */}
+        {/* ETIQUETA SECCIÓN */}
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <div style={{ padding: "10px 20px", borderRadius: 12, background: ENJ_NAVY, color: "#fff", fontWeight: 800, fontSize: 14 }}>
             Expedientes de Participantes ({totalCount})
           </div>
         </div>
 
-        {/* LISTA DE PARTICIPANTES */}
+        {/* TABLA DE PARTICIPANTES */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
 
           {/* BUSCADOR */}
@@ -656,7 +695,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT CON EDICIÓN COMPLETA ================= */}
+        {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT CON VALIDADOR CONFIGURABLE ================= */}
         {selectedParticipante && (
           <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
             <div className="modal-window" style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1050, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
@@ -665,11 +704,10 @@ export function Dashboard() {
               </button>
 
               {(() => {
-                // LÓGICA DE CUOTAS Y PRECIO PERSONALIZADO
+                // LÓGICA DE CUOTAS
                 const tipoPart = (selectedParticipante.tipo_participante || "").toLowerCase();
-                let cuotaTotal = 145; // Base joven
+                let cuotaTotal = 145;
 
-                // Si se asignó un monto personalizado individual, tiene prioridad
                 if (selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null && Number(selectedParticipante.monto_cuota) >= 0) {
                   cuotaTotal = Number(selectedParticipante.monto_cuota);
                 } else if (tipoPart.includes("staff")) {
@@ -714,6 +752,23 @@ export function Dashboard() {
                       
                       {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
                       <div>
+                        {/* CONTROL AUDITOR ACTUAL */}
+                        <div style={{ background: "#E0F2FE", padding: 12, borderRadius: 12, border: "1px solid #BAE6FD", marginBottom: 16 }}>
+                          <label style={{ fontSize: 11, fontWeight: 800, color: ENJ_NAVY, display: "block", marginBottom: 4 }}>
+                            👤 FIRMA DEL VALIDADOR DE PAGOS:
+                          </label>
+                          <input
+                            type="text"
+                            value={auditorActual}
+                            onChange={(e) => setAuditorActual(e.target.value)}
+                            placeholder="Tu nombre o correo de administrador"
+                            style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #7DD3FC", fontSize: 12, fontWeight: "bold", background: "#fff", color: ENJ_NAVY }}
+                          />
+                          <span style={{ fontSize: 10, color: "#0369A1", marginTop: 4, display: "block" }}>
+                            Esta identidad quedará grabada en los pagos que valides.
+                          </span>
+                        </div>
+
                         <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
                           <h3 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
                             <DollarSign size={18} style={{ display: "inline", verticalAlign: "middle" }} /> Estado de Cuenta
@@ -746,7 +801,7 @@ export function Dashboard() {
                         ) : (
                           modalPagos.map((pago) => {
                             const usdValue = Number(pago.monto_bs) / (Number(pago.tasa_cambio) || 1);
-                            const auditorNombre = pago.validado_por && pago.validado_por !== "Desconocido" ? pago.validado_por : "Administrador ENJ";
+                            const auditorRegistrado = pago.validado_por && pago.validado_por !== "Desconocido" ? pago.validado_por : null;
 
                             return (
                               <div key={pago.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 12, marginBottom: 10 }}>
@@ -760,10 +815,10 @@ export function Dashboard() {
                                   Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} (Tasa: {pago.tasa_cambio}) = <strong style={{ color: ENJ_NAVY }}>${usdValue.toFixed(2)} USD</strong>
                                 </div>
                                 
-                                {/* APROBADO POR DETECTADO */}
+                                {/* MOSTRAR NOMBRE DEL VALIDADOR SI ESTÁ VALIDADO */}
                                 {pago.estado === "validado" && (
-                                  <div style={{ fontSize: 11, color: "#16A34A", marginTop: 4, fontWeight: "600" }}>
-                                    Aprobado por: <strong>{auditorNombre}</strong>
+                                  <div style={{ fontSize: 11, color: "#16A34A", marginTop: 4, fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}>
+                                    <CheckCircle size={12} /> Aprobado por: <span style={{ textDecoration: "underline" }}>{auditorRegistrado || auditorActual}</span>
                                   </div>
                                 )}
 
@@ -933,7 +988,6 @@ export function Dashboard() {
                           </div>
                         ) : (
                           <div style={{ background: "#FAFAFA", padding: 18, borderRadius: 14, border: "1px solid #eee", marginBottom: 20, maxHeight: "55vh", overflowY: "auto" }}>
-                            
                             <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Información Scout y Personal</h4>
                             <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Correo / Tel:</strong> {selectedParticipante.correo || "N/A"} - {selectedParticipante.telefono || "N/A"}</p>
                             <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Dirección:</strong> {selectedParticipante.direccion || "N/A"}</p>
@@ -963,7 +1017,7 @@ export function Dashboard() {
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {modalDocs.map((doc) => (
-                              <div key={doc.id} style={{ background: "#F8FAFF", border: "1px solid #eee", padding: 12, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <div key={doc.id} style={{ background: "#F8FAFF", border: "1px solid #eee", padding: 12, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "between" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                   <FileText size={18} color={ENJ_NAVY} />
                                   <span style={{ fontSize: 13, fontWeight: "bold" }}>{doc.tipo_documento}</span>
