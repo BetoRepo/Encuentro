@@ -221,7 +221,7 @@ export function Dashboard() {
         let jov = 0, adu = 0;
         partData.forEach((p) => {
           const tipo = (p.tipo_participante || "").toLowerCase();
-          if (tipo.includes("adulto") || tipo.includes("staff")) adu++;
+          if (tipo.includes("adulto") || tipo.includes("staff") || tipo.includes("dirigente")) adu++;
           else jov++;
         });
         setTotalJovenes(jov);
@@ -704,17 +704,20 @@ export function Dashboard() {
               </button>
 
               {(() => {
-                // LÓGICA DE CUOTAS
+                // LÓGICA DE TARIFAS Y CUOTAS ENJ 2026
                 const tipoPart = (selectedParticipante.tipo_participante || "").toLowerCase();
-                let cuotaTotal = 145;
+                const esAdulto = tipoPart.includes("adulto") || tipoPart.includes("staff") || tipoPart.includes("dirigente");
+
+                let cuotaTotal = 145; // Tarifa base joven por defecto
 
                 if (selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null && Number(selectedParticipante.monto_cuota) >= 0) {
+                  // 1. Si existe un monto manual asignado
                   cuotaTotal = Number(selectedParticipante.monto_cuota);
-                } else if (tipoPart.includes("staff")) {
-                  cuotaTotal = 50;
-                } else if (tipoPart.includes("adulto")) {
+                } else if (esAdulto) {
+                  // 2. Adultos / Staff / Dirigentes pagan $100 fijos (no tienen pronto pago)
                   cuotaTotal = 100;
                 } else if (selectedParticipante.aplica_pronto_pago) {
+                  // 3. Jóvenes con Pronto Pago activado habitualmente a $115
                   cuotaTotal = 115;
                 }
 
@@ -776,7 +779,7 @@ export function Dashboard() {
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
                             <span style={{ color: "#666" }}>Costo Evento:</span>
                             <strong>
-                              ${cuotaTotal.toFixed(2)} USD {selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null ? <span style={{ color: ENJ_MAGENTA, fontSize: 10 }}>(Personalizado)</span> : selectedParticipante.aplica_pronto_pago ? <span style={{ color: "#16A34A", fontSize: 10 }}>(Pronto Pago)</span> : null}
+                              ${cuotaTotal.toFixed(2)} USD {selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null ? <span style={{ color: ENJ_MAGENTA, fontSize: 10 }}>(Personalizado)</span> : esAdulto ? <span style={{ color: ENJ_NAVY, fontSize: 10 }}>(Adulto/Staff $100)</span> : selectedParticipante.aplica_pronto_pago ? <span style={{ color: "#16A34A", fontSize: 10 }}>(Pronto Pago $115)</span> : <span style={{ color: "#666", fontSize: 10 }}>(Joven Base $145)</span>}
                             </strong>
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
@@ -843,27 +846,29 @@ export function Dashboard() {
                             <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Financieros y Tarifas</h5>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                               <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Monto Cuota USD ($)</label>
+                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Monto Cuota Personalizada ($)</label>
                                 <input 
                                   type="number" 
-                                  placeholder="Auto por categoría"
+                                  placeholder={esAdulto ? "$100 (Adulto)" : "$145 (Joven)"}
                                   value={editPartData.monto_cuota !== undefined && editPartData.monto_cuota !== null ? editPartData.monto_cuota : ""}
                                   onChange={(e) => setEditPartData({ ...editPartData, monto_cuota: e.target.value === "" ? undefined : Number(e.target.value) })}
                                   style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} 
                                 />
                               </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18 }}>
-                                <input 
-                                  type="checkbox" 
-                                  id="chkProntoPago"
-                                  checked={!!editPartData.aplica_pronto_pago}
-                                  onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
-                                  style={{ width: 16, height: 16 }}
-                                />
-                                <label htmlFor="chkProntoPago" style={{ fontSize: 11, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
-                                  Pronto Pago ($115 USD)
-                                </label>
-                              </div>
+                              {!esAdulto && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18 }}>
+                                  <input 
+                                    type="checkbox" 
+                                    id="chkProntoPago"
+                                    checked={!!editPartData.aplica_pronto_pago}
+                                    onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
+                                    style={{ width: 16, height: 16 }}
+                                  />
+                                  <label htmlFor="chkProntoPago" style={{ fontSize: 11, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
+                                    Pronto Pago ($115 USD)
+                                  </label>
+                                </div>
+                              )}
                             </div>
 
                             <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
