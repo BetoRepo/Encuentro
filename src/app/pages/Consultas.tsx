@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, Upload, CheckCircle, Users, Scroll, AlertCircle, Check } from "lucide-react";
+import { FileText, Upload, CheckCircle, Users, Scroll, AlertCircle } from "lucide-react";
 import { scoutRegions } from "./Inscripcion";
 import { supabase } from "../../supabaseClient";
 
@@ -69,7 +69,13 @@ export function Consultas() {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("enj_user");
-    if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Error parseando usuario local:", e);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -128,10 +134,10 @@ export function Consultas() {
       const fileExt = data.file.name.split('.').pop();
       const sanitizedDistrict = selectedDistrict.replace(/\s+/g, '_').toLowerCase();
       const fileName = `${sanitizedDistrict}_${id}_${Date.now()}.${fileExt}`;
-      const filePath = `distritos/${fileName}`; // Guardamos dentro de una subcarpeta "distritos"
+      const filePath = `distritos/${fileName}`;
 
       // 2. Subir archivo a Supabase Storage (Bucket: documentos-enj)
-      const { error: uploadError, data: uploadData } = await supabase
+      const { error: uploadError } = await supabase
         .storage
         .from('documentos-enj')
         .upload(filePath, data.file, {
@@ -139,7 +145,9 @@ export function Consultas() {
           upsert: true
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw new Error(`Error en Storage: ${uploadError.message}`);
+      }
 
       // 3. Obtener la URL Pública del archivo
       const { data: publicUrlData } = supabase
@@ -166,7 +174,7 @@ export function Consultas() {
           summary: data.summary,
           file_name: data.file.name,
           file_path: filePath,
-          file_url: fileUrl, // <--- Este es el enlace que usará PanelPrograma
+          file_url: fileUrl,
           uploaded_at: new Date().toISOString(),
         },
       };
@@ -177,6 +185,7 @@ export function Consultas() {
           {
             region: regionName,
             distrito: selectedDistrict,
+            responsable_id: user?.id && user.id.length === 36 ? user.id : null,
             responsable_nombre: responsableNombre,
             respuestas: updatedAnswers,
             estatus: "enviado",
@@ -185,7 +194,9 @@ export function Consultas() {
           { onConflict: "distrito" }
         );
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        throw new Error(`Error en Base de Datos: ${dbError.message}`);
+      }
 
       setFormData((prev) => ({ ...prev, [id]: { summary: "", file: null } }));
       setCompletedAreas((prev) => ({ ...prev, [id]: true }));
@@ -194,7 +205,7 @@ export function Consultas() {
       alert(`¡Éxito! El reporte de "${titleForArea(id)}" ha sido guardado correctamente.`);
     } catch (error: any) {
       console.error("Error en la sumisión:", error);
-      alert("No se pudo cargar el reporte. Revisa tu conexión e intenta de nuevo.");
+      alert(`No se pudo cargar el reporte: ${error.message || "Error desconocido"}`);
     } finally {
       setSavingArea(null);
     }
