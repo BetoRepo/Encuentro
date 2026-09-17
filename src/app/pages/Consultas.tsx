@@ -200,6 +200,9 @@ export function Consultas() {
     }
   };
 
+  // Filtramos las áreas para que solo se muestren las que NO están completadas
+  const visibleAreas = areasPrograma.filter((area) => !completedAreas[area.id]);
+
   return (
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "60px 24px" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
@@ -241,67 +244,75 @@ export function Consultas() {
           </div>
           
           {checkingDistrict && <p style={{ margin: 0, fontSize: 13, color: ENJ_NAVY }}>Verificando entregas previas del distrito...</p>}
-          {districtAlreadySubmitted && !checkingDistrict && (
+          {districtAlreadySubmitted && !checkingDistrict && visibleAreas.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(242,153,74,0.12)", border: "1px solid rgba(242,153,74,0.4)", padding: "10px 14px", borderRadius: 10, color: "#B76200", fontSize: 13, fontWeight: 600 }}>
               <AlertCircle size={18} color="#B76200" />
-              <span>El Distrito <strong>{selectedDistrict}</strong> ya cuenta con respuestas en el sistema. Puedes agregar o actualizar las áreas restantes.</span>
+              <span>El Distrito <strong>{selectedDistrict}</strong> ya cuenta con respuestas parciales. Continúa subiendo las áreas restantes.</span>
             </div>
           )}
         </div>
 
-        {/* GRILLA DE ÁREAS */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
-          {areasPrograma.map(({ id, title, desc, icon, color }) => {
-            const isCompleted = completedAreas[id];
+        {/* GRILLA DE ÁREAS O MENSAJE DE ÉXITO */}
+        {selectedDistrict && visibleAreas.length === 0 && !checkingDistrict ? (
+          <div style={{ background: "rgba(39, 174, 96, 0.1)", borderRadius: 16, padding: "40px 24px", textAlign: "center", border: "1.5px solid #27AE60" }}>
+            <CheckCircle size={48} color="#27AE60" style={{ margin: "0 auto 16px" }} />
+            <h2 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 800, color: "#1E8449" }}>¡Consultas Completadas!</h2>
+            <p style={{ margin: 0, fontSize: 15, color: "#27AE60", fontWeight: 500 }}>
+              El Distrito {selectedDistrict} ha subido exitosamente todos los documentos de programa.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
+            {visibleAreas.map(({ id, title, desc, icon, color }) => {
+              return (
+                <div key={id} style={{ background: "#fff", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,11,111,0.06)", border: "1px solid rgba(0,11,111,0.08)", display: "flex", flexDirection: "column" }}>
+                  <div style={{ background: color, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{title}</h3>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {icon}
+                    </div>
+                  </div>
 
-            return (
-              <div key={id} style={{ background: "#fff", borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,11,111,0.06)", border: isCompleted ? "2px solid #27AE60" : "1px solid rgba(0,11,111,0.08)", display: "flex", flexDirection: "column" }}>
-                <div style={{ background: color, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#fff" }}>{title}</h3>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {isCompleted ? <Check size={22} color="#fff" /> : icon}
+                  <div style={{ padding: "24px", flexGrow: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.65)", lineHeight: 1.6 }}>{desc}</p>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>Resumen o Notas Clave</label>
+                      <textarea
+                        placeholder="Escribe los puntos más importantes tratados o acordados..."
+                        value={formData[id].summary}
+                        onChange={(e) => handleTextChange(id, e.target.value)}
+                        style={{ width: "100%", minHeight: "80px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", padding: "10px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none" }}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>Documento Oficial (PDF / Word) *</label>
+                      <label style={{ border: "2px dashed rgba(0,11,111,0.18)", borderRadius: 12, padding: "16px", textAlign: "center", cursor: "pointer", background: "rgba(240,242,250,0.4)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                        <Upload size={20} color="rgba(0,11,111,0.4)" />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: formData[id].file ? ENJ_NAVY : "rgba(0,11,111,0.6)", wordBreak: "break-all" }}>
+                          {formData[id].file ? formData[id].file?.name : "Haz clic para seleccionar el archivo"}
+                        </span>
+                        <span style={{ fontSize: 11, color: "rgba(0,11,111,0.4)" }}>Formatos: .pdf, .doc, .docx (Máx. 15MB)</span>
+                        <input type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => handleFileChange(id, e.target.files?.[0] || null)} />
+                      </label>
+                    </div>
+
+                    <div style={{ marginTop: "auto", paddingTop: 8 }}>
+                      <button
+                        onClick={() => handleSubmit(id)}
+                        disabled={savingArea === id || !selectedDistrict}
+                        style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", background: !selectedDistrict ? "#BDC3C7" : color, color: "#fff", fontSize: 14, fontWeight: 700, cursor: !selectedDistrict ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "transform 0.15s" }}
+                      >
+                        {savingArea === id ? "Subiendo..." : "Guardar Reporte"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div style={{ padding: "24px", flexGrow: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.65)", lineHeight: 1.6 }}>{desc}</p>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>Resumen o Notas Clave</label>
-                    <textarea
-                      placeholder="Escribe los puntos más importantes tratados o acordados..."
-                      value={formData[id].summary}
-                      onChange={(e) => handleTextChange(id, e.target.value)}
-                      style={{ width: "100%", minHeight: "80px", borderRadius: 10, border: "1.5px solid rgba(0,11,111,0.15)", padding: "10px 12px", fontSize: 13, fontFamily: "inherit", resize: "vertical", outline: "none" }}
-                    />
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: ENJ_NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>Documento Oficial (PDF / Word) *</label>
-                    <label style={{ border: "2px dashed rgba(0,11,111,0.18)", borderRadius: 12, padding: "16px", textAlign: "center", cursor: "pointer", background: "rgba(240,242,250,0.4)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                      <Upload size={20} color="rgba(0,11,111,0.4)" />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: formData[id].file ? ENJ_NAVY : "rgba(0,11,111,0.6)", wordBreak: "break-all" }}>
-                        {formData[id].file ? formData[id].file?.name : "Haz clic para seleccionar el archivo"}
-                      </span>
-                      <span style={{ fontSize: 11, color: "rgba(0,11,111,0.4)" }}>Formatos: .pdf, .doc, .docx (Máx. 15MB)</span>
-                      <input type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => handleFileChange(id, e.target.files?.[0] || null)} />
-                    </label>
-                  </div>
-
-                  <div style={{ marginTop: "auto", paddingTop: 8 }}>
-                    <button
-                      onClick={() => handleSubmit(id)}
-                      disabled={savingArea === id || !selectedDistrict}
-                      style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", background: !selectedDistrict ? "#BDC3C7" : isCompleted ? "#27AE60" : color, color: "#fff", fontSize: 14, fontWeight: 700, cursor: !selectedDistrict ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "transform 0.15s" }}
-                    >
-                      {savingArea === id ? "Subiendo..." : isCompleted ? "Actualizar Reporte" : "Guardar Reporte"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
