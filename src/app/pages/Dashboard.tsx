@@ -364,7 +364,6 @@ export function Dashboard() {
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: "validado" | "rechazado" | "pendiente") => {
     setActionLoading(pagoId);
     try {
-      // Nombre/Correo final del auditor a persistir
       const firmaValidador = auditorActual.trim() !== "" ? auditorActual.trim() : "Administrador ENJ";
 
       const updatePayload: Partial<Pago> = { estado: nuevoEstado };
@@ -386,6 +385,35 @@ export function Dashboard() {
   };
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+  // CÁLCULOS DINÁMICOS DEL MODAL (Evitamos errores de alcance o renderizado de IIFE)
+  const tipoPart = selectedParticipante ? (selectedParticipante.tipo_participante || "").toLowerCase() : "";
+  const esAdulto = tipoPart.includes("adulto") || tipoPart.includes("staff") || tipoPart.includes("dirigente");
+
+  let cuotaTotal = 145; // Base Joven por defecto
+  let etiquetaTarifa = "(Joven Base $145)";
+
+  if (selectedParticipante) {
+    // PRIO 1: Pronto Pago en Jóvenes ($115 USD)
+    if (!esAdulto && selectedParticipante.aplica_pronto_pago) {
+      cuotaTotal = 115;
+      etiquetaTarifa = "(Pronto Pago $115)";
+    } 
+    // PRIO 2: Adultos / Staff / Dirigentes ($100 USD)
+    else if (esAdulto) {
+      cuotaTotal = 100;
+      etiquetaTarifa = "(Adulto/Staff $100)";
+    } 
+    // PRIO 3: Monto Personalizado asignado explícitamente
+    else if (selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null && Number(selectedParticipante.monto_cuota) >= 0) {
+      cuotaTotal = Number(selectedParticipante.monto_cuota);
+      etiquetaTarifa = "(Personalizado)";
+    }
+  }
+
+  const totalPagadoUsd = modalPagos.filter((p) => p.estado === "validado").reduce((acc, p) => acc + Number(p.monto_bs) / (Number(p.tasa_cambio) || 1), 0);
+  const deudaUsd = Math.max(0, cuotaTotal - totalPagadoUsd);
+  const deudaBsActual = deudaUsd * tasaBcvActual;
 
   return (
     <div className="dash-container">
@@ -695,7 +723,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT CON VALIDADOR CONFIGURABLE ================= */}
+        {/* ================= MODAL EXPEDIENTE UNIFICADO SCOUT ================= */}
         {selectedParticipante && (
           <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,11,111,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
             <div className="modal-window" style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 1050, maxHeight: "90vh", overflowY: "auto", position: "relative", padding: 32 }}>
@@ -703,342 +731,314 @@ export function Dashboard() {
                 <X size={18} />
               </button>
 
-              {(() => {
-                // LÓGICA DE TARIFAS Y CUOTAS ENJ 2026
-                const tipoPart = (selectedParticipante.tipo_participante || "").toLowerCase();
-                const esAdulto = tipoPart.includes("adulto") || tipoPart.includes("staff") || tipoPart.includes("dirigente");
+              <div className="modal-header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid #eee", paddingBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  {selectedProfile?.foto ? (
+                    <img src={selectedProfile.foto} alt="Foto Perfil" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${ENJ_NAVY}` }} />
+                  ) : (
+                    <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", color: ENJ_NAVY }}>
+                      <User size={28} />
+                    </div>
+                  )}
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
+                      {selectedProfile?.nombre || selectedParticipante.nombre} {selectedProfile?.apellido || selectedParticipante.apellido}
+                    </h2>
+                    <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
+                      Cédula: <strong>{selectedParticipante.cedula}</strong> | Rol: <span style={{ color: ENJ_MAGENTA, fontWeight: "bold" }}>{selectedProfile?.rol_evento || selectedParticipante.tipo_participante || "Joven Participante"}</span>
+                    </p>
+                  </div>
+                </div>
 
-                let cuotaTotal = 145; // Tarifa base joven por defecto
+                <button onClick={() => setIsEditingPerfil(!isEditingPerfil)} style={{ background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Expediente & Perfil"}
+                </button>
+              </div>
 
-                if (selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null && Number(selectedParticipante.monto_cuota) >= 0) {
-                  // 1. Si existe un monto manual asignado
-                  cuotaTotal = Number(selectedParticipante.monto_cuota);
-                } else if (esAdulto) {
-                  // 2. Adultos / Staff / Dirigentes pagan $100 fijos (no tienen pronto pago)
-                  cuotaTotal = 100;
-                } else if (selectedParticipante.aplica_pronto_pago) {
-                  // 3. Jóvenes con Pronto Pago activado habitualmente a $115
-                  cuotaTotal = 115;
-                }
+              <div className="modal-body-grid">
+                
+                {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
+                <div>
+                  {/* CONTROL AUDITOR ACTUAL */}
+                  <div style={{ background: "#E0F2FE", padding: 12, borderRadius: 12, border: "1px solid #BAE6FD", marginBottom: 16 }}>
+                    <label style={{ fontSize: 11, fontWeight: 800, color: ENJ_NAVY, display: "block", marginBottom: 4 }}>
+                      👤 FIRMA DEL VALIDADOR DE PAGOS:
+                    </label>
+                    <input
+                      type="text"
+                      value={auditorActual}
+                      onChange={(e) => setAuditorActual(e.target.value)}
+                      placeholder="Tu nombre o correo de administrador"
+                      style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #7DD3FC", fontSize: 12, fontWeight: "bold", background: "#fff", color: ENJ_NAVY }}
+                    />
+                    <span style={{ fontSize: 10, color: "#0369A1", marginTop: 4, display: "block" }}>
+                      Esta identidad quedará grabada en los pagos que valides.
+                    </span>
+                  </div>
 
-                const totalPagadoUsd = modalPagos.filter((p) => p.estado === "validado").reduce((acc, p) => acc + Number(p.monto_bs) / (Number(p.tasa_cambio) || 1), 0);
-                const deudaUsd = Math.max(0, cuotaTotal - totalPagadoUsd);
-                const deudaBsActual = deudaUsd * tasaBcvActual;
+                  <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
+                    <h3 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
+                      <DollarSign size={18} style={{ display: "inline", verticalAlign: "middle" }} /> Estado de Cuenta
+                    </h3>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
+                      <span style={{ color: "#666" }}>Costo Evento:</span>
+                      <strong>
+                        ${cuotaTotal.toFixed(2)} USD <span style={{ color: ENJ_MAGENTA, fontSize: 10 }}>{etiquetaTarifa}</span>
+                      </strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
+                      <span style={{ color: "#666" }}>Pagado (Validado):</span>
+                      <strong style={{ color: "#16A34A" }}>${totalPagadoUsd.toFixed(2)} USD</strong>
+                    </div>
+                    <hr style={{ border: "0.5px solid #ddd", margin: "10px 0" }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                      <span style={{ color: ENJ_NAVY, fontWeight: 800 }}>Deuda Restante:</span>
+                      <div style={{ textAlign: "right" }}>
+                        <strong style={{ color: deudaUsd > 0 ? ENJ_MAGENTA : "#16A34A", fontSize: 17 }}>${deudaUsd.toFixed(2)} USD</strong>
+                        <div style={{ fontSize: 11, color: "#777" }}>~ Bs. {deudaBsActual.toLocaleString("es-VE")}</div>
+                      </div>
+                    </div>
+                  </div>
 
-                return (
-                  <>
-                    <div className="modal-header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderBottom: "1px solid #eee", paddingBottom: 20 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                        {selectedProfile?.foto ? (
-                          <img src={selectedProfile.foto} alt="Foto Perfil" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${ENJ_NAVY}` }} />
-                        ) : (
-                          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", color: ENJ_NAVY }}>
-                            <User size={28} />
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Gestión de Pagos Registrados</h3>
+                  {loadingModal ? (
+                    <p style={{ fontSize: 13, color: "#666" }}>Cargando pagos...</p>
+                  ) : modalPagos.length === 0 ? (
+                    <p style={{ color: "#888", fontSize: 13 }}>Sin reportes de pago asociados.</p>
+                  ) : (
+                    modalPagos.map((pago) => {
+                      const usdValue = Number(pago.monto_bs) / (Number(pago.tasa_cambio) || 1);
+                      const auditorRegistrado = pago.validado_por && pago.validado_por !== "Desconocido" ? pago.validado_por : null;
+
+                      return (
+                        <div key={pago.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 12, marginBottom: 10 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                            <strong>Ref: {pago.referencia || "S/N"}</strong>
+                            <span style={{ color: pago.estado === "validado" ? "#16A34A" : pago.estado === "rechazado" ? "#DC2626" : "#D97706", fontWeight: "bold" }}>
+                              {pago.estado.toUpperCase()}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#555", margin: "6px 0" }}>
+                            Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} (Tasa: {pago.tasa_cambio}) = <strong style={{ color: ENJ_NAVY }}>${usdValue.toFixed(2)} USD</strong>
+                          </div>
+                          
+                          {pago.estado === "validado" && (
+                            <div style={{ fontSize: 11, color: "#16A34A", marginTop: 4, fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}>
+                              <CheckCircle size={12} /> Aprobado por: <span style={{ textDecoration: "underline" }}>{auditorRegistrado || auditorActual}</span>
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                            <button disabled={pago.estado === "validado"} onClick={() => handleUpdateEstatusPago(pago.id, "validado")} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: "bold", cursor: "pointer", opacity: pago.estado === "validado" ? 0.5 : 1 }}>Validar</button>
+                            <button disabled={pago.estado === "rechazado"} onClick={() => handleUpdateEstatusPago(pago.id, "rechazado")} style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: "bold", cursor: "pointer", opacity: pago.estado === "rechazado" ? 0.5 : 1 }}>Rechazar</button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* COLUMNA DERECHA: EDICIÓN COMPLETA */}
+                <div>
+                  {isEditingPerfil ? (
+                    <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 18, borderRadius: 14, maxHeight: "55vh", overflowY: "auto" }}>
+                      <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
+                        Edición de Expediente Completo
+                      </h4>
+
+                      <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Financieros y Tarifas</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Monto Cuota Personalizada ($)</label>
+                          <input 
+                            type="number" 
+                            placeholder={esAdulto ? "$100 (Adulto)" : "$145 (Joven)"}
+                            value={editPartData.monto_cuota !== undefined && editPartData.monto_cuota !== null ? editPartData.monto_cuota : ""}
+                            onChange={(e) => setEditPartData({ ...editPartData, monto_cuota: e.target.value === "" ? undefined : Number(e.target.value) })}
+                            style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} 
+                          />
+                        </div>
+                        {!esAdulto && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18 }}>
+                            <input 
+                              type="checkbox" 
+                              id="chkProntoPago"
+                              checked={!!editPartData.aplica_pronto_pago}
+                              onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
+                              style={{ width: 16, height: 16 }}
+                            />
+                            <label htmlFor="chkProntoPago" style={{ fontSize: 11, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
+                              Pronto Pago ($115 USD)
+                            </label>
                           </div>
                         )}
+                      </div>
+
+                      <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                         <div>
-                          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: ENJ_NAVY }}>
-                            {selectedProfile?.nombre || selectedParticipante.nombre} {selectedProfile?.apellido || selectedParticipante.apellido}
-                          </h2>
-                          <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
-                            Cédula: <strong>{selectedParticipante.cedula}</strong> | Rol: <span style={{ color: ENJ_MAGENTA, fontWeight: "bold" }}>{selectedProfile?.rol_evento || selectedParticipante.tipo_participante || "Joven Participante"}</span>
-                          </p>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Nombre</label>
+                          <input type="text" value={editPartData.nombre || ""} onChange={(e) => handleDualChange("nombre", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Apellido</label>
+                          <input type="text" value={editPartData.apellido || ""} onChange={(e) => handleDualChange("apellido", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
                         </div>
                       </div>
 
-                      <button onClick={() => setIsEditingPerfil(!isEditingPerfil)} style={{ background: isEditingPerfil ? ENJ_YELLOW : ENJ_NAVY, color: isEditingPerfil ? ENJ_NAVY : "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
-                        <Edit3 size={16} /> {isEditingPerfil ? "Cancelar Edición" : "Editar Expediente & Perfil"}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Correo</label>
+                          <input type="email" value={editPartData.correo || ""} onChange={(e) => handleDualChange("correo", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Teléfono</label>
+                          <input type="text" value={editPartData.telefono || ""} onChange={(e) => handleDualChange("telefono", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Fecha Nacimiento</label>
+                          <input type="date" value={editPartData.fecha_nacimiento || editProfileData.birth_date || ""} onChange={(e) => {
+                            setEditPartData({ ...editPartData, fecha_nacimiento: e.target.value });
+                            setEditProfileData({ ...editProfileData, birth_date: e.target.value });
+                          }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Dirección</label>
+                          <input type="text" value={editPartData.direccion || ""} onChange={(e) => setEditPartData({ ...editPartData, direccion: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Información Scout</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Región</label>
+                          <input type="text" value={editPartData.region || ""} onChange={(e) => {
+                            setEditPartData({ ...editPartData, region: e.target.value });
+                            setEditProfileData({ ...editProfileData, selected_region: e.target.value });
+                          }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Distrito</label>
+                          <input type="text" value={editPartData.distrito || ""} onChange={(e) => {
+                            setEditPartData({ ...editPartData, distrito: e.target.value });
+                            setEditProfileData({ ...editProfileData, distrito: e.target.value, selected_district: e.target.value });
+                          }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Grupo Scout</label>
+                          <input type="text" value={editPartData.grupo_scout || ""} onChange={(e) => handleDualChange("grupo_scout", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Rama Scout</label>
+                          <input type="text" value={editPartData.rama || ""} onChange={(e) => {
+                            setEditPartData({ ...editPartData, rama: e.target.value });
+                            setEditProfileData({ ...editProfileData, rama_scout: e.target.value });
+                          }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Rol en Evento</label>
+                          <input type="text" value={editPartData.tipo_participante || ""} onChange={(e) => {
+                            setEditPartData({ ...editPartData, tipo_participante: e.target.value });
+                            setEditProfileData({ ...editProfileData, rol_evento: e.target.value });
+                          }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} placeholder="Ej: Joven, Adulto, Staff" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Talla Uniforme</label>
+                          <input type="text" value={editPartData.talla_uniforme || ""} onChange={(e) => setEditPartData({ ...editPartData, talla_uniforme: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Perfil Social</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Instagram</label>
+                          <input type="text" value={editProfileData.instagram || ""} onChange={(e) => setEditProfileData({ ...editProfileData, instagram: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Descripción / Bio</label>
+                          <input type="text" value={editProfileData.descripcion || ""} onChange={(e) => setEditProfileData({ ...editProfileData, descripcion: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Información Médica</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Tipo de Sangre</label>
+                          <input type="text" value={editPartData.tipo_sangre || ""} onChange={(e) => setEditPartData({ ...editPartData, tipo_sangre: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: "bold" }}>Contacto Emergencia</label>
+                          <input type="text" value={editPartData.contacto_emergencia || ""} onChange={(e) => setEditPartData({ ...editPartData, contacto_emergencia: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+                        </div>
+                      </div>
+
+                      <label style={{ fontSize: 11, fontWeight: "bold" }}>Alergias</label>
+                      <input type="text" value={editPartData.alergias || ""} onChange={(e) => setEditPartData({ ...editPartData, alergias: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+
+                      <label style={{ fontSize: 11, fontWeight: "bold" }}>Enfermedades</label>
+                      <input type="text" value={editPartData.enfermedades || ""} onChange={(e) => setEditPartData({ ...editPartData, enfermedades: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+
+                      <label style={{ fontSize: 11, fontWeight: "bold" }}>Medicamentos</label>
+                      <input type="text" value={editPartData.medicamentos || ""} onChange={(e) => setEditPartData({ ...editPartData, medicamentos: e.target.value })} style={{ width: "100%", marginBottom: 14, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
+
+                      <button onClick={handleSaveExpediente} disabled={actionLoading === "saving_all"} style={{ background: "#16A34A", color: "#fff", padding: "12px", width: "100%", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}>
+                        <Save size={16} /> {actionLoading === "saving_all" ? "Guardando cambios..." : "Guardar Todos los Cambios"}
                       </button>
                     </div>
-
-                    <div className="modal-body-grid">
+                  ) : (
+                    <div style={{ background: "#FAFAFA", padding: 18, borderRadius: 14, border: "1px solid #eee", marginBottom: 20, maxHeight: "55vh", overflowY: "auto" }}>
+                      <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Información Scout y Personal</h4>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Correo / Tel:</strong> {selectedParticipante.correo || "N/A"} - {selectedParticipante.telefono || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Dirección:</strong> {selectedParticipante.direccion || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>F. Nacimiento:</strong> {selectedParticipante.fecha_nacimiento || selectedProfile?.birth_date || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Región / Distrito / Grupo:</strong> {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"} - {selectedParticipante.grupo_scout || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Rama Scout:</strong> {selectedParticipante.rama || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Instagram:</strong> {selectedProfile?.instagram ? `@${selectedProfile.instagram}` : "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Descripción:</strong> {selectedProfile?.descripcion || "Sin descripción."}</p>
                       
-                      {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
-                      <div>
-                        {/* CONTROL AUDITOR ACTUAL */}
-                        <div style={{ background: "#E0F2FE", padding: 12, borderRadius: 12, border: "1px solid #BAE6FD", marginBottom: 16 }}>
-                          <label style={{ fontSize: 11, fontWeight: 800, color: ENJ_NAVY, display: "block", marginBottom: 4 }}>
-                            👤 FIRMA DEL VALIDADOR DE PAGOS:
-                          </label>
-                          <input
-                            type="text"
-                            value={auditorActual}
-                            onChange={(e) => setAuditorActual(e.target.value)}
-                            placeholder="Tu nombre o correo de administrador"
-                            style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #7DD3FC", fontSize: 12, fontWeight: "bold", background: "#fff", color: ENJ_NAVY }}
-                          />
-                          <span style={{ fontSize: 10, color: "#0369A1", marginTop: 4, display: "block" }}>
-                            Esta identidad quedará grabada en los pagos que valides.
-                          </span>
-                        </div>
+                      <hr style={{ border: "0.5px solid #eee", margin: "14px 0" }} />
 
-                        <div style={{ background: "#F8FAFF", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.1)", marginBottom: 20 }}>
-                          <h3 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
-                            <DollarSign size={18} style={{ display: "inline", verticalAlign: "middle" }} /> Estado de Cuenta
-                          </h3>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
-                            <span style={{ color: "#666" }}>Costo Evento:</span>
-                            <strong>
-                              ${cuotaTotal.toFixed(2)} USD {selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null ? <span style={{ color: ENJ_MAGENTA, fontSize: 10 }}>(Personalizado)</span> : esAdulto ? <span style={{ color: ENJ_NAVY, fontSize: 10 }}>(Adulto/Staff $100)</span> : selectedParticipante.aplica_pronto_pago ? <span style={{ color: "#16A34A", fontSize: 10 }}>(Pronto Pago $115)</span> : <span style={{ color: "#666", fontSize: 10 }}>(Joven Base $145)</span>}
-                            </strong>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
-                            <span style={{ color: "#666" }}>Pagado (Validado):</span>
-                            <strong style={{ color: "#16A34A" }}>${totalPagadoUsd.toFixed(2)} USD</strong>
-                          </div>
-                          <hr style={{ border: "0.5px solid #ddd", margin: "10px 0" }} />
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
-                            <span style={{ color: ENJ_NAVY, fontWeight: 800 }}>Deuda Restante:</span>
-                            <div style={{ textAlign: "right" }}>
-                              <strong style={{ color: deudaUsd > 0 ? ENJ_MAGENTA : "#16A34A", fontSize: 17 }}>${deudaUsd.toFixed(2)} USD</strong>
-                              <div style={{ fontSize: 11, color: "#777" }}>~ Bs. {deudaBsActual.toLocaleString("es-VE")}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY }}>Gestión de Pagos Registrados</h3>
-                        {loadingModal ? (
-                          <p style={{ fontSize: 13, color: "#666" }}>Cargando pagos...</p>
-                        ) : modalPagos.length === 0 ? (
-                          <p style={{ color: "#888", fontSize: 13 }}>Sin reportes de pago asociados.</p>
-                        ) : (
-                          modalPagos.map((pago) => {
-                            const usdValue = Number(pago.monto_bs) / (Number(pago.tasa_cambio) || 1);
-                            const auditorRegistrado = pago.validado_por && pago.validado_por !== "Desconocido" ? pago.validado_por : null;
-
-                            return (
-                              <div key={pago.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                                  <strong>Ref: {pago.referencia || "S/N"}</strong>
-                                  <span style={{ color: pago.estado === "validado" ? "#16A34A" : pago.estado === "rechazado" ? "#DC2626" : "#D97706", fontWeight: "bold" }}>
-                                    {pago.estado.toUpperCase()}
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: 12, color: "#555", margin: "6px 0" }}>
-                                  Bs. {Number(pago.monto_bs).toLocaleString("es-VE")} (Tasa: {pago.tasa_cambio}) = <strong style={{ color: ENJ_NAVY }}>${usdValue.toFixed(2)} USD</strong>
-                                </div>
-                                
-                                {/* MOSTRAR NOMBRE DEL VALIDADOR SI ESTÁ VALIDADO */}
-                                {pago.estado === "validado" && (
-                                  <div style={{ fontSize: 11, color: "#16A34A", marginTop: 4, fontWeight: "700", display: "flex", alignItems: "center", gap: 4 }}>
-                                    <CheckCircle size={12} /> Aprobado por: <span style={{ textDecoration: "underline" }}>{auditorRegistrado || auditorActual}</span>
-                                  </div>
-                                )}
-
-                                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                                  <button disabled={pago.estado === "validado"} onClick={() => handleUpdateEstatusPago(pago.id, "validado")} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: "bold", cursor: "pointer", opacity: pago.estado === "validado" ? 0.5 : 1 }}>Validar</button>
-                                  <button disabled={pago.estado === "rechazado"} onClick={() => handleUpdateEstatusPago(pago.id, "rechazado")} style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, fontWeight: "bold", cursor: "pointer", opacity: pago.estado === "rechazado" ? 0.5 : 1 }}>Rechazar</button>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      {/* COLUMNA DERECHA: EDICIÓN COMPLETA */}
-                      <div>
-                        {isEditingPerfil ? (
-                          <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 18, borderRadius: 14, maxHeight: "55vh", overflowY: "auto" }}>
-                            <h4 style={{ margin: "0 0 14px", color: ENJ_NAVY, fontSize: 15, fontWeight: 900 }}>
-                              Edición de Expediente Completo
-                            </h4>
-
-                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Financieros y Tarifas</h5>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Monto Cuota Personalizada ($)</label>
-                                <input 
-                                  type="number" 
-                                  placeholder={esAdulto ? "$100 (Adulto)" : "$145 (Joven)"}
-                                  value={editPartData.monto_cuota !== undefined && editPartData.monto_cuota !== null ? editPartData.monto_cuota : ""}
-                                  onChange={(e) => setEditPartData({ ...editPartData, monto_cuota: e.target.value === "" ? undefined : Number(e.target.value) })}
-                                  style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} 
-                                />
-                              </div>
-                              {!esAdulto && (
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18 }}>
-                                  <input 
-                                    type="checkbox" 
-                                    id="chkProntoPago"
-                                    checked={!!editPartData.aplica_pronto_pago}
-                                    onChange={(e) => setEditPartData({ ...editPartData, aplica_pronto_pago: e.target.checked })}
-                                    style={{ width: 16, height: 16 }}
-                                  />
-                                  <label htmlFor="chkProntoPago" style={{ fontSize: 11, fontWeight: "bold", cursor: "pointer", color: ENJ_NAVY }}>
-                                    Pronto Pago ($115 USD)
-                                  </label>
-                                </div>
-                              )}
-                            </div>
-
-                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Datos Personales y de Contacto</h5>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Nombre</label>
-                                <input type="text" value={editPartData.nombre || ""} onChange={(e) => handleDualChange("nombre", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Apellido</label>
-                                <input type="text" value={editPartData.apellido || ""} onChange={(e) => handleDualChange("apellido", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Correo</label>
-                                <input type="email" value={editPartData.correo || ""} onChange={(e) => handleDualChange("correo", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Teléfono</label>
-                                <input type="text" value={editPartData.telefono || ""} onChange={(e) => handleDualChange("telefono", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Fecha Nacimiento</label>
-                                <input type="date" value={editPartData.fecha_nacimiento || editProfileData.birth_date || ""} onChange={(e) => {
-                                  setEditPartData({ ...editPartData, fecha_nacimiento: e.target.value });
-                                  setEditProfileData({ ...editProfileData, birth_date: e.target.value });
-                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Dirección</label>
-                                <input type="text" value={editPartData.direccion || ""} onChange={(e) => setEditPartData({ ...editPartData, direccion: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Información Scout</h5>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Región</label>
-                                <input type="text" value={editPartData.region || ""} onChange={(e) => {
-                                  setEditPartData({ ...editPartData, region: e.target.value });
-                                  setEditProfileData({ ...editProfileData, selected_region: e.target.value });
-                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Distrito</label>
-                                <input type="text" value={editPartData.distrito || ""} onChange={(e) => {
-                                  setEditPartData({ ...editPartData, distrito: e.target.value });
-                                  setEditProfileData({ ...editProfileData, distrito: e.target.value, selected_district: e.target.value });
-                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Grupo Scout</label>
-                                <input type="text" value={editPartData.grupo_scout || ""} onChange={(e) => handleDualChange("grupo_scout", e.target.value)} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Rama Scout</label>
-                                <input type="text" value={editPartData.rama || ""} onChange={(e) => {
-                                  setEditPartData({ ...editPartData, rama: e.target.value });
-                                  setEditProfileData({ ...editProfileData, rama_scout: e.target.value });
-                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Rol en Evento</label>
-                                <input type="text" value={editPartData.tipo_participante || ""} onChange={(e) => {
-                                  setEditPartData({ ...editPartData, tipo_participante: e.target.value });
-                                  setEditProfileData({ ...editProfileData, rol_evento: e.target.value });
-                                }} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} placeholder="Ej: Joven, Adulto, Staff" />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Talla Uniforme</label>
-                                <input type="text" value={editPartData.talla_uniforme || ""} onChange={(e) => setEditPartData({ ...editPartData, talla_uniforme: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Perfil Social</h5>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Instagram</label>
-                                <input type="text" value={editProfileData.instagram || ""} onChange={(e) => setEditProfileData({ ...editProfileData, instagram: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Descripción / Bio</label>
-                                <input type="text" value={editProfileData.descripcion || ""} onChange={(e) => setEditProfileData({ ...editProfileData, descripcion: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Información Médica</h5>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Tipo de Sangre</label>
-                                <input type="text" value={editPartData.tipo_sangre || ""} onChange={(e) => setEditPartData({ ...editPartData, tipo_sangre: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: "bold" }}>Contacto Emergencia</label>
-                                <input type="text" value={editPartData.contacto_emergencia || ""} onChange={(e) => setEditPartData({ ...editPartData, contacto_emergencia: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-                              </div>
-                            </div>
-
-                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Alergias</label>
-                            <input type="text" value={editPartData.alergias || ""} onChange={(e) => setEditPartData({ ...editPartData, alergias: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-
-                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Enfermedades</label>
-                            <input type="text" value={editPartData.enfermedades || ""} onChange={(e) => setEditPartData({ ...editPartData, enfermedades: e.target.value })} style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-
-                            <label style={{ fontSize: 11, fontWeight: "bold" }}>Medicamentos</label>
-                            <input type="text" value={editPartData.medicamentos || ""} onChange={(e) => setEditPartData({ ...editPartData, medicamentos: e.target.value })} style={{ width: "100%", marginBottom: 14, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13 }} />
-
-                            <button onClick={handleSaveExpediente} disabled={actionLoading === "saving_all"} style={{ background: "#16A34A", color: "#fff", padding: "12px", width: "100%", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}>
-                              <Save size={16} /> {actionLoading === "saving_all" ? "Guardando cambios..." : "Guardar Todos los Cambios"}
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ background: "#FAFAFA", padding: 18, borderRadius: 14, border: "1px solid #eee", marginBottom: 20, maxHeight: "55vh", overflowY: "auto" }}>
-                            <h4 style={{ margin: "0 0 12px", color: ENJ_NAVY, fontSize: 15, fontWeight: 800 }}>Información Scout y Personal</h4>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Correo / Tel:</strong> {selectedParticipante.correo || "N/A"} - {selectedParticipante.telefono || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Dirección:</strong> {selectedParticipante.direccion || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>F. Nacimiento:</strong> {selectedParticipante.fecha_nacimiento || selectedProfile?.birth_date || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Región / Distrito / Grupo:</strong> {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"} - {selectedParticipante.grupo_scout || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Rama Scout:</strong> {selectedParticipante.rama || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Instagram:</strong> {selectedProfile?.instagram ? `@${selectedProfile.instagram}` : "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Descripción:</strong> {selectedProfile?.descripcion || "Sin descripción."}</p>
-                            
-                            <hr style={{ border: "0.5px solid #eee", margin: "14px 0" }} />
-
-                            <h5 style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: 13, fontWeight: 800 }}>Información Médica</h5>
-                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Tipo de Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</p>
-                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</p>
-                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Enfermedades:</strong> {selectedParticipante.enfermedades || "Ninguna"}</p>
-                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Medicamentos:</strong> {selectedParticipante.medicamentos || "Ninguno"}</p>
-                            <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</p>
-                          </div>
-                        )}
-
-                        <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY, marginTop: 16 }}>Documentos Adjuntos</h3>
-                        {loadingModal ? (
-                          <p style={{ fontSize: 13, color: "#666" }}>Cargando documentos...</p>
-                        ) : modalDocs.length === 0 ? (
-                          <p style={{ color: "#888", fontSize: 13 }}>Sin documentos subidos.</p>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {modalDocs.map((doc) => (
-                              <div key={doc.id} style={{ background: "#F8FAFF", border: "1px solid #eee", padding: 12, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "between" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <FileText size={18} color={ENJ_NAVY} />
-                                  <span style={{ fontSize: 13, fontWeight: "bold" }}>{doc.tipo_documento}</span>
-                                </div>
-                                {(doc.url_archivo || doc.archivo_base64) && (
-                                  <a href={doc.url_archivo || doc.archivo_base64} target="_blank" rel="noopener noreferrer" style={{ background: ENJ_MAGENTA, color: "#fff", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontSize: 11, fontWeight: "bold" }}>Ver / Descargar</a>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <h5 style={{ margin: "0 0 8px", color: ENJ_NAVY, fontSize: 13, fontWeight: 800 }}>Información Médica</h5>
+                      <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Tipo de Sangre:</strong> {selectedParticipante.tipo_sangre || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Alergias:</strong> {selectedParticipante.alergias || "Ninguna"}</p>
+                      <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Enfermedades:</strong> {selectedParticipante.enfermedades || "Ninguna"}</p>
+                      <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Medicamentos:</strong> {selectedParticipante.medicamentos || "Ninguno"}</p>
+                      <p style={{ fontSize: 13, margin: "4px 0" }}><strong>Contacto Emergencia:</strong> {selectedParticipante.contacto_emergencia || "N/A"}</p>
                     </div>
-                  </>
-                );
-              })()}
+                  )}
+
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: ENJ_NAVY, marginTop: 16 }}>Documentos Adjuntos</h3>
+                  {loadingModal ? (
+                    <p style={{ fontSize: 13, color: "#666" }}>Cargando documentos...</p>
+                  ) : modalDocs.length === 0 ? (
+                    <p style={{ color: "#888", fontSize: 13 }}>Sin documentos subidos.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {modalDocs.map((doc) => (
+                        <div key={doc.id} style={{ background: "#F8FAFF", border: "1px solid #eee", padding: 12, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <FileText size={18} color={ENJ_NAVY} />
+                            <span style={{ fontSize: 13, fontWeight: "bold" }}>{doc.tipo_documento}</span>
+                          </div>
+                          {(doc.url_archivo || doc.archivo_base64) && (
+                            <a href={doc.url_archivo || doc.archivo_base64} target="_blank" rel="noopener noreferrer" style={{ background: ENJ_MAGENTA, color: "#fff", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontSize: 11, fontWeight: "bold" }}>Ver / Descargar</a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
