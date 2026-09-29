@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Users, CreditCard, Search, RefreshCw, ChevronLeft, ChevronRight,
   Eye, X, AlertCircle, Building, Clock,
-  ShieldCheck, Edit3, Save,
+  ShieldCheck, Edit3, Save, Download,
   UserCheck, FileText, DollarSign, User, CheckCircle
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
@@ -87,7 +87,6 @@ export interface Documento {
 // FUNCION AUXILIAR ROBUSTA PARA DETECTAR EL AUDITOR / VALIDADOR
 const detectarAuditorActual = async (): Promise<string> => {
   try {
-    // 1. Intentar por Sesión activa de Supabase
     const { data: sessionData } = await supabase.auth.getSession();
     if (sessionData?.session?.user) {
       const u = sessionData.session.user;
@@ -95,7 +94,6 @@ const detectarAuditorActual = async (): Promise<string> => {
       if (emailOrName) return emailOrName;
     }
 
-    // 2. Intentar por getUser
     const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
       const u = userData.user;
@@ -103,7 +101,6 @@ const detectarAuditorActual = async (): Promise<string> => {
       if (emailOrName) return emailOrName;
     }
 
-    // 3. Inspeccionar LocalStorage y SessionStorage dinámicamente
     const storages = [localStorage, sessionStorage];
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 
@@ -123,7 +120,6 @@ const detectarAuditorActual = async (): Promise<string> => {
         }
       }
 
-      // Escaneo profundo de llaves en Storage buscando un patrón de correo
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i);
         if (key) {
@@ -154,8 +150,10 @@ export function Dashboard() {
   // ESTADO DE AUDITOR / ADMINISTRADOR ACTIVO
   const [auditorActual, setAuditorActual] = useState<string>("Cargando...");
 
-  // FILTROS DE BÚSQUEDA
+  // FILTROS DE BÚSQUEDA Y EXPORTACIÓN
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filtroTipo, setFiltroTipo] = useState<string>("todos");
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // MÉTRICAS Y FINANZAS
   const [totalJovenes, setTotalJovenes] = useState<number>(0);
@@ -173,11 +171,10 @@ export function Dashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isEditingPerfil, setIsEditingPerfil] = useState<boolean>(false);
 
-  // ESTADOS FORMULARIO EDICIÓN DUAL (`participantes` y `profiles`)
+  // ESTADOS FORMULARIO EDICIÓN DUAL
   const [editPartData, setEditPartData] = useState<Partial<Participante>>({});
   const [editProfileData, setEditProfileData] = useState<Partial<Profile>>({});
 
-  // INICIALIZAR IDENTIDAD DEL AUDITOR
   useEffect(() => {
     detectarAuditorActual().then((auditor) => setAuditorActual(auditor));
   }, []);
@@ -197,6 +194,14 @@ export function Dashboard() {
         query = query.or(`cedula.ilike.${term},nombre.ilike.${term},apellido.ilike.${term},correo.ilike.${term}`);
       }
 
+      if (filtroTipo === "adulto") {
+        query = query.or('tipo_participante.ilike.%adulto%,tipo_participante.ilike.%staff%,tipo_participante.ilike.%dirigente%');
+      } else if (filtroTipo === "joven") {
+        query = query.not('tipo_participante', 'ilike', '%adulto%')
+                     .not('tipo_participante', 'ilike', '%staff%')
+                     .not('tipo_participante', 'ilike', '%dirigente%');
+      }
+
       const { data, count, error } = await query
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -211,9 +216,81 @@ export function Dashboard() {
     } finally {
       setLoadingParticipantes(false);
     }
-  }, [page, searchTerm]);
+  }, [page, searchTerm, filtroTipo]);
 
-  // 2. CARGAR MÉTRICAS Y ESTADÍSTICAS FINANCIERAS
+  // 2. DESCARGAR EXCEL (CSV Compatible)
+  const handleDownloadExcel = async () => {
+    setIsExporting(true);
+    try {
+      let query = supabase.from("participantes").select("*");
+
+      if (searchTerm.trim() !== "") {
+        const term = `%${searchTerm.trim()}%`;
+        query = query.or(`cedula.ilike.${term},nombre.ilike.${term},apellido.ilike.${term},correo.ilike.${term}`);
+      }
+
+      if (filtroTipo === "adulto") {
+        query = query.or('tipo_participante.ilike.%adulto%,tipo_participante.ilike.%staff%,tipo_participante.ilike.%dirigente%');
+      } else if (filtroTipo === "joven") {
+        query = query.not('tipo_participante', 'ilike', '%adulto%')
+                     .not('tipo_participante', 'ilike', '%staff%')
+                     .not('tipo_participante', 'ilike', '%dirigente%');
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        alert("No hay datos para exportar con los filtros actuales.");
+        return;
+      }
+
+      const headers = [
+        "Cédula", "Nombre", "Apellido", "Correo", "Teléfono", "Región", 
+        "Distrito", "Grupo", "Rama", "Tipo Participante", "Pronto Pago", "Monto Cuota Personalizada"
+      ];
+      
+      const csvRows = [headers.join(",")];
+
+      data.forEach((p: Participante) => {
+        const row = [
+          `="${p.cedula}"`, // Evita notación científica en Excel
+          `"${p.nombre || ""}"`,
+          `"${p.apellido || ""}"`,
+          `"${p.correo || ""}"`,
+          `"${p.telefono || ""}"`,
+          `"${p.region || ""}"`,
+          `"${p.distrito || ""}"`,
+          `"${p.grupo_scout || ""}"`,
+          `"${p.rama || ""}"`,
+          `"${p.tipo_participante || ""}"`,
+          p.aplica_pronto_pago ? "SI" : "NO",
+          p.monto_cuota || "N/A"
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      // Añadir BOM (Byte Order Mark) para forzar a Excel a leer UTF-8 correctamente
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Participantes_ENJ_${filtroTipo}_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (err: any) {
+      console.error("Error al exportar:", err);
+      alert("Hubo un error al exportar los datos.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // 3. CARGAR MÉTRICAS Y ESTADÍSTICAS FINANCIERAS
   const loadMetricsAndFinances = async () => {
     try {
       const { data: partData } = await supabase.from("participantes").select("tipo_participante");
@@ -259,7 +336,7 @@ export function Dashboard() {
     loadMetricsAndFinances();
   }, []);
 
-  // 3. ABRIR EXPEDIENTE Y VINCULAR PERFIL
+  // 4. ABRIR EXPEDIENTE Y VINCULAR PERFIL
   const openExpediente = async (participante: Participante) => {
     setSelectedParticipante(participante);
     setEditPartData(participante);
@@ -323,7 +400,7 @@ export function Dashboard() {
     setEditProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // 4. GUARDAR EDICIÓN DUAL EN `participantes` Y EN `profiles`
+  // 5. GUARDAR EDICIÓN DUAL EN `participantes` Y EN `profiles`
   const handleSaveExpediente = async () => {
     if (!selectedParticipante) return;
     setActionLoading("saving_all");
@@ -360,7 +437,7 @@ export function Dashboard() {
     }
   };
 
-  // 5. CAMBIAR ESTATUS DE PAGO EN SUPABASE CON ASIGNACIÓN DE AUDITOR GARANTIZADA
+  // 6. CAMBIAR ESTATUS DE PAGO EN SUPABASE
   const handleUpdateEstatusPago = async (pagoId: string, nuevoEstado: "validado" | "rechazado" | "pendiente") => {
     setActionLoading(pagoId);
     try {
@@ -386,25 +463,21 @@ export function Dashboard() {
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
-  // CÁLCULOS DINÁMICOS DEL MODAL (Evitamos errores de alcance o renderizado de IIFE)
   const tipoPart = selectedParticipante ? (selectedParticipante.tipo_participante || "").toLowerCase() : "";
   const esAdulto = tipoPart.includes("adulto") || tipoPart.includes("staff") || tipoPart.includes("dirigente");
 
-  let cuotaTotal = 145; // Base Joven por defecto
+  let cuotaTotal = 145;
   let etiquetaTarifa = "(Joven Base $145)";
 
   if (selectedParticipante) {
-    // PRIO 1: Pronto Pago en Jóvenes ($115 USD)
     if (!esAdulto && selectedParticipante.aplica_pronto_pago) {
       cuotaTotal = 115;
       etiquetaTarifa = "(Pronto Pago $115)";
     } 
-    // PRIO 2: Adultos / Staff / Dirigentes ($100 USD)
     else if (esAdulto) {
       cuotaTotal = 100;
       etiquetaTarifa = "(Adulto/Staff $100)";
     } 
-    // PRIO 3: Monto Personalizado asignado explícitamente
     else if (selectedParticipante.monto_cuota !== undefined && selectedParticipante.monto_cuota !== null && Number(selectedParticipante.monto_cuota) >= 0) {
       cuotaTotal = Number(selectedParticipante.monto_cuota);
       etiquetaTarifa = "(Personalizado)";
@@ -509,7 +582,6 @@ export function Dashboard() {
       `}</style>
 
       <div className="dash-content">
-        {/* ENCABEZADO SCOUT ENJ 2026 */}
         <div className="dash-header">
           <div>
             <span style={{ background: ENJ_NAVY, color: ENJ_YELLOW, fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 100 }}>
@@ -538,7 +610,6 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* MÉTRICAS GENERALES */}
         <div className="metrics-grid">
           <div style={{ background: "#fff", padding: 18, borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -575,18 +646,16 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ETIQUETA SECCIÓN */}
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <div style={{ padding: "10px 20px", borderRadius: 12, background: ENJ_NAVY, color: "#fff", fontWeight: 800, fontSize: 14 }}>
             Expedientes de Participantes ({totalCount})
           </div>
         </div>
 
-        {/* TABLA DE PARTICIPANTES */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,11,111,0.08)", overflow: "hidden" }}>
 
-          {/* BUSCADOR */}
-          <div style={{ padding: 16, borderBottom: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {/* BUSCADOR Y FILTROS */}
+          <div style={{ padding: 16, borderBottom: "1px solid rgba(0,11,111,0.08)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
               <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "#888" }} />
               <input
@@ -597,9 +666,29 @@ export function Dashboard() {
                 style={{ width: "100%", padding: "10px 10px 10px 36px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13 }}
               />
             </div>
+            
+            <select 
+              value={filtroTipo} 
+              onChange={(e) => { setFiltroTipo(e.target.value); setPage(0); }}
+              style={{ padding: "10px", borderRadius: 8, border: "1px solid #ccc", fontSize: 13, background: "#fff", color: ENJ_NAVY, fontWeight: "bold" }}
+            >
+              <option value="todos">Todos los Participantes</option>
+              <option value="joven">Solo Jóvenes</option>
+              <option value="adulto">Adultos / Staff</option>
+            </select>
+
+            <button
+              onClick={handleDownloadExcel}
+              disabled={isExporting}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, background: "#16A34A", color: "#fff", 
+                border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 13, fontWeight: "bold", cursor: isExporting ? "wait" : "pointer"
+              }}
+            >
+              <Download size={16} /> {isExporting ? "Generando..." : "Descargar Excel"}
+            </button>
           </div>
 
-          {/* VISTA ESCRITORIO */}
           <div className="desktop-table-container">
             <table className="desktop-table">
               <thead>
@@ -647,7 +736,6 @@ export function Dashboard() {
             </table>
           </div>
 
-          {/* VISTA MÓVIL */}
           <div className="mobile-cards-container">
             {loadingParticipantes ? (
               <div style={{ padding: 20, textAlign: "center", color: "#666" }}>Cargando participantes...</div>
@@ -713,7 +801,6 @@ export function Dashboard() {
             )}
           </div>
 
-          {/* PAGINACIÓN */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "#F8FAFF", borderTop: "1px solid rgba(0,11,111,0.08)" }}>
             <span style={{ fontSize: 13, color: ENJ_NAVY, fontWeight: 600 }}>Página {page + 1} de {totalPages}</span>
             <div style={{ display: "flex", gap: 8 }}>
@@ -757,9 +844,7 @@ export function Dashboard() {
 
               <div className="modal-body-grid">
                 
-                {/* COLUMNA IZQUIERDA: ESTADO DE CUENTA Y PAGOS */}
                 <div>
-                  {/* CONTROL AUDITOR ACTUAL */}
                   <div style={{ background: "#E0F2FE", padding: 12, borderRadius: 12, border: "1px solid #BAE6FD", marginBottom: 16 }}>
                     <label style={{ fontSize: 11, fontWeight: 800, color: ENJ_NAVY, display: "block", marginBottom: 4 }}>
                       👤 FIRMA DEL VALIDADOR DE PAGOS:
@@ -838,7 +923,6 @@ export function Dashboard() {
                   )}
                 </div>
 
-                {/* COLUMNA DERECHA: EDICIÓN COMPLETA */}
                 <div>
                   {isEditingPerfil ? (
                     <div style={{ background: "#FFFBEB", border: `1.5px solid ${ENJ_YELLOW}`, padding: 18, borderRadius: 14, maxHeight: "55vh", overflowY: "auto" }}>
