@@ -23,14 +23,19 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.titulo || '🚨 ENJ 2026 • Alerta de Programa';
+  const critical = data.prioridad === 'critica';
   const options = {
     body: data.descripcion || 'Nueva actualización o instrucción del campamento.',
     icon: '/enj-app-icon.svg',
     badge: '/enj-app-icon.svg',
-    vibrate: [300, 100, 300, 100, 500],
+    vibrate: critical ? [500, 100, 500, 100, 1000] : [250, 100, 250],
     tag: data.id || 'enj-alarma-tag',
     renotify: true,
-    requireInteraction: true, // Mantiene la notificación visible en Android hasta ser tocada
+    requireInteraction: critical,
+    actions: [
+      { action: 'open', title: 'Ver alarma' },
+      { action: 'dismiss', title: 'Descartar' },
+    ],
     data: {
       url: data.url || '/'
     }
@@ -44,6 +49,7 @@ self.addEventListener('push', (event) => {
 // Evento al hacer clic en la notificación de la barra
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  if (event.action === 'dismiss') return;
 
   const targetUrl = event.notification.data?.url || '/';
 

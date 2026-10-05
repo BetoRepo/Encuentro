@@ -21,10 +21,28 @@ export async function subscribeToPushNotifications() {
   if (!keyResponse.ok || !keyResult.publicKey) throw new Error(keyResult.error || 'No se pudo obtener la clave de notificaciones.');
 
   const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: decodeVapidKey(keyResult.publicKey),
-  });
+  const applicationServerKey = decodeVapidKey(keyResult.publicKey);
+  let subscription = await registration.pushManager.getSubscription();
+  const existingKey = subscription?.options.applicationServerKey;
+  const existingKeyMatches = existingKey && new Uint8Array(existingKey).every((byte, index) => byte === applicationServerKey[index])
+    && new Uint8Array(existingKey).length === applicationServerKey.length;
+
+  if (subscription && !existingKeyMatches) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+
+  if (!subscription) {
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? ` (${error.message})` : '';
+      throw new Error(`El navegador rechazó la suscripción push. Revisa que la clave pública y la privada configuradas en Vercel sean el mismo par y vuelve a intentar.${detail}`);
+    }
+  }
 
   const response = await fetch('/api/notifications/subscribe', {
     method: 'POST',

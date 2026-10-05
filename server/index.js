@@ -283,6 +283,7 @@ app.post('/api/notifications/publish', async (req, res) => {
     const titulo = String(req.body?.titulo || '').trim().slice(0, 120);
     const descripcion = String(req.body?.descripcion || '').trim().slice(0, 2000);
     const id = String(req.body?.id || '').trim();
+    const prioridad = ['informativa', 'importante', 'critica'].includes(req.body?.prioridad) ? req.body.prioridad : 'informativa';
     if (!titulo || !descripcion || !id) return res.status(400).json({ ok: false, error: 'Faltan datos de la alarma.' });
 
     const { data: subscriptions, error } = await withTimeout(supabase.from('subscriptions').select('endpoint, keys'));
@@ -290,7 +291,10 @@ app.post('/api/notifications/publish', async (req, res) => {
 
     const results = await Promise.allSettled((subscriptions || []).map(async (subscription) => {
       try {
-        await webpush.sendNotification(subscription, JSON.stringify({ titulo: `ENJ 2026: ${titulo}`, descripcion, id, url: '/panel-programa' }));
+        await webpush.sendNotification(subscription, JSON.stringify({ titulo: `ENJ 2026: ${titulo}`, descripcion, id, prioridad, url: '/' }), {
+          TTL: 3600,
+          urgency: prioridad === 'critica' ? 'high' : 'normal',
+        });
         return true;
       } catch (pushError) {
         if (pushError.statusCode === 404 || pushError.statusCode === 410) {

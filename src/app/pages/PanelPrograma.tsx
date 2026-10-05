@@ -208,14 +208,20 @@ export const PanelPrograma: React.FC = () => {
         throw new Error('No se pudo verificar la sesión. Por favor inicia sesión nuevamente.');
       }
 
-      const { error } = await supabase.from('programa_alarmas').insert([{
+      const alarmaId = crypto.randomUUID();
+      const nuevaAlarma = {
+        id: alarmaId,
         titulo: formData.titulo.trim(),
         descripcion: formData.descripcion.trim(),
         prioridad: formData.prioridad,
         audiencia: formData.audiencia,
         estado: 'publicada',
-        creado_por: userId
-      }]);
+        ...(authData?.user?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authData.user.id)
+          ? { creado_por: authData.user.id }
+          : {}),
+      };
+
+      const { error } = await supabase.from('programa_alarmas').insert([nuevaAlarma]);
 
       if (error) {
         throw new Error(`Error al emitir alarma: ${error.message}`);
@@ -228,13 +234,18 @@ export const PanelPrograma: React.FC = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
         },
-        body: JSON.stringify({ id: crypto.randomUUID(), titulo: formData.titulo.trim(), descripcion: formData.descripcion.trim() }),
+        body: JSON.stringify({
+          id: alarmaId,
+          titulo: formData.titulo.trim(),
+          descripcion: formData.descripcion.trim(),
+          prioridad: formData.prioridad,
+        }),
       });
       const pushResult = await pushResponse.json();
       if (!pushResponse.ok) pushMessage = ` La alarma quedó publicada, pero no se enviaron notificaciones push: ${pushResult.error || 'error de envío'}`;
       else pushMessage = ` Notificaciones enviadas a ${pushResult.sent} dispositivo(s).`;
 
-      setFeedback({ type: pushResponse.ok ? 'success' : 'error', message: `🚨 Alarma publicada.${pushMessage}` });
+      setFeedback({ type: 'success', message: `🚨 Alarma publicada.${pushMessage}` });
       setFormData({ titulo: '', descripcion: '', prioridad: 'informativa', audiencia: 'todos' });
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Error al emitir la alarma' });

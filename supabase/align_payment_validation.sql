@@ -2,6 +2,20 @@ alter table public.pagos add column if not exists validado_por text;
 alter table public.participantes add column if not exists aplica_pronto_pago boolean not null default false;
 alter table public.participantes add column if not exists monto_cuota numeric(10, 2);
 
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'programa_alarmas'
+      and column_name = 'creado_por'
+      and is_nullable = 'NO'
+  ) then
+    alter table public.programa_alarmas alter column creado_por drop not null;
+  end if;
+end $$;
+
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id text not null references public."user"(id) on delete cascade,
