@@ -11,6 +11,35 @@ const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
 
+const EXPORT_FIELDS: { key: keyof Participante; label: string }[] = [
+  { key: "cedula", label: "Cédula" },
+  { key: "nombre", label: "Nombre" },
+  { key: "apellido", label: "Apellido" },
+  { key: "correo", label: "Correo" },
+  { key: "telefono", label: "Teléfono" },
+  { key: "fecha_nacimiento", label: "Fecha de nacimiento" },
+  { key: "direccion", label: "Dirección" },
+  { key: "region", label: "Región" },
+  { key: "distrito", label: "Distrito" },
+  { key: "grupo_scout", label: "Grupo scout" },
+  { key: "rama", label: "Rama" },
+  { key: "tipo_participante", label: "Tipo de participante" },
+  { key: "talla_uniforme", label: "Talla de uniforme" },
+  { key: "tipo_sangre", label: "Tipo de sangre" },
+  { key: "alergias", label: "Alergias" },
+  { key: "enfermedades", label: "Enfermedades" },
+  { key: "medicamentos", label: "Medicamentos" },
+  { key: "contacto_emergencia", label: "Contacto de emergencia" },
+  { key: "aplica_pronto_pago", label: "Pronto pago" },
+  { key: "monto_cuota", label: "Monto de cuota" },
+  { key: "created_at", label: "Fecha de inscripción" },
+];
+
+const DEFAULT_EXPORT_FIELDS: (keyof Participante)[] = [
+  "cedula", "nombre", "apellido", "correo", "telefono", "region", "distrito",
+  "grupo_scout", "rama", "tipo_participante", "aplica_pronto_pago", "monto_cuota",
+];
+
 // ================= INTERFACES BASADAS EN ESQUEMA SQL REAL =================
 export interface Participante {
   cedula: string;
@@ -146,6 +175,9 @@ export function Dashboard() {
   const [page, setPage] = useState<number>(0);
   const [totalCount, setTotalCount] = useState<number>(0);
   const pageSize = 15;
+  const [pendingPayments, setPendingPayments] = useState<Pago[]>([]);
+  const [selectedPendingPayments, setSelectedPendingPayments] = useState<string[]>([]);
+  const [approvingPendingPayments, setApprovingPendingPayments] = useState(false);
 
   // ESTADO DE AUDITOR / ADMINISTRADOR ACTIVO
   const [auditorActual, setAuditorActual] = useState<string>("Cargando...");
@@ -154,6 +186,7 @@ export function Dashboard() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportFields, setExportFields] = useState<(keyof Participante)[]>(DEFAULT_EXPORT_FIELDS);
 
   // MÉTRICAS Y FINANZAS
   const [totalJovenes, setTotalJovenes] = useState<number>(0);
@@ -218,69 +251,92 @@ export function Dashboard() {
     }
   }, [page, searchTerm, filtroTipo]);
 
+  const loadPendingPayments = async () => {
+    const { data, error } = await supabase
+      .from("pagos")
+      .select("*")
+      .eq("estado", "pendiente")
+      .order("created_at", { ascending: true })
+      .limit(100);
+
+    if (error) {
+      console.error("Error al cargar pagos pendientes:", error.message);
+      return;
+    }
+
+    const payments = (data || []) as Pago[];
+    const cedulas = [...new Set(payments.map((payment) => payment.cedula_participante))];
+    if (cedulas.length === 0) {
+      setPendingPayments([]);
+      setSelectedPendingPayments([]);
+      return;
+    }
+
+    const { data: participants } = await supabase
+      .from("participantes")
+      .select("cedula, nombre, apellido")
+      .in("cedula", cedulas);
+    const participantByCedula = new Map((participants || []).map((participant) => [participant.cedula, participant]));
+    setPendingPayments(payments.map((payment) => ({
+      ...payment,
+      participante: participantByCedula.get(payment.cedula_participante) || null,
+    })));
+    setSelectedPendingPayments((selected) => selected.filter((id) => payments.some((payment) => payment.id === id)));
+  };
+
   // 2. DESCARGAR EXCEL (CSV Compatible)
   const handleDownloadExcel = async () => {
     setIsExporting(true);
     try {
-      let query = supabase.from("participantes").select("*");
-
-      if (searchTerm.trim() !== "") {
-        const term = `%${searchTerm.trim()}%`;
-        query = query.or(`cedula.ilike.${term},nombre.ilike.${term},apellido.ilike.${term},correo.ilike.${term}`);
+      const XLSX = await import("@e965/xlsx");
+      if (exportFields.length === 0) {
+        alert("Selecciona al menos una columna para exportar.");
+        return;
       }
 
-      if (filtroTipo === "adulto") {
-        query = query.or('tipo_participante.ilike.%adulto%,tipo_participante.ilike.%staff%,tipo_participante.ilike.%dirigente%');
-      } else if (filtroTipo === "joven") {
-        query = query.not('tipo_participante', 'ilike', '%adulto%')
-                     .not('tipo_participante', 'ilike', '%staff%')
-                     .not('tipo_participante', 'ilike', '%dirigente%');
+      const allParticipants: Participante[] = [];
+      const exportPageSize = 500;
+      for (let from = 0; ; from += exportPageSize) {
+        let query = supabase.from("participantes").select("*");
+
+        if (searchTerm.trim() !== "") {
+          const term = `%${searchTerm.trim()}%`;
+          query = query.or(`cedula.ilike.${term},nombre.ilike.${term},apellido.ilike.${term},correo.ilike.${term}`);
+        }
+
+        if (filtroTipo === "adulto") {
+          query = query.or('tipo_participante.ilike.%adulto%,tipo_participante.ilike.%staff%,tipo_participante.ilike.%dirigente%');
+        } else if (filtroTipo === "joven") {
+          query = query.not('tipo_participante', 'ilike', '%adulto%')
+                       .not('tipo_participante', 'ilike', '%staff%')
+                       .not('tipo_participante', 'ilike', '%dirigente%');
+        }
+
+        const { data, error } = await query
+          .order("created_at", { ascending: false })
+          .range(from, from + exportPageSize - 1);
+        if (error) throw error;
+        allParticipants.push(...((data || []) as Participante[]));
+        if (!data || data.length < exportPageSize) break;
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
+      if (allParticipants.length === 0) {
         alert("No hay datos para exportar con los filtros actuales.");
         return;
       }
 
-      const headers = [
-        "Cédula", "Nombre", "Apellido", "Correo", "Teléfono", "Región", 
-        "Distrito", "Grupo", "Rama", "Tipo Participante", "Pronto Pago", "Monto Cuota Personalizada"
-      ];
-      
-      const csvRows = [headers.join(",")];
-
-      data.forEach((p: Participante) => {
-        const row = [
-          `="${p.cedula}"`, // Evita notación científica en Excel
-          `"${p.nombre || ""}"`,
-          `"${p.apellido || ""}"`,
-          `"${p.correo || ""}"`,
-          `"${p.telefono || ""}"`,
-          `"${p.region || ""}"`,
-          `"${p.distrito || ""}"`,
-          `"${p.grupo_scout || ""}"`,
-          `"${p.rama || ""}"`,
-          `"${p.tipo_participante || ""}"`,
-          p.aplica_pronto_pago ? "SI" : "NO",
-          p.monto_cuota || "N/A"
-        ];
-        csvRows.push(row.join(","));
-      });
-
-      // Añadir BOM (Byte Order Mark) para forzar a Excel a leer UTF-8 correctamente
-      const bom = "\uFEFF";
-      const blob = new Blob([bom + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `Participantes_ENJ_${filtroTipo}_${new Date().getTime()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const selectedFields = EXPORT_FIELDS.filter((field) => exportFields.includes(field.key));
+      const rows = allParticipants.map((participant) => Object.fromEntries(
+        selectedFields.map(({ key, label }) => {
+          const value = participant[key];
+          return [label, typeof value === "boolean" ? (value ? "SI" : "NO") : value ?? ""];
+        }),
+      ));
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      worksheet["!cols"] = selectedFields.map(({ label }) => ({ wch: Math.min(Math.max(label.length + 3, 14), 32) }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Miembros");
+      XLSX.writeFile(workbook, `Miembros_ENJ_${filtroTipo}_${Date.now()}.xlsx`);
 
     } catch (err: any) {
       console.error("Error al exportar:", err);
@@ -334,6 +390,7 @@ export function Dashboard() {
 
   useEffect(() => {
     loadMetricsAndFinances();
+    loadPendingPayments();
   }, []);
 
   // 4. ABRIR EXPEDIENTE Y VINCULAR PERFIL
@@ -454,10 +511,34 @@ export function Dashboard() {
 
       setModalPagos((prev) => prev.map((p) => (p.id === pagoId ? { ...p, ...updatePayload } : p)));
       loadMetricsAndFinances();
+      loadPendingPayments();
     } catch (err: any) {
       alert("Error al actualizar pago: " + err.message);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleApproveSelectedPayments = async () => {
+    if (selectedPendingPayments.length === 0) return;
+    setApprovingPendingPayments(true);
+    try {
+      const { error } = await supabase
+        .from("pagos")
+        .update({
+          estado: "validado",
+          validado_por: auditorActual.trim() || "Administrador ENJ",
+        })
+        .in("id", selectedPendingPayments)
+        .eq("estado", "pendiente");
+      if (error) throw error;
+
+      setSelectedPendingPayments([]);
+      await Promise.all([loadPendingPayments(), loadMetricsAndFinances()]);
+    } catch (error: any) {
+      alert("No se pudieron aprobar los pagos seleccionados: " + (error.message || "Error desconocido"));
+    } finally {
+      setApprovingPendingPayments(false);
     }
   };
 
@@ -646,6 +727,62 @@ export function Dashboard() {
           </div>
         </div>
 
+        {pendingPayments.length > 0 && (
+          <section style={{ background: "#fff", border: "1px solid rgba(217,119,6,0.3)", borderRadius: 12, marginBottom: 20, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "14px 18px", borderBottom: "1px solid #FDE68A" }}>
+              <div>
+                <strong style={{ color: ENJ_NAVY }}>Pagos pendientes</strong>
+                <span style={{ marginLeft: 8, color: "#B45309", fontSize: 13 }}>{pendingPayments.length}{pendingPayments.length === 100 ? "+" : ""} por revisar</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={pendingPayments.length > 0 && selectedPendingPayments.length === pendingPayments.length}
+                    onChange={(event) => setSelectedPendingPayments(event.target.checked ? pendingPayments.map((payment) => payment.id) : [])}
+                  />
+                  Seleccionar todos
+                </label>
+                <button
+                  onClick={handleApproveSelectedPayments}
+                  disabled={selectedPendingPayments.length === 0 || approvingPendingPayments}
+                  style={{ display: "flex", alignItems: "center", gap: 6, border: 0, borderRadius: 7, padding: "9px 12px", background: "#16A34A", color: "#fff", fontWeight: 700, fontSize: 12, cursor: selectedPendingPayments.length ? "pointer" : "not-allowed", opacity: selectedPendingPayments.length && !approvingPendingPayments ? 1 : 0.55 }}
+                >
+                  <CheckCircle size={15} />
+                  {approvingPendingPayments ? "Aprobando..." : `Aprobar seleccionados (${selectedPendingPayments.length})`}
+                </button>
+              </div>
+            </div>
+            <div style={{ maxHeight: 310, overflowY: "auto" }}>
+              {pendingPayments.map((payment) => (
+                <div key={payment.id} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: "1px solid #F1F5F9" }}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Seleccionar pago ${payment.referencia || payment.id}`}
+                    checked={selectedPendingPayments.includes(payment.id)}
+                    onChange={(event) => setSelectedPendingPayments((selected) => event.target.checked ? [...selected, payment.id] : selected.filter((id) => id !== payment.id))}
+                  />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: ENJ_NAVY }}>
+                      {payment.participante ? `${payment.participante.nombre} ${payment.participante.apellido}` : payment.cedula_participante}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748B" }}>
+                      Ref. {payment.referencia || "Sin referencia"} · Bs. {Number(payment.monto_bs).toLocaleString("es-VE")} · {payment.fecha_pago || "Sin fecha"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleUpdateEstatusPago(payment.id, "validado")}
+                    disabled={actionLoading === payment.id}
+                    style={{ display: "flex", alignItems: "center", gap: 5, border: "1px solid #86EFAC", borderRadius: 7, padding: "7px 10px", background: "#F0FDF4", color: "#15803D", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                  >
+                    <CheckCircle size={14} /> Aprobar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <div style={{ padding: "10px 20px", borderRadius: 12, background: ENJ_NAVY, color: "#fff", fontWeight: 800, fontSize: 14 }}>
             Expedientes de Participantes ({totalCount})
@@ -676,6 +813,30 @@ export function Dashboard() {
               <option value="joven">Solo Jóvenes</option>
               <option value="adulto">Adultos / Staff</option>
             </select>
+
+            <details style={{ position: "relative" }}>
+              <summary style={{ listStyle: "none", padding: "10px 12px", border: "1px solid #ccc", borderRadius: 8, color: ENJ_NAVY, fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                Columnas ({exportFields.length})
+              </summary>
+              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 20, width: "min(360px, 85vw)", maxHeight: 340, overflowY: "auto", padding: 12, background: "#fff", border: "1px solid #CBD5E1", borderRadius: 8, boxShadow: "0 12px 30px rgba(15,23,42,0.16)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                  <button type="button" onClick={() => setExportFields(EXPORT_FIELDS.map((field) => field.key))} style={{ border: 0, background: "none", color: ENJ_NAVY, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Todas</button>
+                  <button type="button" onClick={() => setExportFields([])} style={{ border: 0, background: "none", color: "#64748B", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Ninguna</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 10px" }}>
+                  {EXPORT_FIELDS.map((field) => (
+                    <label key={field.key} style={{ display: "flex", alignItems: "flex-start", gap: 6, color: "#334155", fontSize: 11, lineHeight: 1.3, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={exportFields.includes(field.key)}
+                        onChange={(event) => setExportFields((selected) => event.target.checked ? [...selected, field.key] : selected.filter((key) => key !== field.key))}
+                      />
+                      {field.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </details>
 
             <button
               onClick={handleDownloadExcel}

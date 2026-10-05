@@ -1,0 +1,18 @@
+{
+  "name": "Encuentro Nacional de Jóvenes 2026",
+  "short_name": "ENJ 2026",
+  "description": "Plataforma oficial del Encuentro Nacional de Jóvenes - Scouts de Venezuela",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F0F2FA",
+  "theme_color": "#000B6F",
+  "icons": [
+    {
+      "src": "/enj-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

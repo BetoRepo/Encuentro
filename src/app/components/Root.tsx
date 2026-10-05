@@ -1,12 +1,18 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Menu, X, Bell, LogOut } from "lucide-react";
+import { Menu, X, Bell, LogOut, Download } from "lucide-react";
 import logoImage from "../../assets/logonacional.svg";
 import scoutLogoImage from "../../assets/logo-scout.svg";
+import { subscribeToPushNotifications } from "../webPush";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#D7007E";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
 
 function ScoutsLogo() {
   return (
@@ -24,39 +30,53 @@ export function Root() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<{ email: string; name: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("enj_user");
     setUser(storedUser ? JSON.parse(storedUser) : null);
     setLoading(false);
+
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setIsInstalled(standalone);
+
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+    const handleInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
   }, []);
 
   const subscribeToNotifications = async () => {
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') return;
-
-      const registration = await navigator.serviceWorker.ready;
-      const resKey = await fetch('/api/notifications/key');
-      const { publicKey } = await resKey.json();
-
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: publicKey
-      });
-
-      await fetch('/api/notifications/subscribe', {
-        method: 'POST',
-        body: JSON.stringify(subscription),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      await subscribeToPushNotifications();
       alert("¡Notificaciones activadas!");
     } catch (err) {
-      console.error("Error al suscribir:", err);
+      alert(err instanceof Error ? err.message : "No se pudieron activar las notificaciones.");
     }
+  };
+
+  const installApp = async () => {
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') setInstallPrompt(null);
+      return;
+    }
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (isIOS) alert('En Safari, toca Compartir y elige “Agregar a pantalla de inicio”.');
+    else alert('Abre el menú del navegador y elige “Instalar aplicación” o “Agregar a pantalla principal”.');
   };
 
   const handleLogout = async () => {
@@ -130,6 +150,29 @@ export function Root() {
           >
             <Bell size={18} />
           </button>
+
+          {!isInstalled && (
+            <button
+              onClick={installApp}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 10px',
+                border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: 8,
+                background: 'rgba(255,255,255,0.1)',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+              title="Instalar ENJ 2026 en este teléfono"
+            >
+              <Download size={16} /> Instalar
+            </button>
+          )}
 
           {/* desktop links */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }} className="hidden-mobile">

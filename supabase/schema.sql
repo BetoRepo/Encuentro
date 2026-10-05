@@ -13,7 +13,7 @@ create table public."user" (
   email text not null unique,
   password_hash text not null,
   name text not null default '',
-  role text not null default 'participant' check (role in ('participant', 'staff', 'admin')),
+  role text not null default 'participant' check (role in ('participant', 'staff', 'programa', 'admin')),
   created_at timestamptz not null default now()
 );
 
@@ -25,7 +25,7 @@ create table public.profiles (
   telefono text,
   grupo_scout text,
   distrito text,
-  rol text not null default 'participant' check (rol in ('participant', 'staff', 'admin')),
+  rol text not null default 'participant' check (rol in ('participant', 'staff', 'programa', 'admin')),
   rol_evento text not null default 'Joven Participante',
   birth_date date,
   selected_region text,
@@ -58,6 +58,8 @@ create table public.participantes (
   grupo_scout text,
   rama text,
   tipo_participante text,
+  aplica_pronto_pago boolean not null default false,
+  monto_cuota numeric(10, 2),
   drive_folder_id text,
   id_usuario text references public."user"(id) on delete set null,
   created_at timestamptz not null default now(),
@@ -72,7 +74,8 @@ create table public.pagos (
   referencia text,
   fecha_pago date not null default current_date,
   tasa_cambio numeric(12, 4) not null default 1,
-  estado text not null default 'pendiente' check (estado in ('pendiente', 'aprobado', 'rechazado')),
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'validado', 'rechazado')),
+  validado_por text,
   created_at timestamptz not null default now()
 );
 

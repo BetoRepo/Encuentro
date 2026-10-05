@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
 import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone, LogOut, RefreshCw } from 'lucide-react';
+import { subscribeToPushNotifications } from "../webPush";
 
 interface Alarma {
   id: string;
@@ -66,13 +67,6 @@ export const PanelPrograma: React.FC = () => {
 
     if ('Notification' in window) {
       setNotifPermission(Notification.permission);
-    }
-
-    // Registrar Service Worker con alcance explícito en la raíz
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
-        console.warn('Error al registrar Service Worker:', err);
-      });
     }
 
     // Canal en tiempo real de alarmas
@@ -142,38 +136,19 @@ export const PanelPrograma: React.FC = () => {
     setTimeout(() => setToastAlarma(null), 12000);
   };
 
-  // Solicitar permiso expreso e inscribir el teléfono en las notificaciones
   const solicitarPermisoNotificaciones = async () => {
-    if (!('Notification' in window)) {
-      alert('Tu dispositivo no soporta notificaciones nativas.');
-      return;
-    }
-
     try {
-      const permiso = await Notification.requestPermission();
+      const permiso = await subscribeToPushNotifications();
       setNotifPermission(permiso);
-
-      if (permiso === 'granted') {
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-          await navigator.serviceWorker.ready;
-          
-          const options: NotificationOptions & { vibrate?: number[] } = {
-            body: '¡Listo! Ahora recibirás las alarmas del campamento en la barra de tu teléfono.',
-            icon: '/favicon.ico',
-            vibrate: [200, 100, 200]
-          };
-
-          // Muestra una prueba en la barra del teléfono inmediatamente
-          registration.showNotification('🚨 ENJ 2026 Activado', options as NotificationOptions);
-        }
-        alert('¡Notificaciones en barra de estado activadas exitosamente!');
-      } else {
-        alert('Permiso denegado. Debes habilitar las notificaciones desde los ajustes de tu navegador en el teléfono.');
-      }
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification('ENJ 2026: Notificaciones activadas', {
+        body: 'Este dispositivo recibirá las alarmas del programa.',
+        icon: '/enj-app-icon.svg',
+      });
+      alert('Notificaciones activadas en este dispositivo.');
     } catch (error) {
       console.error('Error al solicitar permiso:', error);
-      alert('No se pudo activar las notificaciones.');
+      alert(error instanceof Error ? error.message : 'No se pudieron activar las notificaciones.');
     }
   };
 
@@ -246,7 +221,20 @@ export const PanelPrograma: React.FC = () => {
         throw new Error(`Error al emitir alarma: ${error.message}`);
       }
 
-      setFeedback({ type: 'success', message: '🚨 ¡Alarma emitida a todos los participantes del ENJ 2026!' });
+      let pushMessage = '';
+      const pushResponse = await fetch('/api/notifications/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+        body: JSON.stringify({ id: crypto.randomUUID(), titulo: formData.titulo.trim(), descripcion: formData.descripcion.trim() }),
+      });
+      const pushResult = await pushResponse.json();
+      if (!pushResponse.ok) pushMessage = ` La alarma quedó publicada, pero no se enviaron notificaciones push: ${pushResult.error || 'error de envío'}`;
+      else pushMessage = ` Notificaciones enviadas a ${pushResult.sent} dispositivo(s).`;
+
+      setFeedback({ type: pushResponse.ok ? 'success' : 'error', message: `🚨 Alarma publicada.${pushMessage}` });
       setFormData({ titulo: '', descripcion: '', prioridad: 'informativa', audiencia: 'todos' });
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Error al emitir la alarma' });
@@ -271,7 +259,7 @@ export const PanelPrograma: React.FC = () => {
       await supabase.from('solicitudes_logros').update({ estado: 'aprobado' }).eq('id', solicitud.id);
       setSolicitudes(prev => prev.filter(s => s.id !== solicitud.id));
     } catch (error) {
-      alert("Error al aprobar el logro.");
+      alert('Error al aprobar el logro.');
       console.error(error);
     }
   };
@@ -282,7 +270,7 @@ export const PanelPrograma: React.FC = () => {
       await supabase.from('solicitudes_logros').update({ estado: 'rechazado' }).eq('id', solicitudId);
       setSolicitudes(prev => prev.filter(s => s.id !== solicitudId));
     } catch (error) {
-      alert("Error al rechazar el logro.");
+      alert('Error al rechazar el logro.');
     }
   };
 
@@ -317,16 +305,13 @@ export const PanelPrograma: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Botón Móvil de Activación Push */}
-            {notifPermission !== 'granted' && (
-              <button
-                onClick={solicitarPermisoNotificaciones}
-                className="flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-3 rounded-lg shadow transition-colors active:scale-95"
-                title="Activar notificaciones en la barra del teléfono"
-              >
-                <Smartphone size={15} /> Activar Alert
-              </button>
-            )}
+            <button
+              onClick={solicitarPermisoNotificaciones}
+              className="flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-3 rounded-lg shadow transition-colors active:scale-95"
+              title="Activar notificaciones en la barra del teléfono"
+            >
+              <Smartphone size={15} /> {notifPermission === 'granted' ? 'Configurar Alertas' : 'Activar Alertas'}
+            </button>
 
             <button
               onClick={handleLogout}

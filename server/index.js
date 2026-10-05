@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import webpush from 'web-push';
 import { buildDashboardPayload } from './dashboardData.mjs';
 
 const app = express();
@@ -37,6 +39,14 @@ const withTimeout = (promise, milliseconds = 7000) => Promise.race([
 const supabase = (supabaseUrl && supabaseKey) 
   ? createClient(supabaseUrl, supabaseKey, { global: { fetch: fetchWithTimeout } }) 
   : null;
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const vapidSubject = process.env.VAPID_SUBJECT;
+const pushReady = Boolean(vapidPublicKey && vapidPrivateKey && vapidSubject);
+
+if (pushReady) {
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+}
 
 const createToken = (user) => {
   const payload = Buffer.from(JSON.stringify({ sub: user.id, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 })).toString('base64url');
@@ -232,6 +242,68 @@ app.get('/api/auth/me', async (req, res) => {
     return res.json({ ok: true, user: publicUser(user) });
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
+  }
+});
+
+app.get('/api/notifications/key', (_req, res) => {
+  if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
+  return res.json({ ok: true, publicKey: vapidPublicKey });
+});
+
+app.post('/api/notifications/subscribe', async (req, res) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ ok: false, error: 'Inicia sesión para activar las notificaciones.' });
+    if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
+
+    const subscription = req.body;
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      return res.status(400).json({ ok: false, error: 'La suscripción enviada no es válida.' });
+    }
+
+    const { error } = await withTimeout(supabase.from('subscriptions').upsert({
+      user_id: user.id,
+      endpoint: subscription.endpoint,
+      keys: subscription.keys,
+    }, { onConflict: 'endpoint' }));
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo guardar la suscripción.' });
+  }
+});
+
+app.post('/api/notifications/publish', async (req, res) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ ok: false, error: 'Inicia sesión para publicar una alarma.' });
+    if (!['admin', 'programa'].includes(user.role)) return res.status(403).json({ ok: false, error: 'No tienes permiso para publicar alarmas.' });
+    if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
+
+    const titulo = String(req.body?.titulo || '').trim().slice(0, 120);
+    const descripcion = String(req.body?.descripcion || '').trim().slice(0, 2000);
+    const id = String(req.body?.id || '').trim();
+    if (!titulo || !descripcion || !id) return res.status(400).json({ ok: false, error: 'Faltan datos de la alarma.' });
+
+    const { data: subscriptions, error } = await withTimeout(supabase.from('subscriptions').select('endpoint, keys'));
+    if (error) throw error;
+
+    const results = await Promise.allSettled((subscriptions || []).map(async (subscription) => {
+      try {
+        await webpush.sendNotification(subscription, JSON.stringify({ titulo: `ENJ 2026: ${titulo}`, descripcion, id, url: '/panel-programa' }));
+        return true;
+      } catch (pushError) {
+        if (pushError.statusCode === 404 || pushError.statusCode === 410) {
+          await supabase.from('subscriptions').delete().eq('endpoint', subscription.endpoint);
+        }
+        throw pushError;
+      }
+    }));
+
+    const sent = results.filter((result) => result.status === 'fulfilled').length;
+    return res.json({ ok: true, sent, failed: results.length - sent });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudieron enviar las notificaciones.' });
   }
 });
 

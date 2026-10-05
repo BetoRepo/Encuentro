@@ -25,8 +25,8 @@ self.addEventListener('push', (event) => {
   const title = data.titulo || '🚨 ENJ 2026 • Alerta de Programa';
   const options = {
     body: data.descripcion || 'Nueva actualización o instrucción del campamento.',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/enj-app-icon.svg',
+    badge: '/enj-app-icon.svg',
     vibrate: [300, 100, 300, 100, 500],
     tag: data.id || 'enj-alarma-tag',
     renotify: true,
