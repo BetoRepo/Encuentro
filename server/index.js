@@ -19,6 +19,7 @@ app.use((req, res, next) => {
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const sessionSecret = process.env.SESSION_SECRET || 'enj-change-this-session-secret';
 
 const fetchWithTimeout = async (input, init = {}) => {
@@ -38,6 +39,9 @@ const withTimeout = (promise, milliseconds = 7000) => Promise.race([
 
 const supabase = (supabaseUrl && supabaseKey) 
   ? createClient(supabaseUrl, supabaseKey, { global: { fetch: fetchWithTimeout } }) 
+  : null;
+const serviceSupabase = (supabaseUrl && serviceRoleKey)
+  ? createClient(supabaseUrl, serviceRoleKey, { global: { fetch: fetchWithTimeout } })
   : null;
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -73,6 +77,14 @@ const getAuthenticatedUser = async (req) => {
 };
 
 const publicUser = (user) => ({ id: user.id, email: user.email, name: user.name || '', role: user.role || 'participant' });
+
+const getProgramManager = async (req) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return { error: { status: 401, message: 'Inicia sesión para gestionar alarmas.' } };
+  if (!['admin', 'programa'].includes(user.role)) return { error: { status: 403, message: 'No tienes permiso para gestionar alarmas.' } };
+  if (!serviceSupabase) return { error: { status: 503, message: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor para operar con RLS habilitado.' } };
+  return { user, database: serviceSupabase };
+};
 
 const parseBcvRate = (payload) => {
   if (!payload || typeof payload !== 'object') return null;
@@ -245,6 +257,65 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+app.get('/api/programa/alarmas', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+
+    const { data, error } = await withTimeout(access.database
+      .from('programa_alarmas')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(15));
+    if (error) throw error;
+    return res.json({ ok: true, alarmas: data || [] });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo cargar el historial de alarmas.' });
+  }
+});
+
+app.post('/api/programa/alarmas', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+
+    const titulo = String(req.body?.titulo || '').trim().slice(0, 120);
+    const descripcion = String(req.body?.descripcion || '').trim().slice(0, 4000);
+    const prioridad = ['informativa', 'importante', 'critica'].includes(req.body?.prioridad) ? req.body.prioridad : null;
+    const audiencia = ['todos', 'subcampo_1', 'subcampo_2', 'subcampo_3', 'jefes_unidad'].includes(req.body?.audiencia) ? req.body.audiencia : null;
+    if (!titulo || !descripcion || !prioridad || !audiencia) {
+      return res.status(400).json({ ok: false, error: 'Revisa el título, mensaje, prioridad y audiencia.' });
+    }
+
+    const { data, error } = await withTimeout(access.database
+      .from('programa_alarmas')
+      .insert({ titulo, descripcion, prioridad, audiencia, estado: 'publicada' })
+      .select('*')
+      .single());
+    if (error) throw error;
+    return res.status(201).json({ ok: true, alarma: data });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo emitir la alarma.' });
+  }
+});
+
+app.patch('/api/programa/alarmas/:id', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    if (req.body?.estado !== 'cancelada') return res.status(400).json({ ok: false, error: 'El estado solicitado no es válido.' });
+
+    const { error } = await withTimeout(access.database
+      .from('programa_alarmas')
+      .update({ estado: 'cancelada' })
+      .eq('id', req.params.id));
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo cancelar la alarma.' });
+  }
+});
+
 app.get('/api/notifications/key', (_req, res) => {
   if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
   return res.json({ ok: true, publicKey: vapidPublicKey });
@@ -255,13 +326,14 @@ app.post('/api/notifications/subscribe', async (req, res) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ ok: false, error: 'Inicia sesión para activar las notificaciones.' });
     if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
+    if (!serviceSupabase) return res.status(503).json({ ok: false, error: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor.' });
 
     const subscription = req.body;
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
       return res.status(400).json({ ok: false, error: 'La suscripción enviada no es válida.' });
     }
 
-    const { error } = await withTimeout(supabase.from('subscriptions').upsert({
+    const { error } = await withTimeout(serviceSupabase.from('subscriptions').upsert({
       user_id: user.id,
       endpoint: subscription.endpoint,
       keys: subscription.keys,
@@ -275,9 +347,8 @@ app.post('/api/notifications/subscribe', async (req, res) => {
 
 app.post('/api/notifications/publish', async (req, res) => {
   try {
-    const user = await getAuthenticatedUser(req);
-    if (!user) return res.status(401).json({ ok: false, error: 'Inicia sesión para publicar una alarma.' });
-    if (!['admin', 'programa'].includes(user.role)) return res.status(403).json({ ok: false, error: 'No tienes permiso para publicar alarmas.' });
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
     if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
 
     const titulo = String(req.body?.titulo || '').trim().slice(0, 120);
@@ -286,7 +357,9 @@ app.post('/api/notifications/publish', async (req, res) => {
     const prioridad = ['informativa', 'importante', 'critica'].includes(req.body?.prioridad) ? req.body.prioridad : 'informativa';
     if (!titulo || !descripcion || !id) return res.status(400).json({ ok: false, error: 'Faltan datos de la alarma.' });
 
-    const { data: subscriptions, error } = await withTimeout(supabase.from('subscriptions').select('endpoint, keys'));
+    const { data: subscriptions, error } = await withTimeout(serviceSupabase
+      .from('subscriptions')
+      .select('endpoint, keys'));
     if (error) throw error;
 
     const results = await Promise.allSettled((subscriptions || []).map(async (subscription) => {
@@ -298,7 +371,7 @@ app.post('/api/notifications/publish', async (req, res) => {
         return true;
       } catch (pushError) {
         if (pushError.statusCode === 404 || pushError.statusCode === 410) {
-          await supabase.from('subscriptions').delete().eq('endpoint', subscription.endpoint);
+          await serviceSupabase.from('subscriptions').delete().eq('endpoint', subscription.endpoint);
         }
         throw pushError;
       }

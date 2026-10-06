@@ -153,13 +153,16 @@ export const PanelPrograma: React.FC = () => {
   };
 
   const fetchAlarmas = async () => {
-    const { data, error } = await supabase
-      .from('programa_alarmas')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(15);
-      
-    if (!error && data) setAlarmas(data as Alarma[]);
+    try {
+      const response = await fetch('/api/programa/alarmas', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo cargar el historial de alarmas.');
+      setAlarmas(result.alarmas as Alarma[]);
+    } catch (error) {
+      console.error('Error al cargar alarmas:', error);
+    }
   };
 
   const fetchConsultas = async () => {
@@ -191,62 +194,47 @@ export const PanelPrograma: React.FC = () => {
     setFeedback({ type: '', message: '' });
 
     try {
-      let userId: string | null = null;
-      
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        userId = authData.user.id;
-      } else {
-        const localUserStr = localStorage.getItem("enj_user");
-        if (localUserStr) {
-          const localUser = JSON.parse(localUserStr);
-          userId = localUser.id || localUser.email || "usuario_programa";
-        }
-      }
-
-      if (!userId) {
-        throw new Error('No se pudo verificar la sesión. Por favor inicia sesión nuevamente.');
-      }
-
-      const alarmaId = crypto.randomUUID();
-      const nuevaAlarma = {
-        id: alarmaId,
-        titulo: formData.titulo.trim(),
-        descripcion: formData.descripcion.trim(),
-        prioridad: formData.prioridad,
-        audiencia: formData.audiencia,
-        estado: 'publicada',
-        ...(authData?.user?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authData.user.id)
-          ? { creado_por: authData.user.id }
-          : {}),
-      };
-
-      const { error } = await supabase.from('programa_alarmas').insert([nuevaAlarma]);
-
-      if (error) {
-        throw new Error(`Error al emitir alarma: ${error.message}`);
-      }
-
-      let pushMessage = '';
-      const pushResponse = await fetch('/api/notifications/publish', {
+      const alarmResponse = await fetch('/api/programa/alarmas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
         },
         body: JSON.stringify({
-          id: alarmaId,
-          titulo: formData.titulo.trim(),
-          descripcion: formData.descripcion.trim(),
-          prioridad: formData.prioridad,
+        titulo: formData.titulo.trim(),
+        descripcion: formData.descripcion.trim(),
+        prioridad: formData.prioridad,
+        audiencia: formData.audiencia,
         }),
       });
-      const pushResult = await pushResponse.json();
-      if (!pushResponse.ok) pushMessage = ` La alarma quedó publicada, pero no se enviaron notificaciones push: ${pushResult.error || 'error de envío'}`;
-      else pushMessage = ` Notificaciones enviadas a ${pushResult.sent} dispositivo(s).`;
+      const alarmResult = await alarmResponse.json();
+      if (!alarmResponse.ok) throw new Error(alarmResult.error || 'No se pudo publicar la alarma.');
+
+      let pushMessage = '';
+      try {
+        const pushResponse = await fetch('/api/notifications/publish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+          },
+          body: JSON.stringify({
+            id: alarmResult.alarma.id,
+            titulo: formData.titulo.trim(),
+            descripcion: formData.descripcion.trim(),
+            prioridad: formData.prioridad,
+          }),
+        });
+        const pushResult = await pushResponse.json();
+        if (!pushResponse.ok) pushMessage = ` La alarma quedó publicada, pero no se enviaron notificaciones push: ${pushResult.error || 'error de envío'}`;
+        else pushMessage = ` Notificaciones enviadas a ${pushResult.sent} dispositivo(s).`;
+      } catch {
+        pushMessage = ' La alarma quedó publicada, pero no se pudo conectar con el servicio push.';
+      }
 
       setFeedback({ type: 'success', message: `🚨 Alarma publicada.${pushMessage}` });
       setFormData({ titulo: '', descripcion: '', prioridad: 'informativa', audiencia: 'todos' });
+      await fetchAlarmas();
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Error al emitir la alarma' });
     } finally {
@@ -256,8 +244,21 @@ export const PanelPrograma: React.FC = () => {
 
   const handleCancelAlarma = async (id: string) => {
     if (!confirm('¿Deseas cancelar esta alarma?')) return;
-    const { error } = await supabase.from('programa_alarmas').update({ estado: 'cancelada' }).eq('id', id);
-    if (!error) fetchAlarmas();
+    try {
+      const response = await fetch(`/api/programa/alarmas/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+        body: JSON.stringify({ estado: 'cancelada' }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo cancelar la alarma.');
+      await fetchAlarmas();
+    } catch (error) {
+      setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo cancelar la alarma.' });
+    }
   };
 
   const handleAprobarLogro = async (solicitud: SolicitudLogro) => {

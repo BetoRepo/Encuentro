@@ -2,7 +2,9 @@
 
 ## Notificaciones push
 
-Las alarmas del Panel de Programa se envían a los dispositivos suscritos por Web Push. El servidor requiere estas variables de entorno:
+Las alarmas del Panel de Programa se leen y escriben desde el backend porque la tabla aplica Row Level Security. El backend valida el rol `admin`/`programa` y requiere `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`; esta última es secreta y nunca debe estar en el frontend ni subirse a GitHub.
+
+Para Web Push, el servidor también requiere estas variables de entorno:
 
 - `VAPID_PUBLIC_KEY`
 - `VAPID_PRIVATE_KEY`
@@ -14,7 +16,7 @@ Genera un par de claves una sola vez con `web-push` y conserva la clave privada 
 node -e "import('web-push').then(({ default: push }) => console.log(push.generateVAPIDKeys()))"
 ```
 
-Configura las tres variables en el entorno que ejecuta `/api` (por ejemplo, Environment Variables del hosting), despliega el backend y aplica `supabase/align_payment_validation.sql` en bases de datos existentes. La tabla `public.subscriptions` debe existir; está incluida en `supabase/schema.sql`.
+Configura las variables en Vercel → Project Settings → Environment Variables y vuelve a desplegar. Usa los nombres del archivo `.env.example`. Aplica `supabase/align_payment_validation.sql` en bases de datos existentes. La tabla `public.subscriptions` debe existir; está incluida en `supabase/schema.sql`.
 
 Cada usuario debe iniciar sesión, permitir notificaciones y activar las alertas desde el botón de campana o desde Panel de Programa. Web Push requiere HTTPS, excepto en `localhost`.
 
