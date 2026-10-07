@@ -20,33 +20,64 @@ interface PublicProfile {
   grupo_scout: string | null;
   selected_region: string | null;
   rama_scout: string | null;
-  descripcion: string | null;
-  foto: string | null;
 }
+
+const PROFILES_PER_PAGE = 24;
 
 export function Elenco() {
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
 
   useEffect(() => {
     const loadProfiles = async () => {
       const { data, error: queryError } = await supabase
         .from("profiles")
-        .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout, descripcion, foto")
-        .order("nombre", { ascending: true });
+        .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout")
+        .order("id", { ascending: true })
+        .range(0, PROFILES_PER_PAGE - 1);
 
       if (queryError) {
         console.error("Error cargando el elenco:", queryError);
         setError("No se pudo cargar el elenco. Inténtalo de nuevo más tarde.");
       } else {
         setProfiles((data || []).filter((profile) => Boolean(profile.nombre?.trim())));
+        setOffset(data?.length || 0);
+        setHasMore((data?.length || 0) === PROFILES_PER_PAGE);
       }
       setLoading(false);
     };
 
     loadProfiles();
   }, []);
+
+  const loadMoreProfiles = async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    const { data, error: queryError } = await supabase
+      .from("profiles")
+      .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout")
+      .order("id", { ascending: true })
+      .range(offset, offset + PROFILES_PER_PAGE - 1);
+
+    if (queryError) {
+      console.error("Error cargando más participantes:", queryError);
+      setError("No se pudieron cargar más participantes. Inténtalo de nuevo.");
+    } else {
+      setProfiles((current) => [
+        ...current,
+        ...(data || []).filter((profile) => Boolean(profile.nombre?.trim())),
+      ]);
+      setOffset((current) => current + (data?.length || 0));
+      setHasMore((data?.length || 0) === PROFILES_PER_PAGE);
+      setError("");
+    }
+    setLoadingMore(false);
+  };
 
   return (
     <section aria-labelledby="elenco-heading" style={{ padding: 24, color: ENJ_NAVY, background: "#fff", borderRadius: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
@@ -62,7 +93,7 @@ export function Elenco() {
 
         {loading ? (
           <p role="status" style={{ textAlign: "center", padding: 32 }}>Cargando participantes...</p>
-        ) : error ? (
+        ) : error && profiles.length === 0 ? (
           <p role="alert" style={{ textAlign: "center", padding: 32, color: "#B91C1C" }}>{error}</p>
         ) : profiles.length === 0 ? (
           <p style={{ textAlign: "center", padding: 32 }}>Todavía no hay perfiles públicos disponibles.</p>
@@ -90,20 +121,18 @@ export function Elenco() {
                         )}
                       </div>
                       <div style={{ padding: 20 }}>
-                        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{fullName}</h2>
-                        <p style={{ minHeight: 38, margin: "10px 0", display: "flex", alignItems: "center", gap: 6, color: "rgba(0,11,111,0.68)", fontSize: 13 }}>
+                        <div style={{ width: 76, height: 76, margin: "0 auto 16px", borderRadius: "50%", background: "rgba(0,11,111,0.08)", color: ENJ_NAVY, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 900 }}>
+                          {fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
+                        </div>
+                        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, textAlign: "center" }}>{fullName}</h2>
+                        <p style={{ minHeight: 38, margin: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "rgba(0,11,111,0.68)", fontSize: 13 }}>
                           <MapPin size={16} color={ENJ_MAGENTA} />
                           {[profile.grupo_scout, profile.selected_region].filter(Boolean).join(" · ") || "Participante ENJ"}
                         </p>
                         {profile.rama_scout && (
-                          <span style={{ display: "inline-block", marginBottom: 12, padding: "5px 10px", borderRadius: 99, background: "rgba(215,0,126,0.08)", color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800 }}>
+                          <span style={{ display: "block", width: "fit-content", margin: "0 auto 12px", padding: "5px 10px", borderRadius: 99, background: "rgba(215,0,126,0.08)", color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800 }}>
                             {profile.rama_scout}
                           </span>
-                        )}
-                        {profile.descripcion && (
-                          <p style={{ minHeight: 44, margin: "0 0 16px", color: "#475569", fontSize: 13, lineHeight: 1.5 }}>
-                            {profile.descripcion}
-                          </p>
                         )}
                         <Link
                           to={`/scout/${profile.id}`}
@@ -122,6 +151,21 @@ export function Elenco() {
               style={{ right: -24, zIndex: 1, background: ENJ_MAGENTA, color: "#fff", border: "none" }}
             />
           </Carousel>
+        )}
+        {error && profiles.length > 0 && (
+          <p role="alert" style={{ margin: "16px 0 0", color: "#B91C1C", textAlign: "center", fontSize: 13 }}>{error}</p>
+        )}
+        {!loading && hasMore && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+            <button
+              type="button"
+              onClick={loadMoreProfiles}
+              disabled={loadingMore}
+              style={{ padding: "11px 20px", border: "none", borderRadius: 12, background: ENJ_NAVY, color: "#fff", fontWeight: 800, cursor: loadingMore ? "wait" : "pointer" }}
+            >
+              {loadingMore ? "Cargando..." : "Cargar más participantes"}
+            </button>
+          </div>
         )}
     </section>
   );
