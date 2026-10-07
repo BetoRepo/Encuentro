@@ -35,6 +35,7 @@ create table public.profiles (
   instagram text,
   gustos_evento jsonb not null default '[]'::jsonb,
   foto text,
+  apretones_count integer not null default 0 check (apretones_count >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

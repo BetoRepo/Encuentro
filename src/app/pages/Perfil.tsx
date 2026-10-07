@@ -480,7 +480,7 @@ export function Perfil() {
   };
 
   const handleHandshake = async () => {
-    if (hasHandshaked) return;
+    if (isOwnProfile || hasHandshaked) return;
     const newCount = apretonesCount + 1;
     setApretonesCount(newCount);
     setHasHandshaked(true);
@@ -803,6 +803,8 @@ export function Perfil() {
                   <button
                     type="button"
                     onClick={handleHandshake}
+                    disabled={isOwnProfile}
+                    aria-label={isOwnProfile ? "Apretones de manos recibidos" : "Enviar apretón de manos"}
                     style={{
                       background: hasHandshaked ? "rgba(215,0,126,0.08)" : `linear-gradient(135deg, ${ENJ_NAVY} 0%, #1A269B 100%)`,
                       color: hasHandshaked ? ENJ_MAGENTA : "#FFFFFF",
@@ -811,7 +813,7 @@ export function Perfil() {
                       padding: "10px 22px",
                       fontSize: 14,
                       fontWeight: 800,
-                      cursor: "pointer",
+                      cursor: isOwnProfile ? "default" : "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 10,
@@ -819,7 +821,7 @@ export function Perfil() {
                       transition: "all 0.2s ease"
                     }}
                   >
-                    <span style={{ fontSize: 16 }}>🤝</span> {apretonesCount} Apretones de mano
+                    <span style={{ fontSize: 16 }}>🤝</span> {apretonesCount} {isOwnProfile ? "Apretones recibidos" : "Apretones de mano"}
                   </button>
                 </div>
 
@@ -1032,8 +1034,14 @@ export function Perfil() {
                       <div key={c.id || idx} style={{ background: "#FAFBFF", padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.06)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                           <strong style={{ fontSize: 12.5, color: ENJ_NAVY, fontWeight: 800 }}>{c.autor}</strong>
-                          <span style={{ fontSize: 10, color: "rgba(0,11,111,0.4)" }}>
-                            {c.fecha ? new Date(c.fecha).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                          <span style={{ fontSize: 10, color: "rgba(0,11,111,0.55)", textAlign: "right" }}>
+                            {c.fecha && !Number.isNaN(new Date(c.fecha).getTime())
+                              ? new Date(c.fecha).toLocaleString("es-VE", {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                  timeZone: "America/Caracas",
+                                })
+                              : "Fecha no disponible"}
                           </span>
                         </div>
                         <p style={{ margin: 0, fontSize: 12.5, color: "#334155", lineHeight: 1.4 }}>{c.mensaje}</p>

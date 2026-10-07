@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { User, MapPin, Heart, ArrowLeft, Instagram, Award } from "lucide-react";
+import { User, MapPin, Heart, ArrowLeft, Instagram, Handshake } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
@@ -9,22 +9,76 @@ const ENJ_MAGENTA = "#D7007E";
 export function PerfilPublico() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<{
+    id: string;
+    nombre: string | null;
+    apellido: string | null;
+    grupo_scout: string | null;
+    selected_region: string | null;
+    rama_scout: string | null;
+    foto: string | null;
+    instagram: string | null;
+    descripcion: string | null;
+    gustos_evento: string[] | null;
+    apretones_count: number | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [handshakeLoading, setHandshakeLoading] = useState(false);
+  const [handshakeError, setHandshakeError] = useState("");
+  const [hasHandshaked, setHasHandshaked] = useState(false);
+  const [currentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("enj_user") || "null") as { id?: string } | null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (!id || !currentUser?.id) return;
+    setHasHandshaked(localStorage.getItem(`enj_handshake_${currentUser.id}_${id}`) === "true");
+  }, [currentUser?.id, id]);
 
   useEffect(() => {
     const fetchPublicProfile = async () => {
-      try {
-        const { data } = await supabase.from("profiles").select("*").eq("id", id).single();
-        if (data) setProfile(data);
-      } catch (err) {
-        console.error("Error cargando perfil:", err);
-      } finally {
+      if (!id) {
         setLoading(false);
+        return;
       }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout, foto, instagram, descripcion, gustos_evento, apretones_count")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) console.error("Error cargando perfil:", error);
+      setProfile(data);
+      setLoading(false);
     };
     fetchPublicProfile();
   }, [id]);
+
+  const handleHandshake = async () => {
+    if (!profile || !currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading) return;
+
+    setHandshakeLoading(true);
+    setHandshakeError("");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ apretones_count: (profile.apretones_count || 0) + 1 })
+      .eq("id", profile.id);
+
+    if (error) {
+      console.error("Error enviando apretón de manos:", error);
+      setHandshakeError("No se pudo enviar el apretón de manos. Inténtalo de nuevo.");
+    } else {
+      setProfile({ ...profile, apretones_count: (profile.apretones_count || 0) + 1 });
+      setHasHandshaked(true);
+      localStorage.setItem(`enj_handshake_${currentUser.id}_${profile.id}`, "true");
+    }
+    setHandshakeLoading(false);
+  };
 
   if (loading) return <div style={{ textAlign: "center", padding: 80, fontFamily: "sans-serif", color: ENJ_NAVY }}>Cargando perfil Scout...</div>;
   if (!profile) return <div style={{ textAlign: "center", padding: 80, fontFamily: "sans-serif", color: ENJ_NAVY }}>Perfil no encontrado o no disponible.</div>;
@@ -33,7 +87,7 @@ export function PerfilPublico() {
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "20px 14px 40px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate(currentUser ? "/elenco" : "/")}
           style={{
             display: "flex",
             alignItems: "center",
@@ -115,8 +169,39 @@ export function PerfilPublico() {
               fontWeight: 600,
             }}
           >
-            <MapPin size={18} color={ENJ_MAGENTA} /> {profile.grupo_scout} • Región {profile.selected_region}
+            <MapPin size={18} color={ENJ_MAGENTA} /> {profile.grupo_scout || "Participante ENJ"} • Región {profile.selected_region || "No especificada"}
           </p>
+
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 22 }}>
+            <button
+              type="button"
+              onClick={handleHandshake}
+              disabled={!currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading}
+              aria-label="Enviar un apretón de manos"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 9,
+                padding: "12px 22px",
+                border: hasHandshaked ? `2px solid ${ENJ_MAGENTA}` : "none",
+                borderRadius: 99,
+                background: hasHandshaked ? "rgba(215,0,126,0.08)" : ENJ_NAVY,
+                color: hasHandshaked ? ENJ_MAGENTA : "#fff",
+                fontSize: 15,
+                fontWeight: 800,
+                cursor: !currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading ? "not-allowed" : "pointer",
+                opacity: !currentUser?.id || currentUser.id === profile.id ? 0.65 : 1,
+              }}
+            >
+              <Handshake size={19} />
+              {handshakeLoading ? "Enviando..." : hasHandshaked ? "Apretón enviado" : "Apretón de manos"}
+              <span>· {profile.apretones_count || 0}</span>
+            </button>
+            {!currentUser?.id && <span style={{ color: "#64748B", fontSize: 12 }}>Inicia sesión para enviar un apretón.</span>}
+            {currentUser?.id === profile.id && <span style={{ color: "#64748B", fontSize: 12 }}>Este es tu perfil.</span>}
+            {handshakeError && <span role="alert" style={{ color: "#B91C1C", fontSize: 12 }}>{handshakeError}</span>}
+          </div>
 
           {profile.instagram && (
             <a
