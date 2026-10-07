@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import bannerImg from "../../assets/Bannerperfil.jpeg";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
@@ -134,9 +135,7 @@ export function PerfilPublico() {
         </button>
 
         <article style={{ overflow: "hidden", borderRadius: 30, background: "#fff", boxShadow: "0 24px 60px rgba(0,11,111,0.14)", border: "1px solid rgba(0,11,111,0.06)" }}>
-          <header style={{ minHeight: 190, position: "relative", padding: "26px 30px", overflow: "hidden", background: "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.22), transparent 28%), radial-gradient(circle at 88% 72%, rgba(247,191,22,0.34), transparent 24%), linear-gradient(125deg, #000B6F 0%, #202EAA 58%, #D7007E 125%)" }}>
-            <div aria-hidden="true" style={{ position: "absolute", width: 210, height: 210, top: -108, right: 100, border: "1px solid rgba(255,255,255,0.16)", borderRadius: "50%" }} />
-            <div aria-hidden="true" style={{ position: "absolute", width: 290, height: 290, top: -150, right: 58, border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50%" }} />
+          <header style={{ height: 190, position: "relative", padding: "26px 30px", overflow: "hidden", backgroundImage: `linear-gradient(to bottom, rgba(0, 11, 111, 0.25), rgba(0, 11, 111, 0.65)), url(${bannerImg})`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}>
             <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 9, color: "#fff", fontSize: 12, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase" }}>
               <Sparkles size={17} color="#F7BF16" /> Elenco ENJ 2026
             </div>
@@ -152,11 +151,11 @@ export function PerfilPublico() {
           </header>
 
           <div style={{ padding: "0 clamp(20px, 5vw, 48px) 38px" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginTop: -66, position: "relative", zIndex: 2 }}>
-              <div style={{ width: 142, height: 142, padding: 5, borderRadius: "50%", background: "linear-gradient(135deg, #D7007E, #F7BF16, #000B6F)", boxShadow: "0 12px 30px rgba(215,0,126,0.22)" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginTop: -78, position: "relative", zIndex: 2 }}>
+              <div style={{ width: 164, height: 164, padding: 5, borderRadius: "50%", background: "linear-gradient(135deg, #D7007E, #F7BF16, #000B6F)", boxShadow: "0 12px 30px rgba(215,0,126,0.22)" }}>
                 <div style={{ width: "100%", height: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: "5px solid #fff", borderRadius: "50%", background: "linear-gradient(145deg, #EEF0FC, #FBEAF4)" }}>
                   {profile.foto ? (
-                    <img src={profile.foto} alt={`Foto de ${fullName}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={profile.foto} alt={`Foto de ${fullName}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   ) : (
                     <span aria-label={`Iniciales de ${fullName}`} style={{ color: ENJ_NAVY, fontSize: 38, fontWeight: 900 }}>{initial}</span>
                   )}

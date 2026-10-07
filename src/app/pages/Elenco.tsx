@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Search, Users } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -23,6 +23,14 @@ interface PublicProfile {
 }
 
 const PROFILES_PER_PAGE = 24;
+
+function getSearchTokens(searchTerm: string) {
+  return searchTerm
+    .trim()
+    .replace(/[^a-zA-ZÀ-ÿ0-9\s'-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
 
 function ProfilePhoto({ profileId, name }: { profileId: string; name: string }) {
   const imageContainer = useRef<HTMLDivElement>(null);
@@ -93,7 +101,7 @@ function ProfilePhoto({ profileId, name }: { profileId: string; name: string }) 
           src={photo}
           alt={`Foto de ${name}`}
           onError={() => setFailed(true)}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
         />
       ) : (
         <div
@@ -127,14 +135,30 @@ export function Elenco() {
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchRequestId = useRef(0);
 
   useEffect(() => {
-    const loadProfiles = async () => {
-      const { data, error: queryError } = await supabase
+    const requestId = ++searchRequestId.current;
+    setProfiles([]);
+    setOffset(0);
+    setHasMore(false);
+    setError("");
+    setLoading(true);
+    setLoadingMore(false);
+
+    const timeout = window.setTimeout(async () => {
+      let query = supabase
         .from("profiles")
         .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout")
-        .order("id", { ascending: true })
-        .range(0, PROFILES_PER_PAGE - 1);
+        .order("id", { ascending: true });
+
+      getSearchTokens(searchTerm).forEach((token) => {
+        query = query.or(`nombre.ilike.%${token}%,apellido.ilike.%${token}%`);
+      });
+
+      const { data, error: queryError } = await query.range(0, PROFILES_PER_PAGE - 1);
+      if (requestId !== searchRequestId.current) return;
 
       if (queryError) {
         console.error("Error cargando el elenco:", queryError);
@@ -145,20 +169,33 @@ export function Elenco() {
         setHasMore((data?.length || 0) === PROFILES_PER_PAGE);
       }
       setLoading(false);
-    };
+    }, searchTerm.trim() ? 250 : 0);
 
-    loadProfiles();
-  }, []);
+    return () => {
+      window.clearTimeout(timeout);
+      searchRequestId.current += 1;
+    };
+  }, [searchTerm]);
 
   const loadMoreProfiles = async () => {
     if (loadingMore || !hasMore) return;
 
+    const requestId = searchRequestId.current;
     setLoadingMore(true);
-    const { data, error: queryError } = await supabase
+    let query = supabase
       .from("profiles")
       .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout")
-      .order("id", { ascending: true })
-      .range(offset, offset + PROFILES_PER_PAGE - 1);
+      .order("id", { ascending: true });
+
+    getSearchTokens(searchTerm).forEach((token) => {
+      query = query.or(`nombre.ilike.%${token}%,apellido.ilike.%${token}%`);
+    });
+
+    const { data, error: queryError } = await query.range(offset, offset + PROFILES_PER_PAGE - 1);
+    if (requestId !== searchRequestId.current) {
+      setLoadingMore(false);
+      return;
+    }
 
     if (queryError) {
       console.error("Error cargando más participantes:", queryError);
@@ -185,6 +222,17 @@ export function Elenco() {
           <p style={{ margin: 0, color: "rgba(0,11,111,0.68)", fontSize: 14 }}>
             Explora sus perfiles y envíales un apretón de manos.
           </p>
+          <label style={{ position: "relative", display: "block", maxWidth: 440, marginTop: 18 }}>
+            <Search size={18} aria-hidden="true" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(0,11,111,0.48)" }} />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.currentTarget.value)}
+              placeholder="Buscar por nombre o apellido"
+              aria-label="Buscar participantes por nombre o apellido"
+              style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px 12px 42px", border: "1px solid rgba(0,11,111,0.14)", borderRadius: 14, outlineColor: ENJ_MAGENTA, color: ENJ_NAVY, fontSize: 14 }}
+            />
+          </label>
       </header>
 
         {loading ? (
@@ -192,7 +240,7 @@ export function Elenco() {
         ) : error && profiles.length === 0 ? (
           <p role="alert" style={{ textAlign: "center", padding: 32, color: "#B91C1C" }}>{error}</p>
         ) : profiles.length === 0 ? (
-          <p style={{ textAlign: "center", padding: 32 }}>Todavía no hay perfiles públicos disponibles.</p>
+          <p style={{ textAlign: "center", padding: 32 }}>{searchTerm.trim() ? "No se encontraron participantes con ese nombre." : "Todavía no hay perfiles públicos disponibles."}</p>
         ) : (
           <Carousel opts={{ align: "start", containScroll: "trimSnaps" }} style={{ margin: "0 20px" }}>
             <CarouselPrevious
