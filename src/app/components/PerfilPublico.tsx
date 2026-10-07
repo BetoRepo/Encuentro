@@ -155,7 +155,7 @@ export function PerfilPublico() {
               <div style={{ width: 164, height: 164, padding: 5, borderRadius: "50%", background: "linear-gradient(135deg, #D7007E, #F7BF16, #000B6F)", boxShadow: "0 12px 30px rgba(215,0,126,0.22)" }}>
                 <div style={{ width: "100%", height: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: "5px solid #fff", borderRadius: "50%", background: "linear-gradient(145deg, #EEF0FC, #FBEAF4)" }}>
                   {profile.foto ? (
-                    <img src={profile.foto} alt={`Foto de ${fullName}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <img src={profile.foto} alt={`Foto de ${fullName}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     <span aria-label={`Iniciales de ${fullName}`} style={{ color: ENJ_NAVY, fontSize: 38, fontWeight: 900 }}>{initial}</span>
                   )}

@@ -611,7 +611,7 @@ export function Perfil() {
                     boxShadow: "0 8px 20px rgba(0,11,111,0.15)"
                   }}>
                     <div style={{ width: 144, height: 144, borderRadius: "50%", border: "4px solid #fff", background: "#F4F5FA", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                      {foto ? <img src={foto} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <User size={56} color="rgba(0,11,111,0.3)" />}
+                      {foto ? <img src={foto} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={56} color="rgba(0,11,111,0.3)" />}
                     </div>
                   </div>
                   <div style={{ position: "absolute", bottom: 4, right: 4, width: 36, height: 36, borderRadius: "50%", background: ENJ_MAGENTA, border: "3px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 3px 8px rgba(0,0,0,0.2)" }}>
@@ -777,7 +777,7 @@ export function Perfil() {
                   }}
                 >
                   <div style={{ width: "100%", height: "100%", borderRadius: "50%", border: "4px solid #FFFFFF", background: "#EAEFFF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {foto ? <img src={foto} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <User size={58} color={ENJ_NAVY} />}
+                    {foto ? <img src={foto} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={58} color={ENJ_NAVY} />}
                   </div>
                 </div>
 
