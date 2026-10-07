@@ -8,6 +8,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
 import bannerImg from "../../assets/Bannerperfil.jpeg";
+import { Elenco } from "./Elenco";
 
 // ==========================================
 // CONSTANTES DE DISEÑO ENJ 2026 (ASV)
@@ -558,8 +559,8 @@ export function Perfil() {
   const qrPublicUrl = `${window.location.origin}/scout/${targetUserId}`;
 
   return (
-    <div style={{ background: "#F0F3F9", minHeight: "100vh", padding: "32px 16px 80px", fontFamily: "Inter, sans-serif" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ background: "#F0F3F9", minHeight: "100vh", padding: "48px 20px 80px", fontFamily: "Inter, sans-serif" }}>
+      <div style={{ maxWidth: 1040, margin: "0 auto" }}>
         
         {/* BOTÓN VOLVER */}
         <button 
@@ -866,6 +867,8 @@ export function Perfil() {
                 )}
               </div>
             </div>
+
+            {!isEditing && <Elenco />}
 
             {/* 2. CATÁLOGO DE INSIGNIAS (ANCHO COMPLETO PARA MOSTRAR TODAS DE MANERA HORIZONTAL) */}
             <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>

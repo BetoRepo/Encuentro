@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { Root } from './components/Root';
 import { PerfilPublico } from './components/PerfilPublico';
-import { Home, Elenco, Inscripcion, Consultas, Perfil, Dashboard, PanelPrograma } from './pages';
+import { Home, Inscripcion, Consultas, Perfil, Dashboard, PanelPrograma } from './pages';
 import { Login } from './pages/Login';
 
 // GUARDIÁN DE AUTENTICACIÓN GENERAL
@@ -48,7 +48,6 @@ export const router = createBrowserRouter(
           element: <Root />, 
           children: [
             { index: true, element: <Home /> },
-            { path: 'elenco', element: <Elenco /> },
             { path: 'inscripcion', element: <Inscripcion /> },
             { path: 'perfil', element: <Perfil /> },
             { 

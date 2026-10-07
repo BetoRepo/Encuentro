@@ -87,7 +87,7 @@ export function PerfilPublico() {
     <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "20px 14px 40px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <button
-          onClick={() => navigate(currentUser ? "/elenco" : "/")}
+          onClick={() => navigate(currentUser ? "/perfil" : "/")}
           style={{
             display: "flex",
             alignItems: "center",

@@ -34,15 +34,13 @@ export function Elenco() {
       const { data, error: queryError } = await supabase
         .from("profiles")
         .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout, descripcion, foto")
-        .eq("rol", "participant")
-        .not("nombre", "is", null)
         .order("nombre", { ascending: true });
 
       if (queryError) {
         console.error("Error cargando el elenco:", queryError);
         setError("No se pudo cargar el elenco. Inténtalo de nuevo más tarde.");
       } else {
-        setProfiles(data || []);
+        setProfiles((data || []).filter((profile) => Boolean(profile.nombre?.trim())));
       }
       setLoading(false);
     };
@@ -51,29 +49,28 @@ export function Elenco() {
   }, []);
 
   return (
-    <main style={{ minHeight: "100vh", padding: "36px 20px 72px", color: ENJ_NAVY }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto" }}>
-        <header style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: ENJ_MAGENTA, fontWeight: 800, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+    <section aria-labelledby="elenco-heading" style={{ padding: 24, color: ENJ_NAVY, background: "#fff", borderRadius: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
+      <header style={{ marginBottom: 24 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: ENJ_MAGENTA, fontWeight: 800, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>
             <Users size={18} /> Elenco ENJ 2026
           </div>
-          <h1 style={{ margin: "10px 0 8px", fontSize: 32, fontWeight: 900 }}>Conoce a los participantes</h1>
-          <p style={{ margin: 0, color: "rgba(0,11,111,0.68)" }}>
+          <h2 id="elenco-heading" style={{ margin: "8px 0 6px", fontSize: 22, fontWeight: 900 }}>Conoce a los participantes</h2>
+          <p style={{ margin: 0, color: "rgba(0,11,111,0.68)", fontSize: 14 }}>
             Explora sus perfiles y envíales un apretón de manos.
           </p>
-        </header>
+      </header>
 
         {loading ? (
-          <p role="status" style={{ textAlign: "center", padding: 48 }}>Cargando participantes...</p>
+          <p role="status" style={{ textAlign: "center", padding: 32 }}>Cargando participantes...</p>
         ) : error ? (
-          <p role="alert" style={{ textAlign: "center", padding: 48, color: "#B91C1C" }}>{error}</p>
+          <p role="alert" style={{ textAlign: "center", padding: 32, color: "#B91C1C" }}>{error}</p>
         ) : profiles.length === 0 ? (
-          <p style={{ textAlign: "center", padding: 48 }}>Todavía no hay perfiles públicos disponibles.</p>
+          <p style={{ textAlign: "center", padding: 32 }}>Todavía no hay perfiles públicos disponibles.</p>
         ) : (
-          <Carousel opts={{ align: "start", containScroll: "trimSnaps" }}>
+          <Carousel opts={{ align: "start", containScroll: "trimSnaps" }} style={{ margin: "0 20px" }}>
             <CarouselPrevious
               aria-label="Participante anterior"
-              style={{ left: -18, zIndex: 1, background: ENJ_MAGENTA, color: "#fff", border: "none" }}
+              style={{ left: -24, zIndex: 1, background: ENJ_MAGENTA, color: "#fff", border: "none" }}
             />
             <CarouselContent style={{ marginLeft: -12 }}>
               {profiles.map((profile) => {
@@ -122,11 +119,10 @@ export function Elenco() {
             </CarouselContent>
             <CarouselNext
               aria-label="Participante siguiente"
-              style={{ right: -18, zIndex: 1, background: ENJ_MAGENTA, color: "#fff", border: "none" }}
+              style={{ right: -24, zIndex: 1, background: ENJ_MAGENTA, color: "#fff", border: "none" }}
             />
           </Carousel>
         )}
-      </div>
-    </main>
+    </section>
   );
 }
