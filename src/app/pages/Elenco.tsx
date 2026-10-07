@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, User, Users } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -23,6 +23,102 @@ interface PublicProfile {
 }
 
 const PROFILES_PER_PAGE = 24;
+
+function ProfilePhoto({ profileId, name }: { profileId: string; name: string }) {
+  const imageContainer = useRef<HTMLDivElement>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+
+  useEffect(() => {
+    const element = imageContainer.current;
+    if (!element) return;
+
+    let cancelled = false;
+    const loadPhoto = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("foto")
+        .eq("id", profileId)
+        .maybeSingle();
+
+      if (error) {
+        console.error(`Error cargando la foto del perfil ${profileId}:`, error);
+        if (!cancelled) setFailed(true);
+        return;
+      }
+      if (!cancelled && data?.foto) setPhoto(data.foto);
+      else if (!cancelled) setFailed(true);
+    };
+
+    if (!("IntersectionObserver" in window)) {
+      loadPhoto();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          loadPhoto();
+        }
+      },
+      { rootMargin: "160px" },
+    );
+    observer.observe(element);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [profileId]);
+
+  return (
+    <div
+      ref={imageContainer}
+      style={{
+        position: "relative",
+        height: 220,
+        overflow: "hidden",
+        background: "linear-gradient(145deg, #E7EAFE, #F9E8F3)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {photo && !failed ? (
+        <img
+          src={photo}
+          alt={`Foto de ${name}`}
+          onError={() => setFailed(true)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ) : (
+        <div
+          aria-label={failed ? `No hay foto disponible para ${name}` : undefined}
+          style={{
+            width: 92,
+            height: 92,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(255,255,255,0.86)",
+            color: ENJ_NAVY,
+            fontSize: 30,
+            fontWeight: 900,
+            boxShadow: "0 8px 24px rgba(0,11,111,0.1)",
+          }}
+        >
+          {initials}
+        </div>
+      )}
+      <div style={{ position: "absolute", inset: "auto 0 0", height: 72, background: "linear-gradient(transparent, rgba(0,11,111,0.2))" }} />
+    </div>
+  );
+}
 
 export function Elenco() {
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
@@ -113,18 +209,9 @@ export function Elenco() {
                     style={{ paddingLeft: 12 }}
                   >
                     <article style={{ height: "100%", overflow: "hidden", borderRadius: 24, background: "#fff", border: "1px solid rgba(0,11,111,0.08)", boxShadow: "0 14px 32px rgba(0,11,111,0.08)" }}>
-                      <div style={{ height: 260, background: "#EAEFFF", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                        {profile.foto ? (
-                          <img src={profile.foto} alt={`Foto de ${fullName}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                          <User size={76} color="rgba(0,11,111,0.3)" />
-                        )}
-                      </div>
+                      <ProfilePhoto profileId={profile.id} name={fullName} />
                       <div style={{ padding: 20 }}>
-                        <div style={{ width: 76, height: 76, margin: "0 auto 16px", borderRadius: "50%", background: "rgba(0,11,111,0.08)", color: ENJ_NAVY, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 900 }}>
-                          {fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
-                        </div>
-                        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, textAlign: "center" }}>{fullName}</h2>
+                        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, textAlign: "center", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>{fullName}</h2>
                         <p style={{ minHeight: 38, margin: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "rgba(0,11,111,0.68)", fontSize: 13 }}>
                           <MapPin size={16} color={ENJ_MAGENTA} />
                           {[profile.grupo_scout, profile.selected_region].filter(Boolean).join(" · ") || "Participante ENJ"}

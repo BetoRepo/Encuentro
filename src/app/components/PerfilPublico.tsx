@@ -1,28 +1,41 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { User, MapPin, Heart, ArrowLeft, Instagram, Handshake } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Award,
+  Handshake,
+  Heart,
+  Instagram,
+  MapPin,
+  Sparkles,
+  User,
+} from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
 
+interface PublicProfile {
+  id: string;
+  nombre: string | null;
+  apellido: string | null;
+  grupo_scout: string | null;
+  selected_region: string | null;
+  selected_district: string | null;
+  rama_scout: string | null;
+  foto: string | null;
+  instagram: string | null;
+  descripcion: string | null;
+  gustos_evento: string[] | null;
+  apretones_count: number | null;
+}
+
 export function PerfilPublico() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<{
-    id: string;
-    nombre: string | null;
-    apellido: string | null;
-    grupo_scout: string | null;
-    selected_region: string | null;
-    rama_scout: string | null;
-    foto: string | null;
-    instagram: string | null;
-    descripcion: string | null;
-    gustos_evento: string[] | null;
-    apretones_count: number | null;
-  } | null>(null);
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState("");
   const [handshakeLoading, setHandshakeLoading] = useState(false);
   const [handshakeError, setHandshakeError] = useState("");
   const [hasHandshaked, setHasHandshaked] = useState(false);
@@ -42,17 +55,21 @@ export function PerfilPublico() {
   useEffect(() => {
     const fetchPublicProfile = async () => {
       if (!id) {
+        setProfileError("No se especificó el perfil que quieres consultar.");
         setLoading(false);
         return;
       }
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, nombre, apellido, grupo_scout, selected_region, rama_scout, foto, instagram, descripcion, gustos_evento, apretones_count")
+        .select("id, nombre, apellido, grupo_scout, selected_region, selected_district, rama_scout, foto, instagram, descripcion, gustos_evento, apretones_count")
         .eq("id", id)
         .maybeSingle();
 
-      if (error) console.error("Error cargando perfil:", error);
+      if (error) {
+        console.error("Error cargando perfil:", error);
+        setProfileError("No se pudo cargar este perfil. Inténtalo de nuevo más tarde.");
+      }
       setProfile(data);
       setLoading(false);
     };
@@ -80,211 +97,148 @@ export function PerfilPublico() {
     setHandshakeLoading(false);
   };
 
-  if (loading) return <div style={{ textAlign: "center", padding: 80, fontFamily: "sans-serif", color: ENJ_NAVY }}>Cargando perfil Scout...</div>;
-  if (!profile) return <div style={{ textAlign: "center", padding: 80, fontFamily: "sans-serif", color: ENJ_NAVY }}>Perfil no encontrado o no disponible.</div>;
+  if (loading) {
+    return (
+      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#F0F2FA", color: ENJ_NAVY }}>
+        <p role="status">Preparando perfil...</p>
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#F0F2FA", color: ENJ_NAVY }}>
+        <div style={{ maxWidth: 440, textAlign: "center", background: "#fff", padding: 32, borderRadius: 24, boxShadow: "0 16px 40px rgba(0,11,111,0.1)" }}>
+          <h1 style={{ margin: "0 0 10px", fontSize: 22 }}>Perfil no disponible</h1>
+          <p role="alert" style={{ margin: "0 0 20px", color: "#64748B" }}>{profileError || "No encontramos este perfil."}</p>
+          <button type="button" onClick={() => navigate(currentUser ? "/perfil" : "/")} style={{ border: 0, borderRadius: 12, padding: "11px 18px", background: ENJ_NAVY, color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+            Volver
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  const fullName = `${profile.nombre || ""} ${profile.apellido || ""}`.trim() || "Participante ENJ";
+  const initial = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
   return (
-    <div style={{ background: "#F0F2FA", minHeight: "100vh", padding: "20px 14px 40px" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <main style={{ minHeight: "100vh", padding: "32px 18px 64px", background: "linear-gradient(180deg, #E7EAFE 0, #F5F6FC 360px, #F5F6FC 100%)", fontFamily: "Inter, sans-serif" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
         <button
+          type="button"
           onClick={() => navigate(currentUser ? "/perfil" : "/")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "rgba(0,11,111,0.7)",
-            marginBottom: 18,
-            padding: "8px 0",
-            fontWeight: 700,
-            fontSize: 16,
-          }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 15px", marginBottom: 20, border: "1px solid rgba(0,11,111,0.08)", borderRadius: 99, background: "rgba(255,255,255,0.88)", color: ENJ_NAVY, cursor: "pointer", fontWeight: 800, boxShadow: "0 4px 14px rgba(0,11,111,0.06)" }}
         >
-          <ArrowLeft size={18} /> Ir al Inicio
+          <ArrowLeft size={17} /> {currentUser ? "Volver a mi perfil" : "Ir al inicio"}
         </button>
 
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 28,
-            padding: "30px 24px 28px",
-            boxShadow: "0 18px 40px rgba(0,11,111,0.12)",
-            textAlign: "center",
-            position: "relative",
-          }}
-        >
-          {profile.rama_scout && (
-            <span
-              style={{
-                position: "absolute",
-                top: 20,
-                right: 20,
-                background: "rgba(0,11,111,0.08)",
-                color: ENJ_NAVY,
-                fontSize: 12,
-                fontWeight: 800,
-                padding: "6px 14px",
-                borderRadius: 100,
-              }}
-            >
-              {profile.rama_scout}
-            </span>
-          )}
-
-          <div
-            style={{
-              width: 150,
-              height: 150,
-              borderRadius: "50%",
-              margin: "0 auto 18px",
-              border: `4px solid ${ENJ_MAGENTA}`,
-              overflow: "hidden",
-              background: "#F0F2FA",
-              boxShadow: "0 10px 24px rgba(215,0,126,0.18)",
-            }}
-          >
-            {profile.foto ? (
-              <img src={profile.foto} alt="Foto Scout" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <User size={76} color="rgba(0,11,111,0.3)" style={{ marginTop: 28 }} />
+        <article style={{ overflow: "hidden", borderRadius: 30, background: "#fff", boxShadow: "0 24px 60px rgba(0,11,111,0.14)", border: "1px solid rgba(0,11,111,0.06)" }}>
+          <header style={{ minHeight: 190, position: "relative", padding: "26px 30px", overflow: "hidden", background: "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.22), transparent 28%), radial-gradient(circle at 88% 72%, rgba(247,191,22,0.34), transparent 24%), linear-gradient(125deg, #000B6F 0%, #202EAA 58%, #D7007E 125%)" }}>
+            <div aria-hidden="true" style={{ position: "absolute", width: 210, height: 210, top: -108, right: 100, border: "1px solid rgba(255,255,255,0.16)", borderRadius: "50%" }} />
+            <div aria-hidden="true" style={{ position: "absolute", width: 290, height: 290, top: -150, right: 58, border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50%" }} />
+            <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 9, color: "#fff", fontSize: 12, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              <Sparkles size={17} color="#F7BF16" /> Elenco ENJ 2026
+            </div>
+            {profile.rama_scout && (
+              <span style={{ position: "absolute", zIndex: 1, top: 24, right: 24, maxWidth: "55%", padding: "8px 14px", borderRadius: 99, background: "rgba(255,255,255,0.94)", color: ENJ_NAVY, fontSize: 12, fontWeight: 900, textAlign: "center" }}>
+                {profile.rama_scout}
+              </span>
             )}
-          </div>
-
-          <h2 style={{ margin: "0 0 8px", fontSize: 34, fontWeight: 900, color: ENJ_NAVY, lineHeight: 1.15 }}>
-            {profile.nombre} {profile.apellido}
-          </h2>
-
-          <p
-            style={{
-              margin: "0 0 22px",
-              fontSize: 17,
-              color: "rgba(0,11,111,0.74)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              flexWrap: "wrap",
-              fontWeight: 600,
-            }}
-          >
-            <MapPin size={18} color={ENJ_MAGENTA} /> {profile.grupo_scout || "Participante ENJ"} • Región {profile.selected_region || "No especificada"}
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 22 }}>
-            <button
-              type="button"
-              onClick={handleHandshake}
-              disabled={!currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading}
-              aria-label="Enviar un apretón de manos"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 9,
-                padding: "12px 22px",
-                border: hasHandshaked ? `2px solid ${ENJ_MAGENTA}` : "none",
-                borderRadius: 99,
-                background: hasHandshaked ? "rgba(215,0,126,0.08)" : ENJ_NAVY,
-                color: hasHandshaked ? ENJ_MAGENTA : "#fff",
-                fontSize: 15,
-                fontWeight: 800,
-                cursor: !currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading ? "not-allowed" : "pointer",
-                opacity: !currentUser?.id || currentUser.id === profile.id ? 0.65 : 1,
-              }}
-            >
-              <Handshake size={19} />
-              {handshakeLoading ? "Enviando..." : hasHandshaked ? "Apretón enviado" : "Apretón de manos"}
-              <span>· {profile.apretones_count || 0}</span>
-            </button>
-            {!currentUser?.id && <span style={{ color: "#64748B", fontSize: 12 }}>Inicia sesión para enviar un apretón.</span>}
-            {currentUser?.id === profile.id && <span style={{ color: "#64748B", fontSize: 12 }}>Este es tu perfil.</span>}
-            {handshakeError && <span role="alert" style={{ color: "#B91C1C", fontSize: 12 }}>{handshakeError}</span>}
-          </div>
-
-          {profile.instagram && (
-            <a
-              href={`https://instagram.com/${profile.instagram}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: "rgba(215,0,126,0.08)",
-                color: ENJ_MAGENTA,
-                textDecoration: "none",
-                padding: "10px 18px",
-                borderRadius: 100,
-                fontSize: 15,
-                fontWeight: 800,
-                marginBottom: 24,
-              }}
-            >
-              <Instagram size={17} /> @{profile.instagram}
-            </a>
-          )}
-
-          {profile.descripcion && (
-            <div
-              style={{
-                background: "#FAFBFF",
-                padding: 20,
-                borderRadius: 18,
-                border: "1px solid rgba(0,11,111,0.08)",
-                fontSize: 17,
-                color: "#333",
-                fontStyle: "italic",
-                marginBottom: 28,
-                lineHeight: 1.6,
-                textAlign: "left",
-              }}
-            >
-              "{profile.descripcion}"
+            <div style={{ position: "absolute", left: 30, bottom: 24, color: "rgba(255,255,255,0.88)" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase" }}>Conoce a</div>
+              <div style={{ marginTop: 5, fontSize: 25, fontWeight: 900 }}>Una historia Scout</div>
             </div>
-          )}
+          </header>
 
-          <div style={{ textAlign: "left" }}>
-            <h4
-              style={{
-                margin: "0 0 14px",
-                fontSize: 15,
-                fontWeight: 900,
-                color: ENJ_NAVY,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              <Heart size={17} color={ENJ_MAGENTA} /> Favoritos en el Evento
-            </h4>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {profile.gustos_evento?.length > 0 ? (
-                profile.gustos_evento.map((g: string, idx: number) => (
-                  <span
-                    key={idx}
-                    style={{
-                      background: "#F0F2FA",
-                      color: ENJ_NAVY,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                    }}
-                  >
-                    #{g}
+          <div style={{ padding: "0 clamp(20px, 5vw, 48px) 38px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginTop: -66, position: "relative", zIndex: 2 }}>
+              <div style={{ width: 142, height: 142, padding: 5, borderRadius: "50%", background: "linear-gradient(135deg, #D7007E, #F7BF16, #000B6F)", boxShadow: "0 12px 30px rgba(215,0,126,0.22)" }}>
+                <div style={{ width: "100%", height: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: "5px solid #fff", borderRadius: "50%", background: "linear-gradient(145deg, #EEF0FC, #FBEAF4)" }}>
+                  {profile.foto ? (
+                    <img src={profile.foto} alt={`Foto de ${fullName}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span aria-label={`Iniciales de ${fullName}`} style={{ color: ENJ_NAVY, fontSize: 38, fontWeight: 900 }}>{initial}</span>
+                  )}
+                </div>
+              </div>
+
+              <h1 style={{ margin: "18px 0 8px", color: ENJ_NAVY, fontSize: "clamp(27px, 5vw, 38px)", lineHeight: 1.12, fontWeight: 900, letterSpacing: "-0.035em" }}>
+                {fullName}
+              </h1>
+              <p style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 7, margin: 0, color: "#526080", fontSize: 15, fontWeight: 600 }}>
+                <MapPin size={17} color={ENJ_MAGENTA} />
+                {[profile.grupo_scout, profile.selected_district, profile.selected_region].filter(Boolean).join(" · ") || "Participante ENJ"}
+              </p>
+
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, marginTop: 22 }}>
+                <button
+                  type="button"
+                  onClick={handleHandshake}
+                  disabled={!currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading}
+                  aria-label="Enviar un apretón de manos"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 9,
+                    padding: "13px 22px",
+                    border: hasHandshaked ? `2px solid ${ENJ_MAGENTA}` : "2px solid transparent",
+                    borderRadius: 99,
+                    background: hasHandshaked ? "rgba(215,0,126,0.08)" : `linear-gradient(115deg, ${ENJ_NAVY}, #202EAA)`,
+                    color: hasHandshaked ? ENJ_MAGENTA : "#fff",
+                    fontSize: 14,
+                    fontWeight: 900,
+                    cursor: !currentUser?.id || currentUser.id === profile.id || hasHandshaked || handshakeLoading ? "not-allowed" : "pointer",
+                    opacity: !currentUser?.id || currentUser.id === profile.id ? 0.68 : 1,
+                    boxShadow: hasHandshaked ? "none" : "0 8px 20px rgba(0,11,111,0.22)",
+                  }}
+                >
+                  <Handshake size={18} />
+                  {handshakeLoading ? "Enviando..." : hasHandshaked ? "Apretón enviado" : "Apretón de manos"}
+                  <span style={{ minWidth: 25, padding: "3px 8px", borderRadius: 99, background: "rgba(255,255,255,0.18)" }}>
+                    {profile.apretones_count || 0}
                   </span>
-                ))
-              ) : (
-                <span style={{ fontSize: 14, color: "#888" }}>No ha agregado favoritos aún.</span>
-              )}
+                </button>
+                {profile.instagram && (
+                  <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 18px", borderRadius: 99, background: "#FFF0F8", color: ENJ_MAGENTA, textDecoration: "none", fontSize: 14, fontWeight: 900 }}>
+                    <Instagram size={17} /> @{profile.instagram}
+                  </a>
+                )}
+              </div>
+              {!currentUser?.id && <span style={{ marginTop: 10, color: "#64748B", fontSize: 12 }}>Inicia sesión para enviar un apretón.</span>}
+              {currentUser?.id === profile.id && <span style={{ marginTop: 10, color: "#64748B", fontSize: 12 }}>Este es tu perfil.</span>}
+              {handshakeError && <span role="alert" style={{ marginTop: 10, color: "#B91C1C", fontSize: 12 }}>{handshakeError}</span>}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 16, marginTop: 32 }}>
+              <section style={{ padding: 22, border: "1px solid #E8EBF6", borderRadius: 22, background: "linear-gradient(145deg, #FCFCFF, #F8F9FE)" }}>
+                <h2 style={{ display: "flex", alignItems: "center", gap: 9, margin: "0 0 14px", color: ENJ_NAVY, fontSize: 14, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  <Award size={18} color={ENJ_MAGENTA} /> Mi lema Scout
+                </h2>
+                <p style={{ margin: 0, color: "#475569", fontSize: 15, lineHeight: 1.75, fontStyle: profile.descripcion ? "italic" : "normal" }}>
+                  {profile.descripcion ? `“${profile.descripcion}”` : "Este participante todavía no ha agregado una biografía."}
+                </p>
+              </section>
+
+              <section style={{ padding: 22, border: "1px solid #E8EBF6", borderRadius: 22, background: "linear-gradient(145deg, #FCFCFF, #F8F9FE)" }}>
+                <h2 style={{ display: "flex", alignItems: "center", gap: 9, margin: "0 0 14px", color: ENJ_NAVY, fontSize: 14, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  <Heart size={18} color={ENJ_MAGENTA} /> Lo que le gusta del evento
+                </h2>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {profile.gustos_evento?.length ? profile.gustos_evento.map((gusto) => (
+                    <span key={gusto} style={{ padding: "8px 11px", borderRadius: 11, background: "#EEF0FC", color: ENJ_NAVY, fontSize: 12, fontWeight: 800 }}>
+                      #{gusto}
+                    </span>
+                  )) : (
+                    <span style={{ color: "#64748B", fontSize: 13 }}>Todavía no ha agregado intereses.</span>
+                  )}
+                </div>
+              </section>
             </div>
           </div>
-        </div>
+        </article>
       </div>
-    </div>
+    </main>
   );
 }
