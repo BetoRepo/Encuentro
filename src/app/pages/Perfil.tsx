@@ -57,6 +57,7 @@ const PERFIL_CSS = `
 .pf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .pf-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 999px; font-size: 12px; font-weight: 800; }
 .pf-chip-yellow { background: var(--yellow); color: var(--navy); }
+.pf-chip-crew { background: var(--magenta); color: #fff; text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 4px 12px rgba(215,0,126,0.35); }
 .pf-chip-outline { border: 1.5px solid rgba(255,255,255,0.55); color: #fff; }
 .pf-chip-ghost { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.92); }
 .pf-stats { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
@@ -198,6 +199,8 @@ const tiposRol = [
 ];
 
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
+// Debe coincidir con la restricción profiles_crew_check de la base de datos.
+export const crews = ["Bolibomba", "Samba", "Chao", "Pirulin", "Cricri", "Reinitas", "Savoy"];
 const opcionesGustos = [
   "RDJ", "Herramientas digitales", "Marca personal", "Comunicación y negociación", 
   "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", 
@@ -473,6 +476,7 @@ export function Perfil() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [grupoScout, setGrupoScout] = useState("");
   const [ramaScout, setRamaScout] = useState("");
+  const [crew, setCrew] = useState("");
 
   // 3. Redes y Perfil Público
   const [descripcion, setDescripcion] = useState("");
@@ -512,6 +516,7 @@ export function Perfil() {
         setSelectedDistrict(data.selected_district || "");
         setGrupoScout(data.grupo_scout || "");
         setRamaScout(data.rama_scout || "");
+        setCrew(data.crew || "");
         setDescripcion(data.descripcion || "");
         setInstagram(data.instagram || "");
         setGustos(data.gustos_evento || []);
@@ -642,6 +647,7 @@ export function Perfil() {
         selected_district: selectedDistrict,
         grupo_scout: grupoScout,
         rama_scout: ramaScout,
+        crew: crew || null,
         descripcion: descripcion.trim(),
         instagram: instagram.trim().replace("@", ""),
         gustos_evento: gustos,
@@ -796,6 +802,40 @@ export function Perfil() {
                 <SelectField label="Unidad / Rama" options={ramas} value={ramaScout} onChange={setRamaScout} />
               </div>
 
+              {/* CREW */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: ENJ_NAVY, display: "block", marginBottom: 4 }}>Tu Crew ENJ</label>
+                <span style={{ fontSize: 12, color: "rgba(0,11,111,0.55)", display: "block", marginBottom: 10 }}>Elige el crew al que perteneces en el encuentro.</span>
+                <div role="radiogroup" aria-label="Crew" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+                  {crews.map((nombreCrew) => {
+                    const selected = crew === nombreCrew;
+                    return (
+                      <button
+                        key={nombreCrew}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setCrew(selected ? "" : nombreCrew)}
+                        style={{
+                          padding: "12px 10px",
+                          borderRadius: 14,
+                          border: selected ? `2px solid ${ENJ_PURPLE}` : "1.5px solid rgba(0,11,111,0.12)",
+                          background: selected ? `linear-gradient(135deg, ${ENJ_PURPLE}, ${ENJ_NAVY})` : "#FAFBFF",
+                          color: selected ? "#fff" : ENJ_NAVY,
+                          fontSize: 14,
+                          fontWeight: 900,
+                          cursor: "pointer",
+                          boxShadow: selected ? "0 6px 16px rgba(80,3,157,0.3)" : "none",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {selected ? "★ " : ""}{nombreCrew}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* SECCIÓN 3: REDES E INTERESES */}
               <SectionDivider title="3. Social & Redes ENJ" icon={<Heart size={16} color={ENJ_NAVY} />} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -864,6 +904,7 @@ export function Perfil() {
                     {nombre || "Scout"} <span>{apellido}</span>
                   </h1>
                   <div className="pf-chips">
+                    {crew && <span className="pf-chip pf-chip-crew">★ Crew {crew}</span>}
                     <span className="pf-chip pf-chip-yellow">{rolEvento}</span>
                     {ramaScout && <span className="pf-chip pf-chip-outline">{ramaScout}</span>}
                     {selectedRegion && (

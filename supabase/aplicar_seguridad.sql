@@ -288,7 +288,7 @@ create policy profiles_delete on public.profiles
 -- Visitantes sin sesión (perfil público /scout/:id) no ven teléfono, correo ni fecha de nacimiento.
 revoke select on public.profiles from anon;
 grant select (id, nombre, apellido, grupo_scout, distrito, selected_region, selected_district, rama_scout,
-              rol_evento, descripcion, instagram, gustos_evento, foto, apretones_count)
+              rol_evento, descripcion, instagram, gustos_evento, foto, apretones_count, crew)
   on public.profiles to anon;
 
 -- Un participante no puede cambiarse el rol ni inflar sus apretones (función creada en la parte 1).

@@ -29,6 +29,7 @@ interface PublicProfile {
   descripcion: string | null;
   gustos_evento: string[] | null;
   apretones_count: number | null;
+  crew: string | null;
 }
 
 export function PerfilPublico() {
@@ -63,7 +64,7 @@ export function PerfilPublico() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, nombre, apellido, grupo_scout, selected_region, selected_district, rama_scout, foto, instagram, descripcion, gustos_evento, apretones_count")
+        .select("id, nombre, apellido, grupo_scout, selected_region, selected_district, rama_scout, foto, instagram, descripcion, gustos_evento, apretones_count, crew")
         .eq("id", id)
         .maybeSingle();
 
@@ -167,6 +168,11 @@ export function PerfilPublico() {
                 <MapPin size={17} color={ENJ_MAGENTA} />
                 {[profile.grupo_scout, profile.selected_district, profile.selected_region].filter(Boolean).join(" · ") || "Participante ENJ"}
               </p>
+              {profile.crew && (
+                <span style={{ marginTop: 12, padding: "7px 16px", borderRadius: 99, background: ENJ_MAGENTA, color: "#fff", fontSize: 12, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", boxShadow: "0 4px 12px rgba(215,0,126,0.3)" }}>
+                  ★ Crew {profile.crew}
+                </span>
+              )}
 
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, marginTop: 22 }}>
                 <button
