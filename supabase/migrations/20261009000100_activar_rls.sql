@@ -15,6 +15,51 @@
 begin;
 
 -- ---------------------------------------------------------------------------
+-- Políticas antiguas que dejaban tablas y archivos abiertos (lectura/escritura
+-- pública, o basadas en Supabase Auth, que la app ya no usa).
+-- ---------------------------------------------------------------------------
+drop policy if exists "Permitir insercion a Administradores y Equipo de Programa" on public.consultas_distritales;
+drop policy if exists "Permitir lectura a Administradores y Equipo de Programa" on public.consultas_distritales;
+drop policy if exists "Permitir lectura publica consultas" on public.consultas_distritales;
+drop policy if exists "Permitir upsert publico consultas" on public.consultas_distritales;
+drop policy if exists "Permitir inserción de mensajes" on public.muro_social;
+drop policy if exists "Permitir lectura pública del muro" on public.muro_social;
+drop policy if exists "Permitir lectura de pagos" on public.pagos;
+drop policy if exists "Solo Admins validan pagos" on public.pagos;
+drop policy if exists "Gestión alarmas Programa" on public.programa_alarmas;
+drop policy if exists "Lectura alarmas publicadas" on public.programa_alarmas;
+drop policy if exists "Permitir actualización de alarmas a usuarios autenticados" on public.programa_alarmas;
+drop policy if exists "Permitir inserción de alarmas a usuarios autenticados" on public.programa_alarmas;
+drop policy if exists "Permitir lectura de alarmas a todos" on public.programa_alarmas;
+drop policy if exists "Usuarios crean sus propias solicitudes" on public.solicitudes_insignias;
+drop policy if exists "Usuarios ven sus propias solicitudes" on public.solicitudes_insignias;
+drop policy if exists "Permitir actualizacion publica en documentos-enj" on storage.objects;
+drop policy if exists "Permitir eliminacion en documentos-enj" on storage.objects;
+drop policy if exists "Permitir lectura publica de documentos-enj" on storage.objects;
+drop policy if exists "Permitir subida publica a documentos-enj" on storage.objects;
+drop policy if exists "Permitir subir documentos enj" on storage.objects;
+drop policy if exists "Permitir ver documentos enj" on storage.objects;
+drop policy if exists "politica insert 9ipihj_0" on storage.objects;
+
+-- Los ids de usuario son texto (usr_...); con uuid (y FK a la tabla de Supabase Auth) las solicitudes
+-- de insignia fallaban. La tabla está vacía.
+alter table public.solicitudes_insignias drop constraint if exists solicitudes_insignias_user_id_fkey;
+alter table public.solicitudes_insignias alter column user_id type text using user_id::text;
+alter table public.solicitudes_insignias
+  add constraint solicitudes_insignias_user_id_fkey foreign key (user_id) references public."user"(id) on delete cascade;
+
+-- Tabla de roles del sistema anterior (Supabase Auth): nadie debe poder escribirla desde el navegador.
+alter table public.user_roles enable row level security;
+revoke all on public.user_roles from anon, authenticated;
+
+-- Vistas de pagos y perfiles: respetan RLS de las tablas base y no se pueden modificar desde el navegador.
+alter view public.vista_control_pagos set (security_invoker = true);
+alter view public.vista_gestion_perfiles set (security_invoker = true);
+alter view public.vista_pagos_interactiva set (security_invoker = true);
+revoke all on public.vista_control_pagos, public.vista_gestion_perfiles, public.vista_pagos_interactiva from anon, authenticated;
+grant select on public.vista_control_pagos, public.vista_gestion_perfiles, public.vista_pagos_interactiva to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- public."user": solo el backend (service role) accede. Contiene password_hash.
 -- ---------------------------------------------------------------------------
 alter table public."user" enable row level security;
@@ -157,7 +202,7 @@ revoke all on public.subscriptions from anon, authenticated;
 alter table public.programa_alarmas enable row level security;
 drop policy if exists programa_alarmas_select on public.programa_alarmas;
 create policy programa_alarmas_select on public.programa_alarmas
-  for select to authenticated using (public.es_programa());
+  for select to authenticated using (estado = 'publicada' or public.es_programa());
 
 -- ---------------------------------------------------------------------------
 -- Insignias
@@ -169,8 +214,9 @@ create policy insignias_select on public.insignias
 drop policy if exists insignias_write on public.insignias;
 create policy insignias_write on public.insignias
   for all to authenticated using (public.es_programa()) with check (public.es_programa());
--- PENDIENTE: ocultar la columna "codigo" (los códigos QR) a los participantes con
--- revoke select + grant select (columnas) cuando se confirmen las columnas reales.
+-- Los códigos QR ("codigo") no se pueden leer desde el navegador; se validan con reclamar_insignia().
+revoke select on public.insignias from anon, authenticated;
+grant select (id, nombre, descripcion, imagen_url, tipo, puntos, created_at) on public.insignias to anon, authenticated;
 
 alter table public.participante_insignias enable row level security;
 drop policy if exists participante_insignias_select on public.participante_insignias;
@@ -243,9 +289,21 @@ create policy enj_storage_insert on storage.objects
   for insert to authenticated
   with check (bucket_id in ('documentos-enj', 'evidencias_insignias'));
 
+-- Los buckets son públicos: los archivos se ven por su URL. Estas políticas solo controlan
+-- listar, sobrescribir y borrar mediante la API (antes cualquiera podía borrar documentos).
+drop policy if exists enj_storage_select on storage.objects;
+create policy enj_storage_select on storage.objects
+  for select to authenticated
+  using (bucket_id in ('documentos-enj', 'evidencias_insignias') and (owner_id = public.app_uid() or public.es_admin()));
+
 drop policy if exists enj_storage_update on storage.objects;
 create policy enj_storage_update on storage.objects
   for update to authenticated
   using (bucket_id in ('documentos-enj', 'evidencias_insignias') and (owner_id = public.app_uid() or public.es_admin()));
+
+drop policy if exists enj_storage_delete on storage.objects;
+create policy enj_storage_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id in ('documentos-enj', 'evidencias_insignias') and public.es_admin());
 
 commit;

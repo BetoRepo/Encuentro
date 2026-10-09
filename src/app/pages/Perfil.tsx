@@ -438,7 +438,7 @@ export function Perfil() {
       if (muroData) setComentarios(muroData);
 
       // 4. Cargar Catálogo e Insignias del Usuario
-      const { data: catData } = await supabase.from("insignias").select("*");
+      const { data: catData } = await supabase.from("insignias").select("id, nombre, descripcion, imagen_url, tipo, puntos");
       if (catData) setCatalogoInsignias(catData);
 
       const { data: userInsigData } = await supabase
