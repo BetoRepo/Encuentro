@@ -5,7 +5,6 @@ import {
   ShieldCheck, Send, Users, CheckCircle, Clock, AlertCircle, Edit3, Share2,
   Sparkles, Award, Trophy, X, Upload
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
 import bannerImg from "../../assets/Bannerperfil.jpeg";
 import { Elenco } from "./Elenco";
@@ -15,6 +14,139 @@ import { Elenco } from "./Elenco";
 // ==========================================
 const ENJ_NAVY = "#000B6F";
 const ENJ_MAGENTA = "#D7007E";
+const ENJ_PURPLE = "#50039D";
+
+// Estilos de la vista de perfil: credencial con la gráfica del banner ENJ
+// (morado + amarillo, texto "ENJ" repetido, trama de puntos y stickers).
+const PERFIL_CSS = `
+.pf { --navy: ${ENJ_NAVY}; --purple: ${ENJ_PURPLE}; --magenta: ${ENJ_MAGENTA}; --yellow: #F7BF16;
+  --ink: #0D0D2B; --muted: rgba(0,11,111,0.58); --line: rgba(0,11,111,0.08);
+  display: flex; flex-direction: column; gap: 22px; font-family: Inter, sans-serif; }
+
+/* ---------- HERO ---------- */
+.pf-hero { position: relative; overflow: hidden; border-radius: 28px; color: #fff;
+  background: linear-gradient(140deg, var(--purple) 0%, #3A0280 45%, var(--navy) 100%);
+  box-shadow: 0 24px 60px rgba(80,3,157,0.28); isolation: isolate; }
+.pf-hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: var(--yellow); }
+.pf-hero-bg { position: absolute; inset: -10px -40px auto; display: flex; flex-direction: column; gap: 0; z-index: -1;
+  font-weight: 900; font-size: clamp(64px, 12vw, 128px); line-height: 0.92; letter-spacing: -0.02em;
+  color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,0.09); white-space: nowrap; user-select: none; }
+.pf-hero-bg span:nth-child(2) { transform: translateX(-12%); }
+.pf-hero-dots { position: absolute; right: -40px; bottom: -40px; width: 260px; height: 260px; z-index: -1; opacity: 0.35;
+  background-image: radial-gradient(var(--yellow) 2px, transparent 2.5px); background-size: 14px 14px;
+  -webkit-mask-image: radial-gradient(circle at 70% 70%, #000 0%, transparent 70%); mask-image: radial-gradient(circle at 70% 70%, #000 0%, transparent 70%); }
+.pf-hero-actions { position: absolute; top: 18px; right: 18px; display: flex; gap: 10px; z-index: 2; }
+.pf-icon-btn { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; color: #fff;
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(8px); transition: background .2s, transform .2s; }
+.pf-icon-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+.pf-edit-btn { height: 42px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  background: #fff; color: var(--purple); font-weight: 800; font-size: 13px; box-shadow: 0 6px 18px rgba(0,0,0,0.2); transition: transform .2s; }
+.pf-edit-btn:hover { transform: translateY(-1px); }
+.pf-hero-body { display: flex; align-items: center; gap: clamp(20px, 4vw, 40px); padding: clamp(64px, 8vw, 72px) clamp(20px, 5vw, 44px) 22px; }
+.pf-avatar-wrap { position: relative; flex-shrink: 0; }
+.pf-avatar { width: clamp(132px, 18vw, 176px); aspect-ratio: 1; border-radius: 32px; overflow: hidden; display: grid; place-items: center;
+  background: #F1EAFE; border: 5px solid var(--yellow); transform: rotate(-4deg); box-shadow: 0 16px 34px rgba(0,0,0,0.3); }
+.pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pf-avatar-sticker { position: absolute; right: -14px; bottom: -10px; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--magenta); color: #fff; font-size: 11px; font-weight: 900; line-height: 1; text-align: center; letter-spacing: 0.02em;
+  border: 3px solid #fff; transform: rotate(12deg); box-shadow: 0 6px 14px rgba(0,0,0,0.25); }
+.pf-hero-info { min-width: 0; }
+.pf-kicker { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--yellow); }
+.pf-name { margin: 6px 0 12px; font-size: clamp(30px, 5vw, 46px); font-weight: 900; line-height: 1; letter-spacing: -0.03em; text-transform: uppercase; overflow-wrap: anywhere; }
+.pf-name span { color: var(--yellow); }
+.pf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.pf-chip-yellow { background: var(--yellow); color: var(--navy); }
+.pf-chip-outline { border: 1.5px solid rgba(255,255,255,0.55); color: #fff; }
+.pf-chip-ghost { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.92); }
+.pf-stats { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.pf-stat { min-width: 92px; padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); }
+.pf-stat strong { display: block; font-size: 24px; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pf-stat small { font-size: 14px; opacity: 0.6; }
+.pf-stat span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; }
+.pf-hero-footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 clamp(20px, 5vw, 44px) 30px; }
+.pf-handshake { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 999px; border: 0; font: inherit;
+  font-size: 14px; font-weight: 900; background: var(--yellow); color: var(--navy); cursor: pointer;
+  box-shadow: 0 6px 0 #C99200, 0 10px 24px rgba(0,0,0,0.25); transition: transform .15s, box-shadow .15s; }
+.pf-handshake:hover:not(:disabled) { transform: translateY(-2px); }
+.pf-handshake:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #C99200, 0 4px 10px rgba(0,0,0,0.2); }
+.pf-handshake-done, .pf-handshake-own { background: rgba(255,255,255,0.14); color: #fff; box-shadow: none; cursor: default; }
+.pf-insta { display: inline-flex; align-items: center; gap: 6px; color: #fff; text-decoration: none; font-size: 13px; font-weight: 700;
+  padding: 10px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.3); transition: background .2s; }
+.pf-insta:hover { background: rgba(255,255,255,0.12); }
+
+/* ---------- TARJETAS ---------- */
+.pf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 22px; align-items: start; }
+.pf-card { background: #fff; border-radius: 24px; padding: clamp(18px, 3vw, 26px); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,11,111,0.05); min-width: 0; }
+.pf-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 900; color: var(--navy); }
+.pf-title svg { color: var(--magenta); }
+.pf-title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pf-subtitle { margin: 18px 0 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pf-hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.pf-empty { margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+.pf-quote { position: relative; margin: 16px 0 0; padding: 16px 18px 16px 44px; border-radius: 18px; background: #FBF8FF;
+  color: #2E2A4F; font-size: 14.5px; line-height: 1.6; font-weight: 500; }
+.pf-quote::before { content: "“"; position: absolute; left: 12px; top: -4px; font-size: 54px; font-weight: 900; color: var(--magenta); line-height: 1; }
+.pf-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 16px; }
+.pf-facts div { padding: 12px 14px; border-radius: 16px; background: #F6F7FC; }
+.pf-facts span { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.pf-facts strong { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--navy); font-weight: 800; }
+.pf-facts svg { color: var(--magenta); flex-shrink: 0; }
+.pf-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.pf-tags span { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; color: var(--purple); background: #F1EAFE; }
+
+/* ---------- LOGROS ---------- */
+.pf-progress-label { font-size: 12px; font-weight: 800; color: var(--purple); background: #F1EAFE; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.pf-progress { height: 10px; margin-top: 14px; border-radius: 999px; background: #EEF0F8; overflow: hidden; }
+.pf-progress div { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--magenta), var(--purple)); transition: width .6s ease; }
+.pf-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 14px; margin-top: 18px; }
+.pf-badge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px; border-radius: 18px; font: inherit;
+  border: 1.5px dashed rgba(0,11,111,0.16); background: #FAFBFF; color: var(--muted); transition: transform .2s, border-color .2s, box-shadow .2s; }
+.pf-badge:not(:disabled) { cursor: pointer; }
+.pf-badge:not(:disabled):hover { transform: translateY(-3px); border-color: var(--magenta); box-shadow: 0 10px 20px rgba(215,0,126,0.12); }
+.pf-badge-medal { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: #EEF0F8; color: rgba(0,11,111,0.35); }
+.pf-badge-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; text-align: center; }
+.pf-badge-pts { font-size: 10px; font-weight: 800; opacity: 0.7; }
+.pf-badge.is-unlocked { border-style: solid; border-color: transparent; background: linear-gradient(160deg, #FFF7DD, #F1EAFE); color: var(--navy); }
+.pf-badge.is-unlocked .pf-badge-medal { background: var(--yellow); color: var(--purple); box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--purple); }
+.pf-badge.is-unlocked .pf-badge-name { font-weight: 900; }
+
+/* ---------- CUOTAS ---------- */
+.pf-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.pf-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; background: #F6F7FC; }
+.pf-row strong { display: block; font-size: 13.5px; color: var(--navy); font-weight: 800; }
+.pf-row span { font-size: 11.5px; color: var(--muted); }
+.pf-status { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; font-size: 11.5px !important; font-weight: 900; white-space: nowrap; }
+.pf-status-ok { color: #15803D !important; background: rgba(22,163,74,0.12); }
+.pf-status-bad { color: #B91C1C !important; background: rgba(220,38,38,0.1); }
+.pf-status-wait { color: #A16207 !important; background: rgba(247,191,22,0.22); }
+
+/* ---------- MURO ---------- */
+.pf-wall-form { display: flex; gap: 8px; margin-top: 14px; }
+.pf-wall-form input { flex: 1; min-width: 0; padding: 12px 16px; border-radius: 999px; border: 1.5px solid rgba(0,11,111,0.12); font: inherit; font-size: 13.5px; outline: none; background: #FAFBFF; }
+.pf-wall-form input:focus { border-color: var(--purple); background: #fff; }
+.pf-wall-form button { width: 46px; flex-shrink: 0; border: 0; border-radius: 50%; cursor: pointer; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--purple), var(--navy)); box-shadow: 0 6px 14px rgba(80,3,157,0.3); }
+.pf-wall-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; max-height: 420px; overflow-y: auto; padding-right: 2px; }
+.pf-msg { display: flex; gap: 10px; }
+.pf-msg-avatar { flex-shrink: 0; width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; font-size: 14px; font-weight: 900; color: var(--navy); background: var(--yellow); }
+.pf-msg > div { flex: 1; min-width: 0; padding: 10px 14px; border-radius: 4px 16px 16px 16px; background: #F6F7FC; }
+.pf-msg header { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.pf-msg strong { font-size: 12.5px; color: var(--navy); font-weight: 800; }
+.pf-msg time { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.pf-msg p { margin: 0; font-size: 13px; color: #334155; line-height: 1.45; overflow-wrap: anywhere; }
+
+.pf button:focus-visible, .pf a:focus-visible, .pf input:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .pf-hero-body { flex-direction: column; text-align: center; padding-top: 70px; }
+  .pf-chips, .pf-stats, .pf-hero-footer { justify-content: center; }
+  .pf-stat { flex: 1; min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf *, .pf *::before, .pf *::after { transition: none !important; }
+}
+`;
 
 // ==========================================
 // ESTRUCTURA ORGANIZATIVA SCOUT DE VENEZUELA
@@ -557,7 +689,6 @@ export function Perfil() {
     alert("¡Enlace de tu perfil copiado al portapapeles!");
   };
 
-  const qrPublicUrl = `${window.location.origin}/scout/${targetUserId}`;
 
   return (
     <div style={{ background: "#F0F3F9", minHeight: "100vh", padding: "48px 20px 80px", fontFamily: "Inter, sans-serif" }}>
@@ -695,368 +826,237 @@ export function Perfil() {
           </div>
         ) : (
 
-          /* VISTA PÚBLICA CON LAYOUT OPTIMIZADO */
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            
-            {/* 1. BANNER & TARJETA PRINCIPAL DEL SCOUT */}
-            <div style={{ background: "#fff", borderRadius: 28, overflow: "hidden", boxShadow: "0 15px 45px rgba(0,11,111,0.08)", border: "1px solid rgba(0,11,111,0.05)", position: "relative" }}>
-              
-              {/* BANNER SCOUT CON OVERLAY */}
-              <div 
-                style={{ 
-                  height: 190, 
-                  backgroundImage: `linear-gradient(to bottom, rgba(0, 11, 111, 0.25), rgba(0, 11, 111, 0.65)), url(${bannerImg})`, 
-                  backgroundSize: "cover", 
-                  backgroundPosition: "center", 
-                  backgroundRepeat: "no-repeat", 
-                  position: "relative" 
-                }}
-              >
-                {/* BOTONES ACCIÓN SUPERIOR */}
-                <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 10, zIndex: 2 }}>
-                  <button 
-                    type="button" 
-                    onClick={copyProfileLink} 
-                    title="Compartir Perfil" 
-                    style={{ 
-                      background: "rgba(255, 255, 255, 0.25)", 
-                      backdropFilter: "blur(8px)", 
-                      WebkitBackdropFilter: "blur(8px)",
-                      border: "1px solid rgba(255, 255, 255, 0.4)", 
-                      borderRadius: "50%", 
-                      width: 40, 
-                      height: 40, 
-                      display: "flex", 
-                      alignItems: "center", 
-                      justifyContent: "center", 
-                      color: "#fff", 
-                      cursor: "pointer",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
-                    }}
-                  >
-                    <Share2 size={18} />
+          /* VISTA DEL PERFIL */
+          <div className="pf">
+            <style>{PERFIL_CSS}</style>
+
+            {/* 1. HERO */}
+            <section className="pf-hero">
+              <div className="pf-hero-bg" aria-hidden="true">
+                <span>ENJ ENJ ENJ ENJ ENJ ENJ</span>
+                <span>ENJ ENJ ENJ ENJ ENJ ENJ</span>
+                <span>ENJ ENJ ENJ ENJ ENJ ENJ</span>
+              </div>
+              <div className="pf-hero-dots" aria-hidden="true" />
+
+              <div className="pf-hero-actions">
+                <button type="button" className="pf-icon-btn" onClick={copyProfileLink} title="Copiar enlace del perfil" aria-label="Copiar enlace del perfil">
+                  <Share2 size={18} />
+                </button>
+                {isOwnProfile && (
+                  <button type="button" className="pf-edit-btn" onClick={() => setIsEditing(true)}>
+                    <Edit3 size={15} /> Editar perfil
                   </button>
-                  {isOwnProfile && (
-                    <button 
-                      type="button" 
-                      onClick={() => setIsEditing(true)} 
-                      style={{ 
-                        background: "#FFFFFF", 
-                        border: "none", 
-                        borderRadius: 24, 
-                        padding: "0 18px", 
-                        height: 40, 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: 8, 
-                        color: ENJ_NAVY, 
-                        fontWeight: 800, 
-                        fontSize: 13, 
-                        cursor: "pointer", 
-                        boxShadow: "0 4px 14px rgba(0,0,0,0.18)" 
-                      }}
-                    >
-                      <Edit3 size={15} color={ENJ_MAGENTA} /> Editar
-                    </button>
-                  )}
+                )}
+              </div>
+
+              <div className="pf-hero-body">
+                <div className="pf-avatar-wrap">
+                  <div className="pf-avatar">
+                    {foto ? <img src={foto} alt={nombre} /> : <User size={64} color={ENJ_PURPLE} />}
+                  </div>
+                  <span className="pf-avatar-sticker">ENJ<br />2026</span>
+                </div>
+
+                <div className="pf-hero-info">
+                  <span className="pf-kicker">Elenco · Encuentro Nacional de Jóvenes</span>
+                  <h1 className="pf-name">
+                    {nombre || "Scout"} <span>{apellido}</span>
+                  </h1>
+                  <div className="pf-chips">
+                    <span className="pf-chip pf-chip-yellow">{rolEvento}</span>
+                    {ramaScout && <span className="pf-chip pf-chip-outline">{ramaScout}</span>}
+                    {selectedRegion && (
+                      <span className="pf-chip pf-chip-ghost"><MapPin size={13} /> {selectedRegion}{selectedDistrict ? ` · ${selectedDistrict}` : ""}</span>
+                    )}
+                  </div>
+
+                  <div className="pf-stats">
+                    <div className="pf-stat">
+                      <strong>{apretonesCount}</strong>
+                      <span>Apretones</span>
+                    </div>
+                    <div className="pf-stat">
+                      <strong>{misInsigniasIds.length}{catalogoInsignias.length > 0 && <small>/{catalogoInsignias.length}</small>}</strong>
+                      <span>Insignias</span>
+                    </div>
+                    <div className="pf-stat">
+                      <strong>{gustos.length}</strong>
+                      <span>Intereses</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* CONTENIDO PRINCIPAL DE PERFIL */}
-              <div style={{ padding: "0 28px 32px", marginTop: -64, textAlign: "center", position: "relative", zIndex: 1 }}>
-                
-                {/* AVATAR DESTACADO */}
-                <div 
-                  style={{ 
-                    width: 150,
-                    height: 150,
-                    margin: "0 auto",
-                    borderRadius: "50%", 
-                    padding: 4, 
-                    background: `linear-gradient(135deg, ${ENJ_MAGENTA} 0%, ${ENJ_NAVY} 100%)`, 
-                    boxShadow: "0 10px 28px rgba(0, 11, 111, 0.25)"
-                  }}
-                >
-                  <div style={{ width: "100%", height: "100%", borderRadius: "50%", border: "4px solid #FFFFFF", background: "#EAEFFF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {foto ? <img src={foto} alt={nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={58} color={ENJ_NAVY} />}
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 14 }}>
-                  <h2 style={{ margin: 0, fontSize: 25, fontWeight: 900, color: ENJ_NAVY, letterSpacing: "-0.02em" }}>
-                    {nombre || "Scout"} {apellido}
-                  </h2>
-                </div>
-
-                {/* INSIGNIAS DE ROL Y RAMA */}
-                <div style={{ margin: "10px 0 16px", display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ background: "rgba(0,11,111,0.06)", color: ENJ_NAVY, fontSize: 12, fontWeight: 800, padding: "5px 14px", borderRadius: 100, border: "1px solid rgba(0,11,111,0.08)" }}>
-                    {rolEvento}
-                  </span>
-                  {ramaScout && (
-                    <span style={{ background: "rgba(215,0,126,0.1)", color: ENJ_MAGENTA, fontSize: 12, fontWeight: 800, padding: "5px 14px", borderRadius: 100, border: "1px solid rgba(215,0,126,0.18)" }}>
-                      {ramaScout}
-                    </span>
-                  )}
-                </div>
-
-                {/* BOTÓN APRETÓN DE MANOS */}
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+              <div className="pf-hero-footer">
+                {isOwnProfile ? (
+                  <span className="pf-handshake pf-handshake-own">🤝 {apretonesCount} apretones recibidos</span>
+                ) : (
                   <button
                     type="button"
+                    className={`pf-handshake${hasHandshaked ? " pf-handshake-done" : ""}`}
                     onClick={handleHandshake}
-                    disabled={isOwnProfile}
-                    aria-label={isOwnProfile ? "Apretones de manos recibidos" : "Enviar apretón de manos"}
-                    style={{
-                      background: hasHandshaked ? "rgba(215,0,126,0.08)" : `linear-gradient(135deg, ${ENJ_NAVY} 0%, #1A269B 100%)`,
-                      color: hasHandshaked ? ENJ_MAGENTA : "#FFFFFF",
-                      border: hasHandshaked ? `2px solid ${ENJ_MAGENTA}` : "none",
-                      borderRadius: 30,
-                      padding: "10px 22px",
-                      fontSize: 14,
-                      fontWeight: 800,
-                      cursor: isOwnProfile ? "default" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      boxShadow: hasHandshaked ? "none" : "0 6px 18px rgba(0,11,111,0.22)",
-                      transition: "all 0.2s ease"
-                    }}
+                    disabled={hasHandshaked}
                   >
-                    <span style={{ fontSize: 16 }}>🤝</span> {apretonesCount} {isOwnProfile ? "Apretones recibidos" : "Apretones de mano"}
+                    🤝 {hasHandshaked ? "¡Apretón enviado!" : "Dar apretón de manos"}
                   </button>
-                </div>
-
+                )}
                 {instagram && (
-                  <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", marginBottom: 20 }}>
-                    <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(215,0,126,0.05)", padding: "6px 14px", borderRadius: 20, color: ENJ_MAGENTA, textDecoration: "none", fontSize: 13, fontWeight: 700, border: "1px solid rgba(215,0,126,0.15)" }}>
-                      <Instagram size={16} /> @{instagram}
-                    </a>
-                  </div>
+                  <a className="pf-insta" href={`https://instagram.com/${instagram}`} target="_blank" rel="noreferrer">
+                    <Instagram size={16} /> @{instagram}
+                  </a>
+                )}
+              </div>
+            </section>
+
+            {/* 2. SOBRE MÍ */}
+            <section className="pf-card pf-about">
+                <h3 className="pf-title"><Sparkles size={18} /> Sobre mí</h3>
+                {descripcion ? (
+                  <blockquote className="pf-quote">{descripcion}</blockquote>
+                ) : (
+                  <p className="pf-empty">{isOwnProfile ? "Aún no tienes biografía. Cuéntale al elenco qué esperas del ENJ." : "Este scout todavía no ha escrito su biografía."}</p>
                 )}
 
-                {/* INFO ESTRUCTURA SCOUT */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, background: "#FAFBFF", padding: 16, borderRadius: 20, border: "1.5px solid rgba(0,11,111,0.06)", marginBottom: 20, textAlign: "left" }}>
+                <div className="pf-facts">
                   <div>
-                    <span style={{ fontSize: 10, color: "rgba(0,11,111,0.5)", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", display: "block", marginBottom: 3 }}>Grupo / Instancia</span>
-                    <strong style={{ fontSize: 14, color: ENJ_NAVY, display: "flex", alignItems: "center", gap: 6, fontWeight: 800 }}>
-                      <Award size={16} color={ENJ_MAGENTA} /> {grupoScout || "Sin registrar"}
-                    </strong>
+                    <span>Grupo / Instancia</span>
+                    <strong><Award size={15} /> {grupoScout || "Sin registrar"}</strong>
                   </div>
                   <div>
-                    <span style={{ fontSize: 10, color: "rgba(0,11,111,0.5)", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em", display: "block", marginBottom: 3 }}>Región / Distrito</span>
-                    <strong style={{ fontSize: 14, color: ENJ_NAVY, fontWeight: 800 }}>{selectedRegion || "ASV"} - {selectedDistrict}</strong>
+                    <span>Región / Distrito</span>
+                    <strong><MapPin size={15} /> {selectedRegion || "ASV"}{selectedDistrict ? ` · ${selectedDistrict}` : ""}</strong>
                   </div>
                 </div>
-
-                {descripcion && (
-                  <div style={{ background: "rgba(0,11,111,0.02)", borderRadius: 16, padding: "14px 18px", marginBottom: 20, borderLeft: `4px solid ${ENJ_MAGENTA}` }}>
-                    <p style={{ fontStyle: "italic", color: "#334155", fontSize: 13.5, lineHeight: 1.6, margin: 0, textAlign: "left" }}>
-                      "{descripcion}"
-                    </p>
-                  </div>
-                )}
 
                 {gustos.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                    {gustos.map((g) => (
-                      <span key={g} style={{ background: "#FFFFFF", color: ENJ_MAGENTA, fontSize: 11.5, fontWeight: 800, padding: "5px 14px", borderRadius: 100, border: "1.5px solid rgba(215,0,126,0.25)", boxShadow: "0 2px 6px rgba(215,0,126,0.06)" }}>
-                        #{g}
-                      </span>
-                    ))}
-                  </div>
+                  <>
+                    <h4 className="pf-subtitle">Me interesa</h4>
+                    <div className="pf-tags">
+                      {gustos.map((g) => <span key={g}>#{g}</span>)}
+                    </div>
+                  </>
+                )}
+            </section>
+
+            {/* 3. LOGROS */}
+            <section className="pf-card">
+              <div className="pf-title-row">
+                <h3 className="pf-title"><Trophy size={18} /> Logros del campamento</h3>
+                {catalogoInsignias.length > 0 && (
+                  <span className="pf-progress-label">{misInsigniasIds.length} de {catalogoInsignias.length}</span>
                 )}
               </div>
-            </div>
-
-            {!isEditing && <Elenco />}
-
-            {/* 2. CATÁLOGO DE INSIGNIAS (ANCHO COMPLETO PARA MOSTRAR TODAS DE MANERA HORIZONTAL) */}
-            <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                <div style={{ background: "rgba(215,0,126,0.1)", padding: 8, borderRadius: 12 }}>
-                  <Trophy size={20} color={ENJ_MAGENTA} />
+              {catalogoInsignias.length > 0 && (
+                <div className="pf-progress" role="progressbar" aria-valuemin={0} aria-valuemax={catalogoInsignias.length} aria-valuenow={misInsigniasIds.length}>
+                  <div style={{ width: `${(misInsigniasIds.length / catalogoInsignias.length) * 100}%` }} />
                 </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Logros del Campamento</h3>
-                  <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)", fontWeight: 600 }}>Toca una insignia para postular tu evidencia</span>
-                </div>
-              </div>
-              
+              )}
+              {isOwnProfile && catalogoInsignias.length > 0 && <p className="pf-hint">Toca una insignia bloqueada para enviar tu evidencia.</p>}
+
               {catalogoInsignias.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 12, color: "rgba(0,11,111,0.6)", fontStyle: "italic" }}>
-                  Cargando insignias disponibles...
-                </p>
+                <p className="pf-empty">Las insignias del campamento aparecerán aquí muy pronto.</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 18 }}>
+                <div className="pf-badges">
                   {catalogoInsignias.map((insignia) => {
                     const isUnlocked = misInsigniasIds.includes(insignia.id);
+                    const canApply = !isUnlocked && isOwnProfile;
                     return (
-                      <div 
-                        key={insignia.id} 
-                        onClick={() => {
-                          if (!isUnlocked && isOwnProfile) {
-                            setInsigniaParaSolicitar(insignia);
-                          }
-                        }}
-                        style={{ 
-                          display: "flex", 
-                          flexDirection: "column", 
-                          alignItems: "center",
-                          opacity: isUnlocked ? 1 : 0.55,
-                          filter: isUnlocked ? "none" : "grayscale(90%)",
-                          cursor: (!isUnlocked && isOwnProfile) ? "pointer" : "default",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                        }}
-                        title={!isUnlocked && isOwnProfile ? "Haz clic para postular tu evidencia" : insignia.nombre}
+                      <button
+                        type="button"
+                        key={insignia.id}
+                        className={`pf-badge${isUnlocked ? " is-unlocked" : ""}`}
+                        onClick={() => canApply && setInsigniaParaSolicitar(insignia)}
+                        disabled={!canApply}
+                        title={canApply ? "Envía tu evidencia" : insignia.nombre}
                       >
-                        <div style={{ 
-                          width: 68, 
-                          height: 68, 
-                          borderRadius: "50%", 
-                          background: isUnlocked ? "linear-gradient(135deg, rgba(215,0,126,0.12), rgba(0,11,111,0.08))" : "#F4F5FA", 
-                          display: "flex", 
-                          alignItems: "center", 
-                          justifyContent: "center", 
-                          border: isUnlocked ? `2.5px solid ${ENJ_MAGENTA}` : "2px dashed rgba(0,11,111,0.2)",
-                          boxShadow: isUnlocked ? "0 6px 16px rgba(215,0,126,0.2)" : "none"
-                        }}>
-                           <Award size={32} color={isUnlocked ? ENJ_MAGENTA : "rgba(0,11,111,0.4)"} />
-                        </div>
-                        <span style={{ 
-                          fontSize: 11, 
-                          textAlign: "center", 
-                          marginTop: 8, 
-                          fontWeight: isUnlocked ? 800 : 600,
-                          color: isUnlocked ? ENJ_NAVY : "rgba(0,11,111,0.6)",
-                          lineHeight: 1.2
-                        }}>
-                          {insignia.nombre}
-                        </span>
-                      </div>
+                        <span className="pf-badge-medal"><Award size={30} /></span>
+                        <span className="pf-badge-name">{insignia.nombre}</span>
+                        {insignia.puntos ? <span className="pf-badge-pts">{insignia.puntos} pts</span> : null}
+                      </button>
                     );
                   })}
                 </div>
               )}
-            </div>
+            </section>
 
-            {/* 3. GRID RESPONSIVO (2 COLUMNAS EN DESKTOP, 1 EN MÓVIL) */}
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", 
-              gap: 24,
-              alignItems: "stretch"
-            }}>
-              
-              {/* COLUMNA IZQUIERDA: CUOTAS PRIVADAS + CREDENCIAL QR DIGITAL */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                
-                {/* ESTADO DE CUOTAS (PRIVADO) */}
-                {isOwnProfile && (
-                  <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                      <div style={{ background: "rgba(0,11,111,0.08)", padding: 8, borderRadius: 12 }}>
-                        <ShieldCheck size={20} color={ENJ_NAVY} />
-                      </div>
-                      <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Mis Cuotas ENJ 2026</h3>
-                    </div>
-                    {misPagos.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: 13, color: "rgba(0,11,111,0.6)", fontStyle: "italic" }}>
-                        No has reportado cuotas todavía.
-                      </p>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {misPagos.map((pago) => {
-                          const isValidado = pago.estado === "validado" || pago.estatus_validacion === "Validado";
-                          const isRechazado = pago.estado === "rechazado" || pago.estatus_validacion === "Rechazado";
-                          return (
-                            <div key={pago.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FAFBFF", padding: "12px 16px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.08)" }}>
-                              <div>
-                                <strong style={{ fontSize: 13, color: ENJ_NAVY, display: "block", fontWeight: 800 }}>
-                                  {pago.numero_cuota ? `Cuota ${pago.numero_cuota}` : "Cuota ENJ 2026"}
-                                </strong>
-                                <span style={{ fontSize: 11, color: "rgba(0,11,111,0.5)" }}>
-                                  {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString("es-VE") : "Sin fecha"}
-                                </span>
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 900, color: isValidado ? "#16A34A" : isRechazado ? "#DC2626" : "#D97706", background: isValidado ? "rgba(22,163,74,0.1)" : isRechazado ? "rgba(220,38,38,0.1)" : "rgba(217,119,6,0.1)", padding: "4px 12px", borderRadius: 100 }}>
-                                {isValidado && <CheckCircle size={15} />}
-                                {isRechazado && <AlertCircle size={15} />}
-                                {!isValidado && !isRechazado && <Clock size={15} />}
-                                {isValidado ? "Validado" : isRechazado ? "Rechazado" : "Pendiente"}
-                              </div>
+            {/* 4. CUOTAS (PRIVADO) + MURO */}
+            <div className="pf-grid">
+              {isOwnProfile && (
+                <section className="pf-card">
+                  <h3 className="pf-title"><ShieldCheck size={18} /> Mis cuotas ENJ 2026</h3>
+                  <p className="pf-hint">Solo tú ves esta sección.</p>
+                  {misPagos.length === 0 ? (
+                    <p className="pf-empty">No has reportado cuotas todavía.</p>
+                  ) : (
+                    <div className="pf-list">
+                      {misPagos.map((pago) => {
+                        const isValidado = pago.estado === "validado";
+                        const isRechazado = pago.estado === "rechazado";
+                        const estado = isValidado ? "ok" : isRechazado ? "bad" : "wait";
+                        return (
+                          <div key={pago.id} className="pf-row">
+                            <div>
+                              <strong>{pago.numero_cuota || "Cuota ENJ 2026"}</strong>
+                              <span>{pago.fecha_pago ? new Date(`${pago.fecha_pago}T12:00:00`).toLocaleDateString("es-VE") : "Sin fecha"}</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                            <span className={`pf-status pf-status-${estado}`}>
+                              {isValidado && <CheckCircle size={14} />}
+                              {isRechazado && <AlertCircle size={14} />}
+                              {!isValidado && !isRechazado && <Clock size={14} />}
+                              {isValidado ? "Validado" : isRechazado ? "Rechazado" : "Pendiente"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
 
-                {/* PASE QR DIGITAL SCOUT */}
-                <div style={{ background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #0F172A 100%)`, borderRadius: 24, padding: 24, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, boxShadow: "0 12px 32px rgba(0,11,111,0.2)" }}>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <span style={{ background: ENJ_MAGENTA, color: "#fff", fontSize: 10, fontWeight: 900, padding: "3px 10px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.05em" }}>Credencial Digital</span>
-                    <h4 style={{ margin: "6px 0 4px", fontSize: 17, fontWeight: 900, color: "#fff" }}>Pase QR Scout</h4>
-                    <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Escanéame para ver mi perfil oficial.</p>
-                  </div>
-                  <div style={{ background: "#fff", padding: 10, borderRadius: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
-                    <QRCodeSVG value={qrPublicUrl} size={80} fgColor={ENJ_NAVY} />
-                  </div>
-                </div>
-
-              </div>
-
-              {/* COLUMNA DERECHA: MURO SOCIAL DE INTERACCIÓN */}
-              <div style={{ background: "#fff", borderRadius: 24, padding: 24, border: "1px solid rgba(0,11,111,0.05)", boxShadow: "0 10px 30px rgba(0,11,111,0.04)", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                  <div style={{ background: "rgba(0,11,111,0.08)", padding: 8, borderRadius: 12 }}>
-                    <Users size={20} color={ENJ_NAVY} />
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: 16, color: ENJ_NAVY, fontWeight: 900 }}>Muro del Elenco ENJ</h3>
-                </div>
-
-                <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <section className="pf-card pf-wall">
+                <h3 className="pf-title"><Users size={18} /> Muro del elenco</h3>
+                <div className="pf-wall-form">
                   <input
                     type="text"
-                    placeholder="Escribe un mensaje en el muro..."
+                    placeholder="Escribe un mensaje para el elenco..."
                     value={nuevoMensaje}
+                    maxLength={500}
                     onChange={(e) => setNuevoMensaje(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleEnviarMensajeMuro())}
-                    style={{ flex: 1, padding: "12px 16px", borderRadius: 14, border: "1.5px solid rgba(0,11,111,0.15)", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif" }}
+                    aria-label="Mensaje para el muro"
                   />
-                  <button type="button" onClick={handleEnviarMensajeMuro} style={{ background: `linear-gradient(135deg, ${ENJ_NAVY} 0%, #1A269B 100%)`, color: "#fff", border: "none", borderRadius: 14, padding: "0 18px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,11,111,0.2)" }}>
+                  <button type="button" onClick={handleEnviarMensajeMuro} aria-label="Publicar mensaje">
                     <Send size={16} />
                   </button>
                 </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 380, overflowY: "auto", flex: 1 }}>
+                <div className="pf-wall-list">
                   {comentarios.length === 0 ? (
-                    <span style={{ fontSize: 12, color: "rgba(0,11,111,0.5)", fontStyle: "italic" }}>Aún no hay mensajes en el muro. ¡Sé el primero!</span>
+                    <p className="pf-empty">Aún no hay mensajes. ¡Sé el primero!</p>
                   ) : (
                     comentarios.map((c, idx) => (
-                      <div key={c.id || idx} style={{ background: "#FAFBFF", padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(0,11,111,0.06)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <strong style={{ fontSize: 12.5, color: ENJ_NAVY, fontWeight: 800 }}>{c.autor}</strong>
-                          <span style={{ fontSize: 10, color: "rgba(0,11,111,0.55)", textAlign: "right" }}>
-                            {c.fecha && !Number.isNaN(new Date(c.fecha).getTime())
-                              ? new Date(c.fecha).toLocaleString("es-VE", {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                  timeZone: "America/Caracas",
-                                })
-                              : "Fecha no disponible"}
-                          </span>
+                      <article key={c.id || idx} className="pf-msg">
+                        <span className="pf-msg-avatar" aria-hidden="true">{String(c.autor || "?").trim().charAt(0).toUpperCase()}</span>
+                        <div>
+                          <header>
+                            <strong>{c.autor}</strong>
+                            <time>
+                              {c.fecha && !Number.isNaN(new Date(c.fecha).getTime())
+                                ? new Date(c.fecha).toLocaleString("es-VE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Caracas" })
+                                : ""}
+                            </time>
+                          </header>
+                          <p>{c.mensaje}</p>
                         </div>
-                        <p style={{ margin: 0, fontSize: 12.5, color: "#334155", lineHeight: 1.4 }}>{c.mensaje}</p>
-                      </div>
+                      </article>
                     ))
                   )}
                 </div>
-              </div>
-
+              </section>
             </div>
 
+            {/* 5. ELENCO */}
+            <Elenco />
           </div>
         )}
 
