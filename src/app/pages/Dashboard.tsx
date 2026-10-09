@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { getStoredUser } from "../session";
+import { CREWS } from "../crews";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -86,6 +87,7 @@ export interface Profile {
   gustos_evento?: any;
   foto?: string;
   rol_evento?: string;
+  crew?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -1171,6 +1173,19 @@ export function Dashboard() {
                       </div>
 
                       <h5 style={{ margin: "14px 0 8px", color: ENJ_MAGENTA, fontSize: 13 }}>Perfil Social</h5>
+                      <label style={{ fontSize: 11, fontWeight: "bold" }}>Crew ENJ</label>
+                      {selectedProfile?.id ? (
+                        <select
+                          value={editProfileData.crew || ""}
+                          onChange={(e) => setEditProfileData({ ...editProfileData, crew: e.target.value || null })}
+                          style={{ width: "100%", marginBottom: 8, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 13, background: "#fff" }}
+                        >
+                          <option value="">Sin crew asignado</option>
+                          {CREWS.map((nombreCrew) => <option key={nombreCrew} value={nombreCrew}>{nombreCrew}</option>)}
+                        </select>
+                      ) : (
+                        <p style={{ fontSize: 12, color: "#777", margin: "2px 0 10px" }}>Este participante aún no ha creado su perfil social; podrá asignarse el crew cuando lo cree.</p>
+                      )}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
                         <div>
                           <label style={{ fontSize: 11, fontWeight: "bold" }}>Instagram</label>
@@ -1215,6 +1230,7 @@ export function Dashboard() {
                       <p style={{ fontSize: 13, margin: "6px 0" }}><strong>F. Nacimiento:</strong> {selectedParticipante.fecha_nacimiento || selectedProfile?.birth_date || "N/A"}</p>
                       <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Región / Distrito / Grupo:</strong> {selectedParticipante.region || "N/A"} - {selectedParticipante.distrito || "N/A"} - {selectedParticipante.grupo_scout || "N/A"}</p>
                       <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Rama Scout:</strong> {selectedParticipante.rama || "N/A"}</p>
+                      <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Crew ENJ:</strong> {selectedProfile?.crew ? <span style={{ color: ENJ_MAGENTA, fontWeight: 800 }}>★ {selectedProfile.crew}</span> : "Sin crew asignado"}</p>
                       <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Talla Uniforme:</strong> {selectedParticipante.talla_uniforme || "N/A"}</p>
                       <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Instagram:</strong> {selectedProfile?.instagram ? `@${selectedProfile.instagram}` : "N/A"}</p>
                       <p style={{ fontSize: 13, margin: "6px 0" }}><strong>Descripción:</strong> {selectedProfile?.descripcion || "Sin descripción."}</p>

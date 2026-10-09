@@ -8,6 +8,7 @@ import {
 import { supabase } from "../../supabaseClient";
 import bannerImg from "../../assets/Bannerperfil.jpeg";
 import { Elenco } from "./Elenco";
+import { CREWS } from "../crews";
 
 // ==========================================
 // CONSTANTES DE DISEÑO ENJ 2026 (ASV)
@@ -199,8 +200,6 @@ const tiposRol = [
 ];
 
 const ramas = ["Comunidad (Caminante)", "Clan (Rover)", "Dirigencia / Adulto de Soporte"];
-// Debe coincidir con la restricción profiles_crew_check de la base de datos.
-export const crews = ["Bolibomba", "Samba", "Chao", "Pirulin", "Cricri", "Reinitas", "Savoy"];
 const opcionesGustos = [
   "RDJ", "Herramientas digitales", "Marca personal", "Comunicación y negociación", 
   "Educación financiera", "Idiomas", "Inclusión y diversidad", "Gestión de Riesgo", 
@@ -807,7 +806,7 @@ export function Perfil() {
                 <label style={{ fontSize: 13, fontWeight: 700, color: ENJ_NAVY, display: "block", marginBottom: 4 }}>Tu Crew ENJ</label>
                 <span style={{ fontSize: 12, color: "rgba(0,11,111,0.55)", display: "block", marginBottom: 10 }}>Elige el crew al que perteneces en el encuentro.</span>
                 <div role="radiogroup" aria-label="Crew" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
-                  {crews.map((nombreCrew) => {
+                  {CREWS.map((nombreCrew) => {
                     const selected = crew === nombreCrew;
                     return (
                       <button
