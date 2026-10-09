@@ -25,7 +25,8 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Sin SESSION_SECRET no se emiten ni aceptan sesiones: un valor por defecto permitiría falsificar tokens.
 const sessionSecret = process.env.SESSION_SECRET && process.env.SESSION_SECRET !== 'enj-change-this-session-secret' ? process.env.SESSION_SECRET : null;
 // Secreto JWT del proyecto Supabase: permite que RLS identifique al usuario con auth.jwt().
-const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET || null;
+// trim(): un espacio o salto de línea al pegar el valor en Vercel invalida todas las firmas.
+const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET?.trim() || null;
 // Las contraseñas antiguas se guardaron con scrypt usando el secreto de sesión (o este valor por defecto) como sal.
 const LEGACY_PASSWORD_SALTS = [process.env.SESSION_SECRET, process.env.LEGACY_PASSWORD_SALT, 'enj-change-this-session-secret'].filter(Boolean);
 
