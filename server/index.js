@@ -3,11 +3,13 @@ import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
 import webpush from 'web-push';
 import { buildDashboardPayload } from './dashboardData.mjs';
+import { hashPassword, verifyPassword as verifyPasswordHash, createSupabaseJwt } from './auth.mjs';
 
 const app = express();
+// Vercel envía la IP real en X-Forwarded-For; se usa para el límite de intentos.
+app.set('trust proxy', true);
 
 app.use(cors());
 app.use(express.json());
@@ -20,7 +22,15 @@ app.use((req, res, next) => {
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const sessionSecret = process.env.SESSION_SECRET || 'enj-change-this-session-secret';
+// Sin SESSION_SECRET no se emiten ni aceptan sesiones: un valor por defecto permitiría falsificar tokens.
+const sessionSecret = process.env.SESSION_SECRET && process.env.SESSION_SECRET !== 'enj-change-this-session-secret' ? process.env.SESSION_SECRET : null;
+// Secreto JWT del proyecto Supabase: permite que RLS identifique al usuario con auth.jwt().
+const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET || null;
+// Las contraseñas antiguas se guardaron con scrypt usando el secreto de sesión (o este valor por defecto) como sal.
+const LEGACY_PASSWORD_SALTS = [process.env.SESSION_SECRET, process.env.LEGACY_PASSWORD_SALT, 'enj-change-this-session-secret'].filter(Boolean);
+
+if (!sessionSecret) console.error('SESSION_SECRET no está configurado: el inicio de sesión está deshabilitado.');
+if (!supabaseJwtSecret) console.warn('SUPABASE_JWT_SECRET no está configurado: el frontend usará la clave anon y RLS no podrá identificar usuarios.');
 
 const fetchWithTimeout = async (input, init = {}) => {
   const controller = new AbortController();
@@ -52,15 +62,24 @@ if (pushReady) {
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 }
 
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+const DB_TOKEN_TTL_SECONDS = 60 * 60 * 12;
+
 const createToken = (user) => {
-  const payload = Buffer.from(JSON.stringify({ sub: user.id, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub: user.id, exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
   const signature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 };
 
+const createDbToken = (user) => (supabaseJwtSecret ? createSupabaseJwt(user, supabaseJwtSecret, DB_TOKEN_TTL_SECONDS) : null);
+
+const sessionResponse = (user) => ({ ok: true, token: createToken(user), dbToken: createDbToken(user), user: publicUser(user) });
+
+const verifyPassword = (password, storedHash) => verifyPasswordHash(password, storedHash, LEGACY_PASSWORD_SALTS);
+
 const getAuthenticatedUser = async (req) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token || !supabase) return null;
+  if (!token || !supabase || !sessionSecret) return null;
   const [payload, signature] = token.split('.');
   if (!payload || !signature) return null;
   const expectedSignature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('base64url');
@@ -119,8 +138,10 @@ const parseBcvRate = (payload) => {
   return null;
 };
 
+// Devuelve { rate, estimated }. estimated=true significa que ninguna API respondió y la tasa es la última conocida o la de respaldo.
+let lastKnownBcvRate = null;
 const fetchBcvRate = async () => {
-  const fallbackRate = 39;
+  const fallbackRate = Number(process.env.BCV_FALLBACK_RATE) || 39;
   const endpoints = [
     'https://ve.dolarapi.com/v1/dolares/oficial',
     'https://ve.dolarapi.com/v1/dolares',
@@ -136,24 +157,35 @@ const fetchBcvRate = async () => {
       const payload = await response.json();
 
       const parsed = parseBcvRate(payload);
-      if (parsed) return parsed;
-
-      if (payload && typeof payload.promedio === 'number' && payload.promedio > 0) {
-        return payload.promedio;
+      if (parsed) {
+        lastKnownBcvRate = parsed;
+        return { rate: parsed, estimated: false };
       }
     } catch (error) {
       console.warn(`BCV fetch falló para ${endpoint}:`, error.message);
     }
   }
 
-  return fallbackRate;
+  return { rate: lastKnownBcvRate || fallbackRate, estimated: true };
 };
 
-const verifyPassword = async (password, storedHash) => {
-  if (storedHash?.startsWith('$2')) return bcrypt.compare(password, storedHash);
-  const candidateHash = crypto.scryptSync(password, sessionSecret, 64).toString('hex');
-  return storedHash === candidateHash;
+// Límite de intentos en memoria: en Vercel cada instancia lleva su propio conteo, pero frena ataques de fuerza bruta simples.
+const attempts = new Map();
+const RATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_MAX_ATTEMPTS = 10;
+const isRateLimited = (key) => {
+  const now = Date.now();
+  const entry = attempts.get(key);
+  if (!entry || now - entry.start > RATE_WINDOW_MS) {
+    attempts.set(key, { start: now, count: 1 });
+    if (attempts.size > 5000) attempts.clear();
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > RATE_MAX_ATTEMPTS;
 };
+
+const authUnavailable = (res) => res.status(503).json({ ok: false, error: 'El inicio de sesión no está configurado en el servidor (falta SESSION_SECRET).' });
 
 
 // Ruta de prueba
@@ -164,13 +196,15 @@ app.get('/api', (req, res) => {
 // 1. RUTA DE REGISTRO
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
-    if (!email || !password) return res.status(400).json({ ok: false, error: 'Campos obligatorios incompletos.' });
+    const { email, password, name } = req.body || {};
+    if (!sessionSecret) return authUnavailable(res);
+    if (typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ ok: false, error: 'Campos obligatorios incompletos.' });
     if (!supabase) return res.status(500).json({ ok: false, error: 'La conexión con la base de datos no está configurada.' });
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return res.status(400).json({ ok: false, error: 'El correo no es válido.' });
     if (cleanPassword.length < 8) return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres.' });
 
     const { data: existingUser, error: searchError } = await withTimeout(supabase
@@ -182,14 +216,13 @@ app.post('/api/auth/register', async (req, res) => {
     if (searchError) return res.status(500).json({ ok: false, error: searchError.message });
     if (existingUser) return res.status(400).json({ ok: false, error: 'Usuario ya existe' });
     
-    const userId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const passwordHash = crypto.scryptSync(cleanPassword, sessionSecret, 64).toString('hex');
-    const newUser = { id: userId, email: cleanEmail, password_hash: passwordHash, name: name || '', role: 'participant' };
-    
+    const userId = `usr_${crypto.randomUUID()}`;
+    const newUser = { id: userId, email: cleanEmail, password_hash: hashPassword(cleanPassword), name: String(name || '').trim().slice(0, 120), role: 'participant' };
+
     const { error: insertError } = await withTimeout(supabase.from('user').insert([newUser]));
     if (insertError) return res.status(500).json({ ok: false, error: insertError.message });
 
-    return res.json({ ok: true, token: createToken(newUser), user: publicUser(newUser) });
+    return res.json(sessionResponse(newUser));
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
   }
@@ -198,47 +231,60 @@ app.post('/api/auth/register', async (req, res) => {
 // 2. RUTA DE INICIO DE SESIÓN (LOGIN)
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ ok: false, error: 'Faltan campos' });
+    const { email, password } = req.body || {};
+    if (!sessionSecret) return authUnavailable(res);
+    if (typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ ok: false, error: 'Faltan campos' });
     if (!supabase) return res.status(500).json({ ok: false, error: 'La conexión con la base de datos no está configurada.' });
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim(); 
+    const cleanPassword = password.trim();
+    if (isRateLimited(`login:${req.ip}:${cleanEmail}`)) return res.status(429).json({ ok: false, error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' });
 
     const { data: user, error: loginError } = await withTimeout(supabase
       .from('user')
       .select('*')
       .eq('email', cleanEmail)
       .maybeSingle());
-    
-    if (loginError) return res.status(500).json({ ok: false, error: loginError.message });
-    if (!user) return res.status(401).json({ ok: false, error: 'Usuario no encontrado' });
 
-    if (!(await verifyPassword(cleanPassword, user.password_hash))) {
-      return res.status(401).json({ ok: false, error: 'Contraseña incorrecta' });
+    if (loginError) return res.status(500).json({ ok: false, error: loginError.message });
+
+    const check = user ? await verifyPassword(cleanPassword, user.password_hash) : { valid: false };
+    if (!check.valid) return res.status(401).json({ ok: false, error: 'Correo o contraseña incorrectos.' });
+
+    if (check.legacy) {
+      // Migra el hash antiguo al formato con sal por usuario sin interrumpir el inicio de sesión.
+      const { error: migrateError } = await withTimeout(supabase.from('user').update({ password_hash: hashPassword(cleanPassword) }).eq('id', user.id));
+      if (migrateError) console.warn('No se pudo migrar el hash de contraseña:', migrateError.message);
     }
 
-    return res.json({ ok: true, token: createToken(user), user: publicUser(user) });
+    return res.json(sessionResponse(user));
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
   }
 });
 
+// Requiere sesión activa, o correo + contraseña actual. Nunca permite cambiar la clave solo con el correo.
 app.post('/api/auth/change-password', async (req, res) => {
   try {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (!sessionSecret) return authUnavailable(res);
     if (!supabase) return res.status(503).json({ ok: false, error: 'La conexión con la base de datos no está configurada.' });
+
     let user = await getAuthenticatedUser(req);
-    if (!user && body.email) {
-      const cleanEmail = String(body.email).trim().toLowerCase();
-      const { data: account } = await withTimeout(supabase.from('user').select('id').eq('email', cleanEmail).maybeSingle());
+    if (!user) {
+      const cleanEmail = String(body.email || '').trim().toLowerCase();
+      const currentPassword = String(body.currentPassword || '').trim();
+      if (!cleanEmail || !currentPassword) return res.status(401).json({ ok: false, error: 'Indica tu correo y tu contraseña actual.' });
+      if (isRateLimited(`change:${req.ip}:${cleanEmail}`)) return res.status(429).json({ ok: false, error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' });
+      const { data: account } = await withTimeout(supabase.from('user').select('id, password_hash').eq('email', cleanEmail).maybeSingle());
+      const check = account ? await verifyPassword(currentPassword, account.password_hash) : { valid: false };
+      if (!check.valid) return res.status(401).json({ ok: false, error: 'Correo o contraseña actual incorrectos.' });
       user = account;
     }
-    if (!user) return res.status(401).json({ ok: false, error: 'Indica el correo de la cuenta para cambiar la contraseña.' });
-    const { newPassword } = body;
-    if (!newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
-    const passwordHash = crypto.scryptSync(newPassword, sessionSecret, 64).toString('hex');
-    const { error: updateError } = await withTimeout(supabase.from('user').update({ password_hash: passwordHash }).eq('id', user.id));
+
+    const newPassword = String(body.newPassword || '').trim();
+    if (newPassword.length < 8) return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+    const { error: updateError } = await withTimeout(supabase.from('user').update({ password_hash: hashPassword(newPassword) }).eq('id', user.id));
     if (updateError) throw updateError;
     return res.json({ ok: true, message: 'Contraseña actualizada correctamente.' });
   } catch (globalError) {
@@ -251,7 +297,8 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ ok: false, error: 'Sesión inválida o expirada.' });
-    return res.json({ ok: true, user: publicUser(user) });
+    // Devuelve el rol actual de la base de datos y un token de base de datos renovado.
+    return res.json({ ok: true, dbToken: createDbToken(user), user: publicUser(user) });
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
   }
@@ -404,12 +451,18 @@ app.get('/api/dashboard', async (req, res) => {
     if (paymentsError) throw paymentsError;
     if (documentsError) throw documentsError;
 
-    const bcvRate = await fetchBcvRate();
+    const { rate: bcvRate, estimated } = await fetchBcvRate();
     const payload = buildDashboardPayload({ participants: participants || [], payments: payments || [], documents: documents || [], bcvRate });
-    return res.json({ ok: true, ...payload });
+    return res.json({ ok: true, ...payload, bcvRateEstimated: estimated });
   } catch (globalError) {
     return res.status(500).json({ ok: false, error: globalError.message });
   }
+});
+
+app.get('/api/tasa-bcv', async (_req, res) => {
+  const { rate, estimated } = await fetchBcvRate();
+  res.set('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
+  return res.json({ ok: true, rate, estimated });
 });
 
 app.post('/api/notify-drive-failure', (req, res) => {
@@ -421,7 +474,8 @@ app.use((req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5000;
+  // Debe coincidir con el proxy de /api en vite.config.ts.
+  const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => console.log(`Servidor local en puerto ${PORT}`));
 }
 

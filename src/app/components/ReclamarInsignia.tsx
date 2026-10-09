@@ -19,29 +19,14 @@ export function ReclamarInsignia() {
 
       if (!codigo) return setMensaje("Código QR inválido.");
 
-      // 1. Obtener la insignia por su código
-      const { data: insignia, error: errInsignia } = await supabase
-        .from("insignias")
-        .select("id, nombre")
-        .eq("codigo", codigo)
-        .single();
+      // El código se valida en la base de datos: los códigos de las insignias no son visibles para los participantes.
+      const { data, error } = await supabase.rpc("reclamar_insignia", { p_codigo: codigo });
+      const resultado = Array.isArray(data) ? data[0] : data;
 
-      if (errInsignia || !insignia) return setMensaje("La insignia no existe.");
-
-      // 2. Registrar en la tabla participante_insignias
-      const { error: insertError } = await supabase
-        .from("participante_insignias")
-        .insert([{ user_id: user.id, insignia_id: insignia.id, otorgado_por: "QR_POSTA" }]);
-
-      if (insertError) {
-        if (insertError.code === "23505") { // Violación de unicidad
-          setMensaje(`¡Ya tenías la insignia "${insignia.nombre}" en tu perfil! ⚜️`);
-        } else {
-          setMensaje("Error al reclamar la insignia.");
-        }
-      } else {
-        setMensaje(`¡Felicidades! Ganaste la insignia "${insignia.nombre}" 🎉`);
-      }
+      if (error) setMensaje("Error al reclamar la insignia.");
+      else if (!resultado) setMensaje("La insignia no existe.");
+      else if (resultado.ya_la_tenia) setMensaje(`¡Ya tenías la insignia "${resultado.nombre}" en tu perfil! ⚜️`);
+      else setMensaje(`¡Felicidades! Ganaste la insignia "${resultado.nombre}" 🎉`);
     }
     reclamar();
   }, [codigo]);

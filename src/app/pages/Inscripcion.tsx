@@ -477,16 +477,7 @@ export function Inscripcion() {
         });
       }
     }
-
-    try {
-      await fetch("/api/notifications/alert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: correo, message: "Alarma de usuario autorizado" }),
-      });
-    } catch (err) {
-      console.warn("Servicio de alerta temporalmente no disponible:", err);
-    }
+    // Las alarmas a los equipos se emiten desde el Panel de Programa (/api/programa/alarmas).
   }
 
   async function handleInscriptionSubmit(e: React.FormEvent) {
@@ -590,13 +581,11 @@ export function Inscripcion() {
     setLoading(true);
 
     try {
-      const { data: partData } = await supabase
-        .from("participantes")
-        .select("cedula")
-        .eq("cedula", cleanCedula)
-        .maybeSingle();
+      // Se puede pagar la cuota de otra persona: la función solo confirma que la cédula está inscrita, sin exponer sus datos.
+      const { data: existe, error: existeError } = await supabase.rpc("participante_existe", { p_cedula: cleanCedula });
+      if (existeError) throw new Error(`No se pudo verificar la cédula: ${existeError.message}`);
 
-      if (!partData) {
+      if (!existe) {
         throw new Error("No se encontró ningún expediente de inscripción con la cédula suministrada. Asegúrate de estar inscrito primero.");
       }
 

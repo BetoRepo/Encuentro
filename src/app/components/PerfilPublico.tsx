@@ -82,16 +82,14 @@ export function PerfilPublico() {
 
     setHandshakeLoading(true);
     setHandshakeError("");
-    const { error } = await supabase
-      .from("profiles")
-      .update({ apretones_count: (profile.apretones_count || 0) + 1 })
-      .eq("id", profile.id);
+    // La función de base de datos registra un solo apretón por pareja y devuelve el total actualizado.
+    const { data: total, error } = await supabase.rpc("dar_apreton", { p_destino: profile.id });
 
     if (error) {
       console.error("Error enviando apretón de manos:", error);
       setHandshakeError("No se pudo enviar el apretón de manos. Inténtalo de nuevo.");
     } else {
-      setProfile({ ...profile, apretones_count: (profile.apretones_count || 0) + 1 });
+      setProfile({ ...profile, apretones_count: typeof total === "number" ? total : (profile.apretones_count || 0) + 1 });
       setHasHandshaked(true);
       localStorage.setItem(`enj_handshake_${currentUser.id}_${profile.id}`, "true");
     }

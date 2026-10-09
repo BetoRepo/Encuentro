@@ -4,6 +4,8 @@ import { Menu, X, Bell, LogOut, Download } from "lucide-react";
 import logoImage from "../../assets/logonacional.svg";
 import scoutLogoImage from "../../assets/logo-scout.svg";
 import { subscribeToPushNotifications } from "../webPush";
+import { clearSession, getStoredUser, refreshSession } from "../session";
+import { hasValidDbToken } from "../../supabaseClient";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -34,9 +36,18 @@ export function Root() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("enj_user");
-    setUser(storedUser ? JSON.parse(storedUser) : null);
-    setLoading(false);
+    setUser(getStoredUser());
+    // Si falta el token de base de datos (sesiones anteriores a este cambio), se espera a renovarlo antes de mostrar las páginas.
+    setLoading(!hasValidDbToken());
+
+    // Verifica la sesión con el servidor y renueva el token de base de datos cada hora.
+    const syncSession = () => refreshSession().then((freshUser) => {
+      if (!freshUser) window.location.href = "/login";
+      else setUser(freshUser);
+      setLoading(false);
+    });
+    syncSession();
+    const sessionInterval = window.setInterval(syncSession, 60 * 60 * 1000);
 
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsInstalled(standalone);
@@ -52,6 +63,7 @@ export function Root() {
     window.addEventListener('beforeinstallprompt', handleInstallPrompt);
     window.addEventListener('appinstalled', handleInstalled);
     return () => {
+      window.clearInterval(sessionInterval);
       window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
       window.removeEventListener('appinstalled', handleInstalled);
     };
@@ -80,14 +92,10 @@ export function Root() {
   };
 
   const handleLogout = async () => {
-    try {
-      localStorage.removeItem("token");
-      localStorage.removeItem("enj_user");
-      setUser(null);
-      setMobileOpen(false);
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    }
+    clearSession();
+    setUser(null);
+    setMobileOpen(false);
+    window.location.href = "/login";
   };
 
   if (loading) {

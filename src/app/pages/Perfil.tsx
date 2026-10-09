@@ -398,7 +398,7 @@ export function Perfil() {
           const { data: partData } = await supabase
             .from("participantes")
             .select("cedula")
-            .eq("id", targetUserId)
+            .eq("id_usuario", targetUserId)
             .maybeSingle(); // maybeSingle para no lanzar excepción si no lo encuentra
 
           if (partData?.cedula) {
@@ -481,15 +481,16 @@ export function Perfil() {
   };
 
   const handleHandshake = async () => {
-    if (isOwnProfile || hasHandshaked) return;
-    const newCount = apretonesCount + 1;
-    setApretonesCount(newCount);
+    if (isOwnProfile || hasHandshaked || !targetUserId) return;
     setHasHandshaked(true);
 
-    await supabase
-      .from("profiles")
-      .update({ apretones_count: newCount })
-      .eq("id", targetUserId);
+    const { data: total, error } = await supabase.rpc("dar_apreton", { p_destino: targetUserId });
+    if (error) {
+      setHasHandshaked(false);
+      alert("No se pudo enviar el apretón de manos. Inténtalo de nuevo.");
+      return;
+    }
+    setApretonesCount(typeof total === "number" ? total : apretonesCount + 1);
   };
 
   const handleSaveProfile = async () => {

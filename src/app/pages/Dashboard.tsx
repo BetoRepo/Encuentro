@@ -6,6 +6,7 @@ import {
   UserCheck, FileText, DollarSign, User, CheckCircle
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import { getStoredUser } from "../session";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -113,58 +114,10 @@ export interface Documento {
   created_at?: string;
 }
 
-// FUNCION AUXILIAR ROBUSTA PARA DETECTAR EL AUDITOR / VALIDADOR
-const detectarAuditorActual = async (): Promise<string> => {
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData?.session?.user) {
-      const u = sessionData.session.user;
-      const emailOrName = u.email || u.user_metadata?.full_name || u.user_metadata?.name;
-      if (emailOrName) return emailOrName;
-    }
-
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const u = userData.user;
-      const emailOrName = u.email || u.user_metadata?.full_name || u.user_metadata?.name;
-      if (emailOrName) return emailOrName;
-    }
-
-    const storages = [localStorage, sessionStorage];
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-
-    for (const storage of storages) {
-      const keysToTry = ["scout_user", "user", "usuario", "admin", "profile", "sb_user", "session", "auth_user"];
-      for (const key of keysToTry) {
-        const val = storage.getItem(key);
-        if (val) {
-          try {
-            const parsed = JSON.parse(val);
-            if (parsed.email) return parsed.email;
-            if (parsed.nombre || parsed.name) return parsed.nombre || parsed.name;
-            if (parsed.user?.email) return parsed.user.email;
-          } catch {
-            if (emailRegex.test(val)) return val;
-          }
-        }
-      }
-
-      for (let i = 0; i < storage.length; i++) {
-        const key = storage.key(i);
-        if (key) {
-          const val = storage.getItem(key);
-          if (val) {
-            const match = val.match(emailRegex);
-            if (match && match[0]) return match[0];
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.warn("⚠️ No se pudo resolver automáticamente el auditor:", err);
-  }
-
-  return "Administrador ENJ";
+// El validador es el usuario con sesión iniciada; el servidor confirma su rol de admin.
+const detectarAuditorActual = (): string => {
+  const user = getStoredUser();
+  return user?.name?.trim() || user?.email || "Administrador ENJ";
 };
 
 export function Dashboard() {
@@ -180,7 +133,7 @@ export function Dashboard() {
   const [approvingPendingPayments, setApprovingPendingPayments] = useState(false);
 
   // ESTADO DE AUDITOR / ADMINISTRADOR ACTIVO
-  const [auditorActual, setAuditorActual] = useState<string>("Cargando...");
+  const [auditorActual] = useState<string>(detectarAuditorActual);
 
   // FILTROS DE BÚSQUEDA Y EXPORTACIÓN
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -193,7 +146,8 @@ export function Dashboard() {
   const [totalAdultos, setTotalAdultos] = useState<number>(0);
   const [totalUsdValidado, setTotalUsdValidado] = useState<number>(0);
   const [totalPendientesValidacion, setTotalPendientesValidacion] = useState<number>(0);
-  const [tasaBcvActual] = useState<number>(36.5);
+  const [tasaBcvActual, setTasaBcvActual] = useState<number>(0);
+  const [tasaBcvEstimada, setTasaBcvEstimada] = useState<boolean>(false);
 
   // MODAL EXPEDIENTE & EDICIÓN DE PERFIL
   const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null);
@@ -209,7 +163,17 @@ export function Dashboard() {
   const [editProfileData, setEditProfileData] = useState<Partial<Profile>>({});
 
   useEffect(() => {
-    detectarAuditorActual().then((auditor) => setAuditorActual(auditor));
+    fetch("/api/tasa-bcv")
+      .then((response) => response.json())
+      .then((result) => {
+        if (!result.ok) throw new Error(result.error);
+        setTasaBcvActual(Number(result.rate) || 0);
+        setTasaBcvEstimada(Boolean(result.estimated));
+      })
+      .catch((error) => {
+        console.warn("No se pudo obtener la tasa BCV:", error);
+        setTasaBcvEstimada(true);
+      });
   }, []);
 
   // 1. CARGAR PARTICIPANTES DIRECTAMENTE DE LA TABLA `participantes`
@@ -1013,8 +977,8 @@ export function Dashboard() {
                     <input
                       type="text"
                       value={auditorActual}
-                      onChange={(e) => setAuditorActual(e.target.value)}
-                      placeholder="Tu nombre o correo de administrador"
+                      readOnly
+                      aria-readonly="true"
                       style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #7DD3FC", fontSize: 12, fontWeight: "bold", background: "#fff", color: ENJ_NAVY }}
                     />
                     <span style={{ fontSize: 10, color: "#0369A1", marginTop: 4, display: "block" }}>
@@ -1041,7 +1005,11 @@ export function Dashboard() {
                       <span style={{ color: ENJ_NAVY, fontWeight: 800 }}>Deuda Restante:</span>
                       <div style={{ textAlign: "right" }}>
                         <strong style={{ color: deudaUsd > 0 ? ENJ_MAGENTA : "#16A34A", fontSize: 17 }}>${deudaUsd.toFixed(2)} USD</strong>
-                        <div style={{ fontSize: 11, color: "#777" }}>~ Bs. {deudaBsActual.toLocaleString("es-VE")}</div>
+                        <div style={{ fontSize: 11, color: "#777" }}>
+                          {tasaBcvActual > 0
+                            ? `~ Bs. ${deudaBsActual.toLocaleString("es-VE", { maximumFractionDigits: 2 })} (BCV ${tasaBcvActual.toLocaleString("es-VE")}${tasaBcvEstimada ? ", estimada" : ""})`
+                            : "Tasa BCV no disponible"}
+                        </div>
                       </div>
                     </div>
                   </div>

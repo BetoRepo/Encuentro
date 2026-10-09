@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
 import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone, LogOut, RefreshCw } from 'lucide-react';
 import { subscribeToPushNotifications } from "../webPush";
+import { clearSession } from "../session";
 
 interface Alarma {
   id: string;
@@ -287,8 +288,7 @@ export const PanelPrograma: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("enj_user");
+    clearSession();
     window.location.href = "/login";
   };
 

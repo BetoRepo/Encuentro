@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
+import { saveSession } from "../session";
 
 // Importación de assets del ENJ 2026
 import bgImage from "../../assets/background.png";
@@ -22,6 +23,7 @@ export function Login() {
 
   // Estados del Modal de Cambio de Contraseña
   const [resetEmail, setResetEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [changePasswordLoading, setChangePasswordLoading] = useState(false);
@@ -49,8 +51,7 @@ export function Login() {
           body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
         });
         const result = await readResponse(response);
-        localStorage.setItem("token", result.token);
-        localStorage.setItem("enj_user", JSON.stringify(result.user));
+        saveSession(result);
         navigate("/");
       } else {
         const response = await fetch("/api/auth/register", {
@@ -59,8 +60,7 @@ export function Login() {
           body: JSON.stringify({ email: email.trim().toLowerCase(), password, name: name.trim() }),
         });
         const result = await readResponse(response);
-        localStorage.setItem("token", result.token);
-        localStorage.setItem("enj_user", JSON.stringify(result.user));
+        saveSession(result);
 
         const nameParts = name.trim().split(" ");
         const firstName = nameParts[0] || "";
@@ -86,6 +86,7 @@ export function Login() {
   const handleChangePassword = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!resetEmail.trim()) return alert("Por favor ingresa tu correo registrado.");
+    if (!currentPassword) return alert("Ingresa tu contraseña actual.");
     if (newPassword !== confirmation) return alert("Las contraseñas no coinciden.");
     if (newPassword.length < 8) return alert("La contraseña debe tener al menos 8 caracteres.");
 
@@ -98,8 +99,9 @@ export function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          email: resetEmail.trim().toLowerCase(), 
-          newPassword 
+          email: resetEmail.trim().toLowerCase(),
+          currentPassword,
+          newPassword
         }),
         signal: controller.signal,
       });
@@ -107,6 +109,7 @@ export function Login() {
       const result = await readResponse(response);
       alert(result.message || "¡Contraseña actualizada exitosamente!");
       setResetEmail("");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmation("");
       setChangePasswordOpen(false);
@@ -282,7 +285,7 @@ export function Login() {
               Cambiar Contraseña
             </h2>
             <p style={{ margin: "0 0 20px", color: "rgba(0,11,111,0.62)", fontSize: 14 }}>
-              Ingresa tu correo registrado y tu nueva clave para actualizar la base de datos.
+              Ingresa tu correo, tu contraseña actual y la nueva clave. Si olvidaste tu contraseña, pide a un administrador que la restablezca.
             </p>
 
             {/* Campo: Correo del usuario */}
@@ -295,6 +298,20 @@ export function Login() {
                 value={resetEmail} 
                 onChange={(e) => setResetEmail(e.target.value)} 
                 style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }} 
+              />
+            </div>
+
+            {/* Campo: Contraseña actual */}
+            <div style={{ position: "relative", marginTop: 14 }}>
+              <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: "rgba(0,11,111,0.35)" }} />
+              <input
+                required
+                type="password"
+                autoComplete="current-password"
+                placeholder="Contraseña actual"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                style={{ width: "100%", boxSizing: "border-box", padding: "12px 12px 12px 38px", border: "1.5px solid rgba(0,11,111,0.14)", borderRadius: 10, fontSize: "14px" }}
               />
             </div>
 
