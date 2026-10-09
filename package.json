@@ -9,7 +9,7 @@
     "dev:server": "node --watch server/index.js",
     "start:server": "node server/index.js",
     "typecheck": "tsc --noEmit -p .",
-    "test": "node --test \"server/*.test.mjs\"",
+    "test": "node --test server/auth.test.mjs server/dashboardData.test.mjs",
     "preview": "vite preview"
   },
   "repository": {
