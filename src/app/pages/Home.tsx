@@ -419,8 +419,7 @@ export function Home() {
         {/* CRONOGRAMA Y ESCALETA DE RODAJE */}
         <section>
           <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma y Escaleta de Rodaje</h2>
-            <p style={{ color: "#666", fontSize: 15, margin: 0 }}>(Sujeto a cambios de edición y producción)</p>
+            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma de Rodaje</h2>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
