@@ -1,7 +1,8 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
-import { Calendar, Users, ChevronRight, Clock, Video } from "lucide-react";
+import { Calendar, Users, ChevronRight, Video } from "lucide-react";
+import { Cronograma, faseOnline, fasePresencial } from "../components/Cronograma";
 import logoImage from "../../assets/logonacional.svg";
 import desafioGeneracionZ from "../../assets/DesafíoGeneraciónZ.svg";
 import redEnVivo from "../../assets/LaRedEnVivo.svg";
@@ -15,18 +16,6 @@ import trailerVideo from "../../assets/trailer.mp4";
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
 const ENJ_MAGENTA = "#50039D";
-
-interface EventItem {
-  time: string;
-  title: string;
-}
-
-interface AgendaDay {
-  day: string;
-  date: string;
-  color: string;
-  events: EventItem[];
-}
 
 interface BloquePrograma {
   title: string;
@@ -97,83 +86,6 @@ export function Home() {
     description: "¿List@ para encarar la vida adulta sin pánico? Descubre la Aldea Global en el Encuentro Nacional de Jóvenes y súmate al Desafío Generación Z. Aprende, crea y pásala bien mientras te preparas para el futuro.¡Únete y acepta el desafío!",
     videoUrl: trailerVideo
   };
-
-  const agendaVirtual: AgendaDay[] = [
-    {
-      day: "Martes",
-      date: "01 Sep",
-      color: "#3498db",
-      events: [
-        { time: "20:00 - 20:15", title: "Inicio de Oro (Bienvenida)" },
-        { time: "20:15 - 20:45", title: "Normas y Protocolos" },
-        { time: "20:45 - 21:15", title: "Plan Comunicacional" },
-        { time: "21:15 - 21:40", title: "Ambientación y Cronograma" }
-      ]
-    },
-    {
-      day: "Jueves",
-      date: "03 Sep",
-      color: "#f1c40f",
-      events: [
-        { time: "19:30 - 21:20", title: "Motor RDJ (Red de Jóvenes)" }
-      ]
-    },
-    {
-      day: "Lunes",
-      date: "07 Sep",
-      color: "#9b59b6",
-      events: [
-        { time: "20:00 - 20:45", title: "Consejos de Abuelos (Buenas Prácticas)" },
-        { time: "20:45 - 21:45", title: "La Red en Vivo (Mesa de Trabajo 1)" }
-      ]
-    },
-    {
-      day: "Miércoles",
-      date: "09 Sep",
-      color: "#e67e22",
-      events: [
-        { time: "20:00 - 20:45", title: "Vitamina (Bienestar y sus Dimensiones)" },
-        { time: "20:45 - 21:45", title: "Acetaminofén (Comunidad y Bienestar Social)" }
-      ]
-    }
-  ];
-
-  const agendaPresencial: AgendaDay[] = [
-    {
-      day: "Viernes",
-      date: "30 Oct",
-      color: ENJ_NAVY,
-      events: [
-        { time: "08:00 - 12:00", title: "Llegada, Acreditación e Instalación de Campamento" },
-        { time: "14:00 - 17:00", title: "Apertura de Feria de Oportunidades y Stands" },
-        { time: "18:30 - 21:00", title: "Ceremonia Inaugural: El Despertar de la Red" },
-        { time: "21:30 - 23:00", title: "Fogata de Hermandad y Dinámicas de Integración" }
-      ]
-    },
-    {
-      day: "Sábado",
-      date: "31 Oct",
-      color: ENJ_YELLOW,
-      events: [
-        { time: "07:00 - 08:00", title: "Despertar Scout y Desayuno" },
-        { time: "08:30 - 12:30", title: "Bloque de Módulos Simultáneos (Hard Skills & Bienestar)" },
-        { time: "12:30 - 14:00", title: "Almuerzo de Confraternidad" },
-        { time: "14:30 - 17:30", title: "Foro Nacional de Jóvenes / Mesas de Debate Ciudadano" },
-        { time: "19:30 - 23:30", title: "Festival Cultural y Fiesta de las Regiones" }
-      ]
-    },
-    {
-      day: "Domingo",
-      date: "1 Nov",
-      color: ENJ_MAGENTA,
-      events: [
-        { time: "07:30 - 08:30", title: "Levantamiento y Desayuno" },
-        { time: "09:00 - 11:30", title: "Plenaria Final y Lectura del Manifiesto de la Juventud" },
-        { time: "11:45 - 13:00", title: "Ceremonia de Clausura y Entrega de Reconocimientos" },
-        { time: "13:30", title: "Almuerzo de Despedida y Retorno a las Provincias" }
-      ]
-    }
-  ];
 
   return (
     <div style={{ background: "#F5F7FB", minHeight: "100vh", width: "100%", maxWidth: "100vw", overflowX: "hidden", boxSizing: "border-box" }}>
@@ -504,83 +416,23 @@ export function Home() {
           </div>
         </section>
 
-        {/* PROGRAMAS Y CRONOGRAMA */}
-        <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
-          <div style={{ filter: "blur(7px)", pointerEvents: "none", userSelect: "none" }} aria-hidden="true">
-            {/* PROGRAMA DE ACTIVIDADES VIRTUALES */}
-            <div style={{ marginBottom: 80 }}>
-              <div style={{ textAlign: "center", marginBottom: 40 }}>
-                <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Programa de Actividades Virtuales</h2>
-                <p style={{ color: "#666", fontSize: 15 }}>Sesiones previas de alineación y formación digital antes de vernos en Aguirre</p>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                {agendaVirtual.map((day, dIdx) => (
-                  <div key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
-                    <div style={{ background: day.color, color: day.color === "#f1c40f" ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="agenda-badge">
-                      <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
-                      <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.9, fontWeight: 600 }}>{day.date}</p>
-                    </div>
-                    <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
-                      {day.events.map((ev, eIdx) => (
-                        <div key={eIdx} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
-                            <Clock size={14} style={{ color: day.color, flexShrink: 0 }} />
-                            <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
-                          </div>
-                          <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* CRONOGRAMA PRESENCIAL */}
-            <div>
-              <div style={{ textAlign: "center", marginBottom: 40 }}>
-                <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma General</h2>
-                <p style={{ color: "#666", fontSize: 15 }}>La distribución oficial de bloques para los tres días de vivencia presencial</p>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                {agendaPresencial.map((day, dIdx) => (
-                  <div className="agenda-card" key={dIdx} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", border: "1px solid #EAEFF8", display: "flex", flexWrap: "wrap", boxSizing: "border-box" }}>
-                    <div style={{ background: day.color, color: day.color === ENJ_YELLOW ? ENJ_NAVY : "white", padding: "24px", flex: "1 1 100%", maxWidth: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", boxSizing: "border-box" }}>
-                      <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{day.day}</h3>
-                      <p style={{ margin: "4px 0 0", fontSize: 14, opacity: 0.8, fontWeight: 600 }}>{day.date}</p>
-                    </div>
-                    <div style={{ padding: "24px", flex: "9 1 300px", display: "flex", flexDirection: "column", gap: 18, boxSizing: "border-box" }}>
-                      {day.events.map((ev, eIdx) => (
-                        <div key={eIdx} className="agenda-event" style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "nowrap", boxSizing: "border-box" }}>
-                          <div className="agenda-time" style={{ display: "flex", alignItems: "center", gap: 6, color: "#666", fontSize: 13, fontWeight: 700, width: "105px", flexShrink: 0, paddingTop: "2px", boxSizing: "border-box" }}>
-                            <Clock size={14} style={{ color: ENJ_MAGENTA, flexShrink: 0 }} />
-                            <span style={{ whiteSpace: "nowrap" }}>{ev.time.split(" ")[0]}</span>
-                          </div>
-                          <p style={{ margin: 0, color: ENJ_NAVY, fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>{ev.title}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        {/* CRONOGRAMA Y ESCALETA DE RODAJE */}
+        <section>
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <h2 style={{ color: ENJ_NAVY, fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}>Cronograma y Escaleta de Rodaje</h2>
+            <p style={{ color: "#666", fontSize: 15, margin: 0 }}>(Sujeto a cambios de edición y producción)</p>
           </div>
-          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(245,247,251,0.28)" }}>
-            <span style={{ color: ENJ_NAVY, background: "rgba(255,255,255,0.9)", padding: "14px 26px", borderRadius: 12, fontSize: "clamp(20px, 4vw, 30px)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em", boxShadow: "0 8px 24px rgba(0,11,111,0.14)" }}>
-              Próximamente
-            </span>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+            <Cronograma fase={faseOnline} />
+            <Cronograma fase={fasePresencial} />
           </div>
-        </div>
+        </section>
       </main>
 
       {/* ESTILOS RESPONSIVOS */}
       <style>{`
         @media (min-width: 768px) {
-          .agenda-badge {
-            max-width: 180px !important;
-          }
           header {
             padding: 90px 24px 70px !important;
           }
@@ -662,28 +514,6 @@ export function Home() {
           .program-grid img {
             max-width: 110px !important;
             max-height: 110px !important;
-          }
-
-          .agenda-card {
-            display: block !important;
-          }
-
-          .agenda-badge {
-            max-width: none !important;
-            width: 100% !important;
-            padding: 18px 14px !important;
-          }
-
-          .agenda-event {
-            flex-direction: column !important;
-            gap: 8px !important;
-          }
-
-          .agenda-time {
-            width: auto !important;
-            min-width: unset !important;
-            padding-top: 0 !important;
-            font-size: 12px !important;
           }
         }
       `}</style>
