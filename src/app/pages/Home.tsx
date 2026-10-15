@@ -12,6 +12,7 @@ import heroBanner from "../../assets/herobanner.png";
 
 // Importación del video local desde assets
 import trailerVideo from "../../assets/trailer.mp4";
+import churuataVideo from "../../assets/churuata.mp4";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -81,11 +82,18 @@ export function Home() {
   ];
 
   // AQUÍ ESTÁN LOS TEXTOS DE LA PARTE INFERIOR DEL VIDEO
-  const trailer = {
-    title: "Spoiler - Desafio Generacion Z",
-    description: "¿List@ para encarar la vida adulta sin pánico? Descubre la Aldea Global en el Encuentro Nacional de Jóvenes y súmate al Desafío Generación Z. Aprende, crea y pásala bien mientras te preparas para el futuro.¡Únete y acepta el desafío!",
-    videoUrl: trailerVideo
-  };
+  const trailers = [
+    {
+      title: "Spoiler - Desafio Generacion Z",
+      description: "¿List@ para encarar la vida adulta sin pánico? Descubre la Aldea Global en el Encuentro Nacional de Jóvenes y súmate al Desafío Generación Z. Aprende, crea y pásala bien mientras te preparas para el futuro.¡Únete y acepta el desafío!",
+      videoUrl: trailerVideo
+    },
+    {
+      title: "Spoiler - Churuata del Encuentro",
+      description: "¿List@ para desconectarte, recargar energía y compartir con tu gente? Descubre La Churuata del Encuentro en el Encuentro Nacional de Jóvenes: dinámicas de integración, juegos y tiempo libre para despejar la mente y fortalecer los lazos de hermandad scout. ¡Ven, únete y vive el encuentro!",
+      videoUrl: churuataVideo
+    }
+  ];
 
   return (
     <div style={{ background: "#F5F7FB", minHeight: "100vh", width: "100%", maxWidth: "100vw", overflowX: "hidden", boxSizing: "border-box" }}>
@@ -378,41 +386,47 @@ export function Home() {
             <p style={{ color: "#666", fontSize: 15 }}>Un vistazo furtivo a la gran aventura que nos espera en Aguirre</p>
           </div>
 
-          <div
-            style={{
-              maxWidth: 760,
-              margin: "0 auto",
-              background: "#ffffff",
-              borderRadius: 24,
-              overflow: "hidden",
-              boxShadow: "0 10px 30px rgba(80, 3, 157, 0.08)",
-              border: "1px solid rgba(80, 3, 157, 0.08)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {/* Contenedor flexible del video para evitar cortes */}
-            <div style={{ width: "100%", background: "#000", display: "flex", justifyContent: "center", maxHeight: "600px" }}>
-              <video
-                src={trailer.videoUrl}
-                controls
-                preload="metadata"
+          <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+            {trailers.map((trailer) => (
+              <div
+                key={trailer.title}
                 style={{
                   width: "100%",
-                  maxHeight: "600px",
-                  objectFit: "contain",
-                  display: "block"
+                  maxWidth: 760,
+                  margin: "0 auto",
+                  background: "#ffffff",
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  boxShadow: "0 10px 30px rgba(80, 3, 157, 0.08)",
+                  border: "1px solid rgba(80, 3, 157, 0.08)",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
-              />
-            </div>
-            <div style={{ padding: "24px", textAlign: "center" }}>
-              <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>
-                {trailer.title}
-              </h3>
-              <p style={{ color: "#555", fontSize: 15, margin: 0, lineHeight: 1.6 }}>
-                {trailer.description}
-              </p>
-            </div>
+              >
+                {/* Contenedor flexible del video para evitar cortes */}
+                <div style={{ width: "100%", background: "#000", display: "flex", justifyContent: "center", maxHeight: "600px" }}>
+                  <video
+                    src={trailer.videoUrl}
+                    controls
+                    preload="metadata"
+                    style={{
+                      width: "100%",
+                      maxHeight: "600px",
+                      objectFit: "contain",
+                      display: "block"
+                    }}
+                  />
+                </div>
+                <div style={{ padding: "24px", textAlign: "center" }}>
+                  <h3 style={{ color: ENJ_NAVY, fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>
+                    {trailer.title}
+                  </h3>
+                  <p style={{ color: "#555", fontSize: 15, margin: 0, lineHeight: 1.6 }}>
+                    {trailer.description}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
