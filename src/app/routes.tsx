@@ -11,6 +11,7 @@ const Consultas = lazy(() => import('./pages/Consultas').then((m) => ({ default:
 const Perfil = lazy(() => import('./pages/Perfil').then((m) => ({ default: m.Perfil })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const PanelPrograma = lazy(() => import('./pages/PanelPrograma').then((m) => ({ default: m.PanelPrograma })));
+const MemoriaFuego = lazy(() => import('./pages/MemoriaFuego').then((m) => ({ default: m.MemoriaFuego })));
 
 const withSuspense = (page: ReactNode) => (
   <Suspense fallback={<div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>Cargando...</div>}>
@@ -84,7 +85,16 @@ export const router = createBrowserRouter(
                 <RoleGuard allowedRoles={['admin']}>
                   {withSuspense(<Dashboard />)}
                 </RoleGuard>
-              ) 
+              )
+            },
+            {
+              // Juego de memoria "Química del Fuego": por ahora solo administradores
+              path: 'juego-memoria',
+              element: (
+                <RoleGuard allowedRoles={['admin']}>
+                  {withSuspense(<MemoriaFuego />)}
+                </RoleGuard>
+              )
             },
           ],
         },

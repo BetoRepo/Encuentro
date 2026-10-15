@@ -287,7 +287,24 @@ export function Root() {
                 Dashboard
               </NavLink>
             )}
-            
+
+            {user?.role === "admin" && (
+              <NavLink
+                to="/juego-memoria"
+                style={({ isActive }) => ({
+                  padding: "7px 16px",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#fff",
+                  background: isActive ? ENJ_MAGENTA : "transparent"
+                })}
+              >
+                Juego
+              </NavLink>
+            )}
+
             {/* Botón de Cerrar Sesión Desktop */}
             {user && (
               <button
@@ -440,7 +457,17 @@ export function Root() {
                 Dashboard
               </NavLink>
             )}
-            
+
+            {user?.role === "admin" && (
+              <NavLink
+                to="/juego-memoria"
+                onClick={() => setMobileOpen(false)}
+                style={({ isActive }) => ({ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff", background: isActive ? ENJ_MAGENTA : "transparent" })}
+              >
+                Juego de memoria
+              </NavLink>
+            )}
+
             {/* Botón de Cerrar Sesión Mobile */}
             {user && (
               <>
