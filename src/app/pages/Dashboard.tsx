@@ -142,6 +142,7 @@ export function Dashboard() {
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportFields, setExportFields] = useState<(keyof Participante)[]>(DEFAULT_EXPORT_FIELDS);
+  const [exportPagos, setExportPagos] = useState<boolean>(true);
 
   // MÉTRICAS Y FINANZAS
   const [totalJovenes, setTotalJovenes] = useState<number>(0);
@@ -302,6 +303,49 @@ export function Dashboard() {
       worksheet["!cols"] = selectedFields.map(({ label }) => ({ wch: Math.min(Math.max(label.length + 3, 14), 32) }));
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Miembros");
+
+      if (exportPagos) {
+        // Pagos de los participantes exportados (por lotes para no exceder el largo de la URL).
+        const participantByCedula = new Map(allParticipants.map((participant) => [participant.cedula, participant]));
+        const cedulas = [...participantByCedula.keys()];
+        const allPagos: Pago[] = [];
+        for (let i = 0; i < cedulas.length; i += 150) {
+          const { data, error } = await supabase
+            .from("pagos")
+            .select("*")
+            .in("cedula_participante", cedulas.slice(i, i + 150))
+            .order("created_at", { ascending: true });
+          if (error) throw error;
+          allPagos.push(...((data || []) as Pago[]));
+        }
+
+        const pagoRows = allPagos.map((pago) => {
+          const participant = participantByCedula.get(pago.cedula_participante);
+          const tasa = Number(pago.tasa_cambio) || 0;
+          const montoBs = Number(pago.monto_bs) || 0;
+          return {
+            "Cédula": pago.cedula_participante,
+            "Nombre": participant?.nombre ?? "",
+            "Apellido": participant?.apellido ?? "",
+            "Cuota": pago.numero_cuota ?? "",
+            "Monto (Bs)": montoBs,
+            "Tasa": tasa,
+            "Monto (USD)": tasa > 0 ? Math.round((montoBs / tasa) * 100) / 100 : "",
+            "Referencia": pago.referencia ?? "",
+            "Fecha de pago": pago.fecha_pago ?? "",
+            "Validado": pago.estado === "validado" ? "SI" : "NO",
+            "Estado": pago.estado,
+            "Validado por": pago.validado_por ?? "",
+            "Fecha de registro": pago.created_at ?? "",
+          };
+        });
+        const pagosSheet = pagoRows.length > 0
+          ? XLSX.utils.json_to_sheet(pagoRows)
+          : XLSX.utils.aoa_to_sheet([["No hay pagos registrados para estos participantes."]]);
+        pagosSheet["!cols"] = [12, 16, 16, 8, 12, 10, 12, 18, 14, 10, 12, 22, 22].map((wch) => ({ wch }));
+        XLSX.utils.book_append_sheet(workbook, pagosSheet, "Pagos");
+      }
+
       XLSX.writeFile(workbook, `Miembros_ENJ_${filtroTipo}_${Date.now()}.xlsx`);
 
     } catch (err: any) {
@@ -801,6 +845,10 @@ export function Dashboard() {
                     </label>
                   ))}
                 </div>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 12, paddingTop: 10, borderTop: "1px solid #E2E8F0", color: ENJ_NAVY, fontSize: 11, fontWeight: 700, lineHeight: 1.3, cursor: "pointer" }}>
+                  <input type="checkbox" checked={exportPagos} onChange={(event) => setExportPagos(event.target.checked)} />
+                  Incluir hoja "Pagos" (referencia, tasa, fecha y validación)
+                </label>
               </div>
             </details>
 
