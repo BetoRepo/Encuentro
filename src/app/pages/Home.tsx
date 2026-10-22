@@ -13,6 +13,8 @@ import heroBanner from "../../assets/herobanner.png";
 // Importación del video local desde assets
 import trailerVideo from "../../assets/trailer.mp4";
 import churuataVideo from "../../assets/churuata.mp4";
+import vitaminaVideo from "../../assets/vitamina.mp4";
+import demoVideo from "../../assets/demo.mp4";
 
 const ENJ_NAVY = "#000B6F";
 const ENJ_YELLOW = "#F7BF16";
@@ -92,6 +94,16 @@ export function Home() {
       title: "Spoiler - Churuata del Encuentro",
       description: "¿List@ para desconectarte, recargar energía y compartir con tu gente? Descubre La Churuata del Encuentro en el Encuentro Nacional de Jóvenes: dinámicas de integración, juegos y tiempo libre para despejar la mente y fortalecer los lazos de hermandad scout. ¡Ven, únete y vive el encuentro!",
       videoUrl: churuataVideo
+    },
+    {
+      title: "Spoiler - Vitamina",
+      description: "¿List@ para cuidarte por dentro y por fuera? Descubre Vitamina en el Encuentro Nacional de Jóvenes: un espacio con expertos de la salud para hablar sin tabúes de nutrición, salud mental y derechos sexuales y reproductivos. Llévate herramientas para tomar decisiones informadas. ¡Únete y dale vitamina a tu bienestar!",
+      videoUrl: vitaminaVideo
+    },
+    {
+      title: "Spoiler - Demo Days",
+      description: "¿List@ para calentar motores antes del gran rodaje? Los Demo Days son la fase online del Encuentro Nacional de Jóvenes: tres días de conexión, mesas de trabajo y contenidos para que llegues a Aguirre con todo preparado. ¡Conéctate y vive el primer episodio de la temporada!",
+      videoUrl: demoVideo
     }
   ];
 
