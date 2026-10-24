@@ -5,6 +5,8 @@
 export const MINIMO_INSCRITOS = 13;
 // Cada delegado debe inscribirse en al menos esta cantidad de actividades.
 export const MINIMO_ACTIVIDADES = 4;
+// Interruptor de inscripciones: en false el cuadro no aparece en el Perfil y nadie puede inscribirse.
+export const TALLERES_ABIERTOS = false;
 
 const actividad = (id, nombre, encargados, duracion, cupo, horarios) => ({
   id,
@@ -72,4 +74,4 @@ export function buildTalleresPayload(inscripciones = [], personas = null) {
   }));
 }
 
-export default { ACTIVIDADES, MINIMO_INSCRITOS, MINIMO_ACTIVIDADES, findSesion, seSolapan, validarInscripcion, buildTalleresPayload };
+export default { ACTIVIDADES, MINIMO_INSCRITOS, MINIMO_ACTIVIDADES, TALLERES_ABIERTOS, findSesion, seSolapan, validarInscripcion, buildTalleresPayload };

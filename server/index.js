@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import webpush from 'web-push';
 import { buildDashboardPayload } from './dashboardData.mjs';
-import { buildTalleresPayload, validarInscripcion, MINIMO_ACTIVIDADES } from './talleres.mjs';
+import { buildTalleresPayload, validarInscripcion, MINIMO_ACTIVIDADES, TALLERES_ABIERTOS } from './talleres.mjs';
 import { hashPassword, verifyPassword as verifyPasswordHash, createSupabaseJwt } from './auth.mjs';
 
 const app = express();
@@ -381,11 +381,12 @@ const loadTallerInscripciones = async (database) => {
 
 app.get('/api/talleres', async (req, res) => {
   try {
+    if (!TALLERES_ABIERTOS) return res.json({ ok: true, abiertos: false });
     const access = await getTallerUser(req);
     if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
     const inscripciones = await loadTallerInscripciones(access.database);
     const misSesiones = inscripciones.filter((fila) => fila.user_id === access.user.id).map((fila) => fila.sesion_id);
-    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones), misSesiones, minimoActividades: MINIMO_ACTIVIDADES });
+    return res.json({ ok: true, abiertos: true, actividades: buildTalleresPayload(inscripciones), misSesiones, minimoActividades: MINIMO_ACTIVIDADES });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los talleres.' });
   }
@@ -393,6 +394,7 @@ app.get('/api/talleres', async (req, res) => {
 
 app.post('/api/talleres/inscripcion', async (req, res) => {
   try {
+    if (!TALLERES_ABIERTOS) return res.status(403).json({ ok: false, error: 'Las inscripciones a talleres todavía no están abiertas.' });
     const access = await getTallerUser(req);
     if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
 
@@ -423,6 +425,7 @@ app.post('/api/talleres/inscripcion', async (req, res) => {
 
 app.delete('/api/talleres/inscripcion/:sesionId', async (req, res) => {
   try {
+    if (!TALLERES_ABIERTOS) return res.status(403).json({ ok: false, error: 'Las inscripciones a talleres todavía no están abiertas.' });
     const access = await getTallerUser(req);
     if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
     const { error } = await withTimeout(access.database

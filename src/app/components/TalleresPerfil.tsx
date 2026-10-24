@@ -8,15 +8,18 @@ export function TalleresPerfil() {
   const [misSesiones, setMisSesiones] = useState<string[]>([]);
   const [minimoActividades, setMinimoActividades] = useState(4);
   const [loading, setLoading] = useState(true);
+  const [abiertos, setAbiertos] = useState(false);
   const [pendiente, setPendiente] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
 
   const cargar = async () => {
     try {
-      const data = await tallerRequest<{ actividades: TallerActividad[]; misSesiones: string[]; minimoActividades: number }>("/api/talleres");
-      setActividades(data.actividades);
-      setMisSesiones(data.misSesiones);
-      setMinimoActividades(data.minimoActividades);
+      const data = await tallerRequest<{ abiertos: boolean; actividades?: TallerActividad[]; misSesiones?: string[]; minimoActividades?: number }>("/api/talleres");
+      setAbiertos(data.abiertos);
+      if (!data.abiertos) return;
+      setActividades(data.actividades ?? []);
+      setMisSesiones(data.misSesiones ?? []);
+      setMinimoActividades(data.minimoActividades ?? 4);
     } catch (error) {
       setMensaje({ tipo: "error", texto: error instanceof Error ? error.message : "No se pudieron cargar los talleres." });
     } finally {
@@ -75,6 +78,9 @@ export function TalleresPerfil() {
 
   const cumplido = miAgenda.length >= minimoActividades;
   const faltanActividades = Math.max(0, minimoActividades - miAgenda.length);
+
+  // Mientras las inscripciones están cerradas (o cargando) el cuadro no se muestra.
+  if (loading || !abiertos) return null;
 
   return (
     <section className="pf-card pf-tl">
