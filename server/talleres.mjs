@@ -20,7 +20,7 @@ export const ACTIVIDADES = [
   actividad('negociacion', 'Negociación', 'Gabriel Dávila', '35 min', 14, [['12:45', '13:20'], ['15:00', '15:35'], ['17:00', '17:35']]),
   actividad('uso-ia', 'Uso de IA', 'Miguel Ciavato', '35 min', 14, [['12:45', '13:20'], ['14:30', '15:05'], ['18:00', '18:35']]),
   actividad('excel', 'Excel', 'Gerardo Mirena', '30 min', 13, [['12:45', '13:15'], ['15:00', '15:30'], ['16:35', '17:05']]),
-  actividad('juegos-extremos', 'Juegos extremos', 'Freddy Guevara y equipo', '1 h', 25, [['14:00', '15:00'], ['17:00', '18:00']]),
+  actividad('juegos-extremos', 'Juegos extremos', 'Freddy Guevara y equipo', '1 h', 15, [['14:00', '15:00'], ['17:00', '18:00']]),
   actividad('cv', 'CV', 'Eymer', '30 min', 14, [['13:15', '13:45'], ['15:30', '16:00'], ['18:30', '19:00']]),
   actividad('yoga', 'Yoga', 'Zormirca', '10 min', 22, [['13:20', '13:30'], ['16:00', '16:10'], ['18:00', '18:10']]),
   actividad('ingles-emprendedor', 'Inglés emprendedor', 'Andrés Figuera', '50 min', 16, [['13:00', '13:50'], ['14:30', '15:20'], ['16:30', '17:20']]),
