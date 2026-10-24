@@ -5,6 +5,7 @@ import { formatRango, tallerRequest, type TallerActividad } from '../talleres';
 // Pestaña del Panel de Programa: inscritos de cada sesión de los talleres.
 export const TalleresPrograma: React.FC = () => {
   const [actividades, setActividades] = useState<TallerActividad[]>([]);
+  const [minimoActividades, setMinimoActividades] = useState(4);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -12,8 +13,9 @@ export const TalleresPrograma: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await tallerRequest<{ actividades: TallerActividad[] }>('/api/programa/talleres');
+      const data = await tallerRequest<{ actividades: TallerActividad[]; minimoActividades: number }>('/api/programa/talleres');
       setActividades(data.actividades);
+      setMinimoActividades(data.minimoActividades);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron cargar los inscritos.');
     } finally {
@@ -25,12 +27,22 @@ export const TalleresPrograma: React.FC = () => {
 
   const total = actividades.reduce((suma, act) => suma + act.sesiones.reduce((s, ses) => s + ses.inscritos, 0), 0);
 
+  // Actividades por persona, para saber quién no ha llegado al mínimo.
+  const porPersona = new Map<string, { nombre: string; cantidad: number }>();
+  actividades.forEach((act) => act.sesiones.forEach((ses) => (ses.personas || []).forEach((persona) => {
+    const actual = porPersona.get(persona.id) || { nombre: persona.nombre, cantidad: 0 };
+    porPersona.set(persona.id, { ...actual, cantidad: actual.cantidad + 1 });
+  })));
+  const pendientes = [...porPersona.values()].filter((p) => p.cantidad < minimoActividades).sort((a, b) => a.cantidad - b.cantidad);
+
   return (
     <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
       <div className="flex justify-between items-center gap-3 mb-6">
         <div>
           <h2 className="text-lg md:text-xl font-bold text-slate-800">Inscritos en Talleres</h2>
-          <p className="text-xs text-slate-500 mt-1">{total} inscripciones · cada sesión abre con mínimo {actividades[0]?.minimo ?? 13} personas</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {total} inscripciones · {porPersona.size} delegados · {porPersona.size - pendientes.length} con {minimoActividades}+ actividades · cada sesión abre con mínimo {actividades[0]?.minimo ?? 13} personas
+          </p>
         </div>
         <button onClick={cargar} className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
           <RefreshCw size={13} /> Refrescar
@@ -38,6 +50,17 @@ export const TalleresPrograma: React.FC = () => {
       </div>
 
       {error && <p className="mb-4 text-sm font-semibold text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
+
+      {!loading && pendientes.length > 0 && (
+        <details className="mb-5 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <summary className="text-sm font-bold text-amber-900 cursor-pointer">
+            {pendientes.length} delegados aún no llegan a {minimoActividades} actividades
+          </summary>
+          <ul className="mt-2 text-xs text-amber-900 grid grid-cols-1 md:grid-cols-3 gap-1">
+            {pendientes.map((p, i) => <li key={i}>{p.nombre} · {p.cantidad}/{minimoActividades}</li>)}
+          </ul>
+        </details>
+      )}
 
       {loading ? (
         <p className="text-center text-sm text-slate-500 py-10">Cargando inscritos...</p>

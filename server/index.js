@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import webpush from 'web-push';
 import { buildDashboardPayload } from './dashboardData.mjs';
-import { buildTalleresPayload, validarInscripcion } from './talleres.mjs';
+import { buildTalleresPayload, validarInscripcion, MINIMO_ACTIVIDADES } from './talleres.mjs';
 import { hashPassword, verifyPassword as verifyPasswordHash, createSupabaseJwt } from './auth.mjs';
 
 const app = express();
@@ -385,7 +385,7 @@ app.get('/api/talleres', async (req, res) => {
     if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
     const inscripciones = await loadTallerInscripciones(access.database);
     const misSesiones = inscripciones.filter((fila) => fila.user_id === access.user.id).map((fila) => fila.sesion_id);
-    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones), misSesiones });
+    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones), misSesiones, minimoActividades: MINIMO_ACTIVIDADES });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los talleres.' });
   }
@@ -466,7 +466,7 @@ app.get('/api/programa/talleres', async (req, res) => {
         });
       }
     }
-    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones, personas) });
+    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones, personas), minimoActividades: MINIMO_ACTIVIDADES });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los inscritos.' });
   }

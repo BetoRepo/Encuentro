@@ -3,6 +3,8 @@
 // Las horas van en formato 24 h ('HH:MM') para poder compararlas como texto.
 
 export const MINIMO_INSCRITOS = 13;
+// Cada delegado debe inscribirse en al menos esta cantidad de actividades.
+export const MINIMO_ACTIVIDADES = 4;
 
 const actividad = (id, nombre, encargados, duracion, cupo, horarios) => ({
   id,
@@ -70,4 +72,4 @@ export function buildTalleresPayload(inscripciones = [], personas = null) {
   }));
 }
 
-export default { ACTIVIDADES, MINIMO_INSCRITOS, findSesion, seSolapan, validarInscripcion, buildTalleresPayload };
+export default { ACTIVIDADES, MINIMO_INSCRITOS, MINIMO_ACTIVIDADES, findSesion, seSolapan, validarInscripcion, buildTalleresPayload };
