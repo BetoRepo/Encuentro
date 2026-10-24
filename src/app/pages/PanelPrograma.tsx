@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
-import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone, LogOut, RefreshCw } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Bell, Award, CheckCircle, XCircle, Volume2, Smartphone, LogOut, RefreshCw, CalendarClock } from 'lucide-react';
 import { subscribeToPushNotifications } from "../webPush";
 import { clearSession } from "../session";
+import { TalleresPrograma } from "../components/TalleresPrograma";
 
 interface Alarma {
   id: string;
@@ -37,7 +38,7 @@ interface SolicitudLogro {
 }
 
 export const PanelPrograma: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'alarmas' | 'consultas' | 'logros'>('alarmas');
+  const [activeTab, setActiveTab] = useState<'alarmas' | 'consultas' | 'logros' | 'talleres'>('alarmas');
   
   // Estado Alarmas
   const [alarmas, setAlarmas] = useState<Alarma[]>([]);
@@ -364,6 +365,14 @@ export const PanelPrograma: React.FC = () => {
               <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">{solicitudes.length}</span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab('talleres')}
+            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap active:scale-95 ${
+              activeTab === 'talleres' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <CalendarClock size={16} /> Talleres
+          </button>
         </div>
       </header>
 
@@ -503,6 +512,8 @@ export const PanelPrograma: React.FC = () => {
             )}
           </div>
         )}
+
+        {activeTab === 'talleres' && <TalleresPrograma />}
 
         {activeTab === 'logros' && (
           <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">

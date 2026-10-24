@@ -9,6 +9,7 @@ import { supabase } from "../../supabaseClient";
 import bannerImg from "../../assets/Bannerperfil.jpeg";
 import { Elenco } from "./Elenco";
 import { CREWS } from "../crews";
+import { TalleresPerfil } from "../components/TalleresPerfil";
 
 // ==========================================
 // CONSTANTES DE DISEÑO ENJ 2026 (ASV)
@@ -137,6 +138,28 @@ const PERFIL_CSS = `
 .pf-msg strong { font-size: 12.5px; color: var(--navy); font-weight: 800; }
 .pf-msg time { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
 .pf-msg p { margin: 0; font-size: 13px; color: #334155; line-height: 1.45; overflow-wrap: anywhere; }
+
+/* ---------- TALLERES ---------- */
+.pf-tl-msg { margin: 12px 0 0; padding: 10px 14px; border-radius: 14px; font-size: 13px; font-weight: 700; }
+.pf-tl-msg.is-ok { color: #15803D; background: rgba(22,163,74,0.1); }
+.pf-tl-msg.is-error { color: #B91C1C; background: rgba(220,38,38,0.08); }
+.pf-tl-agenda { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-tl-agenda span { padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--purple); background: #F1EAFE; }
+.pf-tl-agenda strong { color: var(--magenta); margin-right: 4px; font-variant-numeric: tabular-nums; }
+.pf-tl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; margin-top: 18px; }
+.pf-tl-card { padding: 14px; border-radius: 18px; background: #F6F7FC; min-width: 0; }
+.pf-tl-card header strong { display: block; font-size: 15px; font-weight: 900; color: var(--navy); }
+.pf-tl-card header span { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+.pf-tl-sesiones { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.pf-tl-sesion { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #fff; border: 1.5px solid transparent; }
+.pf-tl-sesion.is-mine { border-color: var(--magenta); background: #FFF5FB; }
+.pf-tl-sesion b { display: block; font-size: 13.5px; color: var(--navy); font-variant-numeric: tabular-nums; }
+.pf-tl-sesion small { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.pf-tl-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 999px; border: 0; font: inherit; font-size: 12px; font-weight: 800;
+  cursor: pointer; color: #fff; background: linear-gradient(135deg, var(--purple), var(--navy)); max-width: 50%; text-align: center; }
+.pf-tl-btn:disabled { cursor: not-allowed; color: var(--muted); background: #EEF0F8; }
+.pf-tl-btn.is-leave { color: var(--magenta); background: rgba(215,0,126,0.1); }
+.pf-tl-btn.is-leave:disabled { opacity: 0.6; }
 
 .pf button:focus-visible, .pf a:focus-visible, .pf input:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
@@ -1019,6 +1042,9 @@ export function Perfil() {
                 </div>
               )}
             </section>
+
+            {/* TALLERES (solo en el perfil propio) */}
+            {isOwnProfile && <TalleresPerfil />}
 
             {/* 4. CUOTAS (PRIVADO) + MURO */}
             <div className="pf-grid">

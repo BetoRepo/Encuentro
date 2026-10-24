@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import webpush from 'web-push';
 import { buildDashboardPayload } from './dashboardData.mjs';
+import { buildTalleresPayload, validarInscripcion } from './talleres.mjs';
 import { hashPassword, verifyPassword as verifyPasswordHash, createSupabaseJwt } from './auth.mjs';
 
 const app = express();
@@ -361,6 +362,113 @@ app.patch('/api/programa/alarmas/:id', async (req, res) => {
     return res.json({ ok: true });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message || 'No se pudo cancelar la alarma.' });
+  }
+});
+
+// ---------- TALLERES ----------
+const getTallerUser = async (req) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return { error: { status: 401, message: 'Inicia sesión para ver los talleres.' } };
+  if (!serviceSupabase) return { error: { status: 503, message: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor para operar con RLS habilitado.' } };
+  return { user, database: serviceSupabase };
+};
+
+const loadTallerInscripciones = async (database) => {
+  const { data, error } = await withTimeout(database.from('taller_inscripciones').select('user_id, sesion_id, created_at').order('created_at', { ascending: true }));
+  if (error) throw error;
+  return data || [];
+};
+
+app.get('/api/talleres', async (req, res) => {
+  try {
+    const access = await getTallerUser(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    const inscripciones = await loadTallerInscripciones(access.database);
+    const misSesiones = inscripciones.filter((fila) => fila.user_id === access.user.id).map((fila) => fila.sesion_id);
+    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones), misSesiones });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los talleres.' });
+  }
+});
+
+app.post('/api/talleres/inscripcion', async (req, res) => {
+  try {
+    const access = await getTallerUser(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+
+    const { data: actuales, error: actualesError } = await withTimeout(access.database
+      .from('taller_inscripciones')
+      .select('sesion_id')
+      .eq('user_id', access.user.id));
+    if (actualesError) throw actualesError;
+
+    const validacion = validarInscripcion(String(req.body?.sesionId || ''), (actuales || []).map((fila) => fila.sesion_id));
+    if (!validacion.ok) return res.status(400).json({ ok: false, error: validacion.error });
+
+    const { sesion } = validacion;
+    const { data: resultado, error } = await withTimeout(access.database.rpc('inscribir_taller', {
+      p_user_id: access.user.id,
+      p_actividad_id: sesion.actividad.id,
+      p_sesion_id: sesion.id,
+      p_cupo: sesion.actividad.cupo,
+    }));
+    if (error) throw error;
+    if (resultado === 'lleno') return res.status(409).json({ ok: false, error: 'Esa sesión ya no tiene cupos disponibles.' });
+    if (resultado === 'duplicado') return res.status(409).json({ ok: false, error: `Ya estás inscrito en ${sesion.actividad.nombre}.` });
+    return res.status(201).json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo completar la inscripción.' });
+  }
+});
+
+app.delete('/api/talleres/inscripcion/:sesionId', async (req, res) => {
+  try {
+    const access = await getTallerUser(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    const { error } = await withTimeout(access.database
+      .from('taller_inscripciones')
+      .delete()
+      .eq('user_id', access.user.id)
+      .eq('sesion_id', req.params.sesionId));
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo cancelar la inscripción.' });
+  }
+});
+
+app.get('/api/programa/talleres', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+
+    const inscripciones = await loadTallerInscripciones(access.database);
+    const ids = [...new Set(inscripciones.map((fila) => fila.user_id))];
+    const personas = new Map();
+    if (ids.length > 0) {
+      const [{ data: usuarios, error: usuariosError }, { data: perfiles, error: perfilesError }] = await Promise.all([
+        withTimeout(access.database.from('user').select('id, name, email').in('id', ids)),
+        withTimeout(access.database.from('profiles').select('id, nombre, apellido, crew, selected_region, grupo_scout').in('id', ids)),
+      ]);
+      if (usuariosError) throw usuariosError;
+      if (perfilesError) throw perfilesError;
+      const perfilPorId = new Map((perfiles || []).map((perfil) => [perfil.id, perfil]));
+      for (const usuario of usuarios || []) {
+        const perfil = perfilPorId.get(usuario.id) || {};
+        const nombrePerfil = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim();
+        personas.set(usuario.id, {
+          id: usuario.id,
+          nombre: nombrePerfil || usuario.name || usuario.email,
+          email: usuario.email,
+          crew: perfil.crew || null,
+          region: perfil.selected_region || null,
+          grupo: perfil.grupo_scout || null,
+        });
+      }
+    }
+    return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones, personas) });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los inscritos.' });
   }
 });
 
