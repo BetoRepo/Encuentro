@@ -176,13 +176,6 @@ export function Home() {
             </button>
             <button
               className="hero-secondary-btn"
-              onClick={() => navigate("/consultas")}
-              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", color: "white", border: "1px solid rgba(255,255,255,0.25)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
-            >
-              Ver consultas
-            </button>
-            <button
-              className="hero-secondary-btn"
               onClick={scrollToInfo}
               style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", color: "white", border: "1px solid rgba(255,255,255,0.25)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
             >

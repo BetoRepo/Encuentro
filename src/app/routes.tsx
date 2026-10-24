@@ -7,7 +7,7 @@ import { Login } from './pages/Login';
 // Las páginas pesadas (Dashboard con xlsx, Perfil, Inscripción) se descargan solo cuando se visitan.
 const PerfilPublico = lazy(() => import('./components/PerfilPublico').then((m) => ({ default: m.PerfilPublico })));
 const Inscripcion = lazy(() => import('./pages/Inscripcion').then((m) => ({ default: m.Inscripcion })));
-const Consultas = lazy(() => import('./pages/Consultas').then((m) => ({ default: m.Consultas })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Perfil = lazy(() => import('./pages/Perfil').then((m) => ({ default: m.Perfil })));
 const PanelPrograma = lazy(() => import('./pages/PanelPrograma').then((m) => ({ default: m.PanelPrograma })));
 const MemoriaFuego = lazy(() => import('./pages/MemoriaFuego').then((m) => ({ default: m.MemoriaFuego })));
@@ -64,11 +64,8 @@ export const router = createBrowserRouter(
             { index: true, element: <Home /> },
             { path: 'inscripcion', element: withSuspense(<Inscripcion />) },
             { path: 'perfil', element: withSuspense(<Perfil />) },
-            {
-              // ELIMINADO EL ROLEGUARD: Ahora todos los participantes autenticados pueden ver 'consultas'
-              path: 'consultas',
-              element: withSuspense(<Consultas />)
-            },
+            // Consultas desactivada por ahora: quien entre por URL vuelve al Home.
+            { path: 'consultas', element: <Navigate to="/" replace /> },
             { 
               // NUEVA RUTA: Solo para Programa y Administradores
               path: 'panel-programa', 
@@ -78,8 +75,14 @@ export const router = createBrowserRouter(
                 </RoleGuard>
               ) 
             },
-            // Dashboard desactivado por ahora: quien entre por URL vuelve al Home.
-            { path: 'dashboard', element: <Navigate to="/" replace /> },
+            {
+              path: 'dashboard',
+              element: (
+                <RoleGuard allowedRoles={['admin']}>
+                  {withSuspense(<Dashboard />)}
+                </RoleGuard>
+              )
+            },
             // Juego de memoria "Química del Fuego": abierto a todos los usuarios autenticados
             { path: 'juego-memoria', element: withSuspense(<MemoriaFuego />) },
           ],
