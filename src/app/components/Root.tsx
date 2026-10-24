@@ -271,24 +271,7 @@ export function Root() {
               Perfil
             </NavLink>
 
-            {user?.role === "admin" && (
-              <NavLink 
-                to="/dashboard" 
-                style={({ isActive }) => ({ 
-                  padding: "7px 16px", 
-                  borderRadius: 8, 
-                  textDecoration: "none", 
-                  fontSize: 14, 
-                  fontWeight: 600, 
-                  color: "#fff", 
-                  background: isActive ? ENJ_MAGENTA : "transparent" 
-                })}
-              >
-                Dashboard
-              </NavLink>
-            )}
-
-            {user?.role === "admin" && (
+            {user && (
               <NavLink
                 to="/juego-memoria"
                 style={({ isActive }) => ({
@@ -448,17 +431,8 @@ export function Root() {
               Perfil
             </NavLink>
 
-            {user?.role === "admin" && (
-              <NavLink 
-                to="/dashboard" 
-                onClick={() => setMobileOpen(false)} 
-                style={{ padding: "10px 14px", borderRadius: 8, textDecoration: "none", fontSize: 15, fontWeight: 600, color: "#fff" }}
-              >
-                Dashboard
-              </NavLink>
-            )}
 
-            {user?.role === "admin" && (
+            {user && (
               <NavLink
                 to="/juego-memoria"
                 onClick={() => setMobileOpen(false)}

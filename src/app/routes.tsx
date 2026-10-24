@@ -9,7 +9,6 @@ const PerfilPublico = lazy(() => import('./components/PerfilPublico').then((m) =
 const Inscripcion = lazy(() => import('./pages/Inscripcion').then((m) => ({ default: m.Inscripcion })));
 const Consultas = lazy(() => import('./pages/Consultas').then((m) => ({ default: m.Consultas })));
 const Perfil = lazy(() => import('./pages/Perfil').then((m) => ({ default: m.Perfil })));
-const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const PanelPrograma = lazy(() => import('./pages/PanelPrograma').then((m) => ({ default: m.PanelPrograma })));
 const MemoriaFuego = lazy(() => import('./pages/MemoriaFuego').then((m) => ({ default: m.MemoriaFuego })));
 
@@ -79,23 +78,10 @@ export const router = createBrowserRouter(
                 </RoleGuard>
               ) 
             },
-            { 
-              path: 'dashboard', 
-              element: (
-                <RoleGuard allowedRoles={['admin']}>
-                  {withSuspense(<Dashboard />)}
-                </RoleGuard>
-              )
-            },
-            {
-              // Juego de memoria "Química del Fuego": por ahora solo administradores
-              path: 'juego-memoria',
-              element: (
-                <RoleGuard allowedRoles={['admin']}>
-                  {withSuspense(<MemoriaFuego />)}
-                </RoleGuard>
-              )
-            },
+            // Dashboard desactivado por ahora: quien entre por URL vuelve al Home.
+            { path: 'dashboard', element: <Navigate to="/" replace /> },
+            // Juego de memoria "Química del Fuego": abierto a todos los usuarios autenticados
+            { path: 'juego-memoria', element: withSuspense(<MemoriaFuego />) },
           ],
         },
       ],
