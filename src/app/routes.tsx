@@ -6,7 +6,6 @@ import { Login } from './pages/Login';
 
 // Las páginas pesadas (Dashboard con xlsx, Perfil, Inscripción) se descargan solo cuando se visitan.
 const PerfilPublico = lazy(() => import('./components/PerfilPublico').then((m) => ({ default: m.PerfilPublico })));
-const Inscripcion = lazy(() => import('./pages/Inscripcion').then((m) => ({ default: m.Inscripcion })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Perfil = lazy(() => import('./pages/Perfil').then((m) => ({ default: m.Perfil })));
 const PanelPrograma = lazy(() => import('./pages/PanelPrograma').then((m) => ({ default: m.PanelPrograma })));
@@ -62,7 +61,8 @@ export const router = createBrowserRouter(
           element: <Root />, 
           children: [
             { index: true, element: <Home /> },
-            { path: 'inscripcion', element: withSuspense(<Inscripcion />) },
+            // Inscripción cerrada: quien entre por URL vuelve al Home.
+            { path: 'inscripcion', element: <Navigate to="/" replace /> },
             { path: 'perfil', element: withSuspense(<Perfil />) },
             // Consultas desactivada por ahora: quien entre por URL vuelve al Home.
             { path: 'consultas', element: <Navigate to="/" replace /> },

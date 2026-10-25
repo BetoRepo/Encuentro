@@ -221,7 +221,8 @@ export function Root() {
             )}
 
 
-            <NavLink
+            {/* Inscripción cerrada */}
+            {false && (<NavLink
               to="/inscripcion"
               style={({ isActive }) => ({
                 padding: "7px 16px",
@@ -235,7 +236,7 @@ export function Root() {
               })}
             >
               Inscripción
-            </NavLink>
+            </NavLink>)}
 
             <NavLink
               to="/perfil"
@@ -380,7 +381,8 @@ export function Root() {
             )}
 
 
-            <NavLink
+            {/* Inscripción cerrada */}
+            {false && (<NavLink
               to="/inscripcion"
               onClick={() => setMobileOpen(false)}
               style={({ isActive }) => ({
@@ -394,7 +396,7 @@ export function Root() {
               })}
             >
               Inscripción
-            </NavLink>
+            </NavLink>)}
 
             <NavLink
               to="/perfil"

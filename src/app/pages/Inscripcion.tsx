@@ -420,9 +420,10 @@ export function Inscripcion() {
 
       const { data } = supabase.storage.from("documentos-enj").getPublicUrl(storagePath);
       publicUrl = data?.publicUrl || "";
-    } catch (storageError) {
-      console.warn(`Almacenamiento directo en bucket sin respuesta. Aplicando resguardo en Base64 para ${label}:`, storageError);
-      base64Data = await fileToBase64(file);
+    } catch (storageError: any) {
+      // Ya no se guarda el archivo en base64 dentro de la base de datos: inflaba el consumo de egress.
+      console.error(`No se pudo subir ${label} a Storage:`, storageError);
+      throw new Error(`No se pudo subir ${label}. Revisa tu conexión e inténtalo de nuevo.`);
     }
 
     const { error: insertError } = await supabase

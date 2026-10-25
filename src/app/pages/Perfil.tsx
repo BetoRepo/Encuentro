@@ -665,12 +665,31 @@ export function Perfil() {
     setGustos(prev => prev.includes(item) ? prev.filter(g => g !== item) : [...prev, item]);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // La foto se reduce a 512px en el navegador y se sube a Storage; en la tabla solo se guarda la URL.
+  // (Guardarla en base64 dentro de profiles disparaba el consumo de egress de la base de datos.)
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFoto(reader.result as string);
-      reader.readAsDataURL(file);
+    if (!file || !currentUser?.id) return;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+      if (!blob) throw new Error("No se pudo procesar la imagen.");
+
+      const path = `fotos-perfil/${currentUser.id}/${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("documentos-enj")
+        .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("documentos-enj").getPublicUrl(path);
+      setFoto(data.publicUrl);
+    } catch (error: any) {
+      alert("No se pudo subir la foto: " + (error?.message || "error desconocido"));
     }
   };
 

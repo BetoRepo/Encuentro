@@ -168,13 +168,6 @@ export function Home() {
 
           <div className="hero-cta-group" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
             <button
-              className="hero-primary-btn"
-              onClick={() => navigate("/inscripcion")}
-              style={{ background: ENJ_MAGENTA, color: "white", border: "none", padding: "14px 28px", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(80,3,157,0.4)" }}
-            >
-              Inscribirme ahora <ChevronRight size={16} />
-            </button>
-            <button
               className="hero-secondary-btn"
               onClick={scrollToInfo}
               style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", color: "white", border: "1px solid rgba(255,255,255,0.25)", padding: "14px 24px", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer" }}

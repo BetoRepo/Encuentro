@@ -451,7 +451,7 @@ export function Dashboard() {
 
       const { data: docsData } = await supabase
         .from("documentos_participante")
-        .select("*")
+        .select("id, cedula_participante, tipo_documento, nombre_archivo, path_archivo, url_archivo, mime_type, peso_bytes, created_at")
         .eq("cedula_participante", cleanCedula);
 
       if (docsData) setModalDocs(docsData);

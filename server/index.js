@@ -556,7 +556,8 @@ app.get('/api/dashboard', async (req, res) => {
     ] = await Promise.all([
       supabase.from('participantes').select('*').order('created_at', { ascending: false }),
       supabase.from('pagos').select('*').order('created_at', { ascending: false }),
-      supabase.from('documentos_participante').select('*').order('created_at', { ascending: false }),
+      // Sin archivo_base64: descargarlo para todos los participantes disparaba el egress.
+      supabase.from('documentos_participante').select('id, cedula_participante, tipo_documento, nombre_archivo, path_archivo, url_archivo, mime_type, peso_bytes, created_at').order('created_at', { ascending: false }),
     ]);
 
     if (participantsError) throw participantsError;

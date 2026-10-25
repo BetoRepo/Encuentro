@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ikiqphxigtwkjhiachqg.supabase.co';
+// Proyecto Supabase actual (migrado el 2026-10-25 desde ikiqphxigtwkjhiachqg).
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jbuhszqnjvbtzqusaluw.supabase.co';
 // La clave anon es pública por diseño; la seguridad depende de las políticas RLS de la base de datos.
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlraXFwaHhpZ3R3a2poaWFjaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ1NDIsImV4cCI6MjA5NjU3MDU0Mn0.s8QdkpqOihtanulS1okUkT3g1YCOPXxeOjrf67pZsio';
+// Debe configurarse en Vercel como VITE_SUPABASE_ANON_KEY (Supabase → Settings → API Keys → Legacy → anon).
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+if (!supabaseAnonKey) console.error('Falta VITE_SUPABASE_ANON_KEY: configura la clave anon del proyecto jbuhszqnjvbtzqusaluw.');
 
 export const DB_TOKEN_KEY = 'enj_db_token';
 
