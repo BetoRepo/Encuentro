@@ -6,7 +6,7 @@ export const MINIMO_INSCRITOS = 13;
 // Cada delegado debe inscribirse en al menos esta cantidad de actividades.
 export const MINIMO_ACTIVIDADES = 4;
 // Interruptor de inscripciones: en false el cuadro no aparece en el Perfil y nadie puede inscribirse.
-export const TALLERES_ABIERTOS = false;
+export const TALLERES_ABIERTOS = true;
 
 const actividad = (id, nombre, encargados, duracion, cupo, horarios) => ({
   id,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarClock, RefreshCw, Users } from 'lucide-react';
+import { CalendarClock, Download, RefreshCw, Users } from 'lucide-react';
 import { formatRango, tallerRequest, type TallerActividad } from '../talleres';
 
 // Pestaña del Panel de Programa: inscritos de cada sesión de los talleres.
@@ -8,6 +8,7 @@ export const TalleresPrograma: React.FC = () => {
   const [minimoActividades, setMinimoActividades] = useState(4);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [exportando, setExportando] = useState(false);
 
   const cargar = async () => {
     setLoading(true);
@@ -35,6 +36,74 @@ export const TalleresPrograma: React.FC = () => {
   })));
   const pendientes = [...porPersona.values()].filter((p) => p.cantidad < minimoActividades).sort((a, b) => a.cantidad - b.cantidad);
 
+  // Excel con tres hojas: inscritos por taller, agenda de cada delegado y resumen de cupos.
+  const descargarExcel = async () => {
+    setExportando(true);
+    try {
+      const XLSX = await import('@e965/xlsx');
+      const fecha = (valor?: string) => (valor ? new Date(valor).toLocaleString('es-VE') : '');
+
+      const porTaller = actividades.flatMap((act) => act.sesiones.flatMap((ses) => (ses.personas || []).map((persona, index) => ({
+        Taller: act.nombre,
+        Horario: formatRango(ses),
+        Encargados: act.encargados,
+        'N°': index + 1,
+        Nombre: persona.nombre,
+        Correo: persona.email || '',
+        Crew: persona.crew || '',
+        'Región': persona.region || '',
+        'Grupo scout': persona.grupo || '',
+        'Fecha de inscripción': fecha(persona.fecha),
+      }))));
+
+      const delegados = new Map<string, { persona: NonNullable<TallerActividad['sesiones'][number]['personas']>[number]; talleres: Map<string, string> }>();
+      actividades.forEach((act) => act.sesiones.forEach((ses) => (ses.personas || []).forEach((persona) => {
+        const fila = delegados.get(persona.id) || { persona, talleres: new Map<string, string>() };
+        fila.talleres.set(act.id, formatRango(ses));
+        delegados.set(persona.id, fila);
+      })));
+      const porDelegado = [...delegados.values()]
+        .sort((a, b) => a.persona.nombre.localeCompare(b.persona.nombre, 'es'))
+        .map(({ persona, talleres }) => ({
+          Nombre: persona.nombre,
+          Correo: persona.email || '',
+          Crew: persona.crew || '',
+          'Región': persona.region || '',
+          'Grupo scout': persona.grupo || '',
+          Actividades: talleres.size,
+          [`Cumple mínimo (${minimoActividades})`]: talleres.size >= minimoActividades ? 'SI' : 'NO',
+          ...Object.fromEntries(actividades.map((act) => [act.nombre, talleres.get(act.id) || ''])),
+        }));
+
+      const resumen = actividades.flatMap((act) => act.sesiones.map((ses) => ({
+        Taller: act.nombre,
+        Horario: formatRango(ses),
+        Encargados: act.encargados,
+        Inscritos: ses.inscritos,
+        Cupo: act.cupo,
+        'Mínimo para abrir': act.minimo,
+        Estado: ses.inscritos >= act.cupo ? 'Lleno' : ses.inscritos >= act.minimo ? 'Confirmada' : `Faltan ${act.minimo - ses.inscritos}`,
+      })));
+
+      const hoja = (filas: Record<string, unknown>[], vacio: string) => {
+        if (filas.length === 0) return XLSX.utils.aoa_to_sheet([[vacio]]);
+        const sheet = XLSX.utils.json_to_sheet(filas);
+        sheet['!cols'] = Object.keys(filas[0]).map((col) => ({ wch: Math.min(Math.max(col.length + 2, ...filas.map((f) => String(f[col] ?? '').length + 2)), 40) }));
+        return sheet;
+      };
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, hoja(porTaller, 'Todavía no hay inscritos.'), 'Por taller');
+      XLSX.utils.book_append_sheet(workbook, hoja(porDelegado, 'Todavía no hay inscritos.'), 'Por delegado');
+      XLSX.utils.book_append_sheet(workbook, hoja(resumen, 'Sin talleres.'), 'Resumen');
+      XLSX.writeFile(workbook, `Talleres_ENJ_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo generar el Excel.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
   return (
     <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
       <div className="flex justify-between items-center gap-3 mb-6">
@@ -44,9 +113,18 @@ export const TalleresPrograma: React.FC = () => {
             {total} inscripciones · {porPersona.size} delegados · {porPersona.size - pendientes.length} con {minimoActividades}+ actividades · cada sesión abre con mínimo {actividades[0]?.minimo ?? 13} personas
           </p>
         </div>
-        <button onClick={cargar} className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
-          <RefreshCw size={13} /> Refrescar
-        </button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            onClick={descargarExcel}
+            disabled={loading || exportando}
+            className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-600 text-white px-3 py-2 rounded hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+          >
+            <Download size={13} /> {exportando ? 'Generando...' : 'Descargar Excel'}
+          </button>
+          <button onClick={cargar} className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded hover:bg-slate-200 active:scale-95">
+            <RefreshCw size={13} /> Refrescar
+          </button>
+        </div>
       </div>
 
       {error && <p className="mb-4 text-sm font-semibold text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
