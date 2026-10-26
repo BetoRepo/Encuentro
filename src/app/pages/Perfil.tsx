@@ -113,6 +113,9 @@ const PERFIL_CSS = `
 .pf-badge.is-unlocked { border-style: solid; border-color: transparent; background: linear-gradient(160deg, #FFF7DD, #F1EAFE); color: var(--navy); }
 .pf-badge.is-unlocked .pf-badge-medal { background: var(--yellow); color: var(--purple); box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--purple); }
 .pf-badge.is-unlocked .pf-badge-name { font-weight: 900; }
+.pf-badge-img { width: 76px; height: 76px; object-fit: contain; filter: grayscale(1); opacity: 0.45; transition: filter .2s, opacity .2s; }
+.pf-badge:not(:disabled):hover .pf-badge-img { opacity: 0.75; }
+.pf-badge.is-unlocked .pf-badge-img { filter: none; opacity: 1; }
 
 /* ---------- CUOTAS ---------- */
 .pf-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
@@ -269,6 +272,8 @@ const opcionesGustos = [
 interface InsigniaCatalogo {
   id: string;
   nombre: string;
+  descripcion?: string | null;
+  imagen_url?: string | null;
   puntos?: number;
 }
 
@@ -447,6 +452,11 @@ function SolicitudInsigniaModal({ insignia, userId, onClose, onSuccess }: ModalP
         <p style={{ fontSize: 13, color: "#555", margin: "0 0 18px", lineHeight: 1.4 }}>
           Insignia a solicitar: <strong style={{ color: ENJ_MAGENTA, fontWeight: 800 }}>{insignia.nombre}</strong>
         </p>
+        {insignia.descripcion && (
+          <p style={{ fontSize: 13, color: ENJ_NAVY, margin: "-8px 0 18px", lineHeight: 1.4, background: "#FAFBFF", padding: 10, borderRadius: 12 }}>
+            <strong>Cómo conseguirla:</strong> {insignia.descripcion}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
@@ -632,7 +642,7 @@ export function Perfil() {
       if (muroData) setComentarios(muroData);
 
       // 4. Cargar Catálogo e Insignias del Usuario
-      const { data: catData } = await supabase.from("insignias").select("id, nombre, descripcion, imagen_url, tipo, puntos");
+      const { data: catData } = await supabase.from("insignias").select("id, nombre, descripcion, imagen_url, tipo, puntos").order("orden", { ascending: true, nullsFirst: false });
       if (catData) setCatalogoInsignias(catData);
 
       const { data: userInsigData } = await supabase
@@ -1085,9 +1095,11 @@ export function Perfil() {
                         className={`pf-badge${isUnlocked ? " is-unlocked" : ""}`}
                         onClick={() => canApply && setInsigniaParaSolicitar(insignia)}
                         disabled={!canApply}
-                        title={canApply ? "Envía tu evidencia" : insignia.nombre}
+                        title={[insignia.nombre, insignia.descripcion, canApply ? "Toca para enviar tu evidencia" : ""].filter(Boolean).join("\n")}
                       >
-                        <span className="pf-badge-medal"><Award size={30} /></span>
+                        {insignia.imagen_url
+                          ? <img className="pf-badge-img" src={insignia.imagen_url} alt="" loading="lazy" />
+                          : <span className="pf-badge-medal"><Award size={30} /></span>}
                         <span className="pf-badge-name">{insignia.nombre}</span>
                         {insignia.puntos ? <span className="pf-badge-pts">{insignia.puntos} pts</span> : null}
                       </button>
