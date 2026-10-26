@@ -556,6 +556,95 @@ app.delete('/api/programa/talleres/inscripcion/:sesionId/:userId', async (req, r
   }
 });
 
+// ---------- LOGROS (estampillas) ----------
+// El participante reporta un logro; queda pendiente hasta que Programa lo apruebe.
+app.post('/api/logros/solicitud', async (req, res) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ ok: false, error: 'Inicia sesión para reportar un logro.' });
+    if (!serviceSupabase) return res.status(503).json({ ok: false, error: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor para operar con RLS habilitado.' });
+    const insigniaId = String(req.body?.insigniaId || '');
+    const descripcion = String(req.body?.descripcion || '').trim().slice(0, 2000);
+    const fotoUrl = String(req.body?.fotoUrl || '').trim().slice(0, 1000);
+    if (!insigniaId || !descripcion) return res.status(400).json({ ok: false, error: 'Describe cómo completaste el reto.' });
+
+    const [{ data: insignia, error: insigniaError }, { data: yaLaTiene, error: tieneError }, { data: pendiente, error: pendienteError }] = await Promise.all([
+      withTimeout(serviceSupabase.from('insignias').select('id').eq('id', insigniaId).maybeSingle()),
+      withTimeout(serviceSupabase.from('participante_insignias').select('id').eq('user_id', user.id).eq('insignia_id', insigniaId).maybeSingle()),
+      withTimeout(serviceSupabase.from('solicitudes_insignias').select('id').eq('user_id', user.id).eq('insignia_id', insigniaId).eq('estado', 'pendiente').limit(1)),
+    ]);
+    if (insigniaError) throw insigniaError;
+    if (tieneError) throw tieneError;
+    if (pendienteError) throw pendienteError;
+    if (!insignia) return res.status(404).json({ ok: false, error: 'Esa estampilla no existe.' });
+    if (yaLaTiene) return res.status(409).json({ ok: false, error: 'Ya tienes esta estampilla.' });
+    if ((pendiente || []).length > 0) return res.status(409).json({ ok: false, error: 'Ya enviaste este logro; está pendiente de revisión.' });
+
+    const { error } = await withTimeout(serviceSupabase.from('solicitudes_insignias').insert({
+      user_id: user.id,
+      insignia_id: insigniaId,
+      descripcion_evidencia: descripcion,
+      foto_url: fotoUrl || null,
+      estado: 'pendiente',
+    }));
+    if (error) throw error;
+    return res.status(201).json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo enviar el logro.' });
+  }
+});
+
+app.get('/api/programa/logros', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    const { data, error } = await withTimeout(access.database
+      .from('solicitudes_insignias')
+      .select('id, user_id, insignia_id, descripcion_evidencia, foto_url, estado, created_at, insignias(nombre, puntos, imagen_url)')
+      .eq('estado', 'pendiente')
+      .order('created_at', { ascending: true }));
+    if (error) throw error;
+    const personas = await loadTallerPersonas(access.database, [...new Set((data || []).map((fila) => fila.user_id))]);
+    const solicitudes = (data || []).map((fila) => ({ ...fila, persona: personas.get(fila.user_id) || null }));
+    return res.json({ ok: true, solicitudes });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los logros.' });
+  }
+});
+
+app.post('/api/programa/logros/:id', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    const accion = req.body?.accion;
+    if (!['aprobar', 'rechazar'].includes(accion)) return res.status(400).json({ ok: false, error: 'La acción solicitada no es válida.' });
+
+    const { data: solicitud, error: solicitudError } = await withTimeout(access.database
+      .from('solicitudes_insignias')
+      .select('id, user_id, insignia_id, estado')
+      .eq('id', req.params.id)
+      .maybeSingle());
+    if (solicitudError) throw solicitudError;
+    if (!solicitud) return res.status(404).json({ ok: false, error: 'La solicitud no existe.' });
+    if (solicitud.estado !== 'pendiente') return res.status(409).json({ ok: false, error: 'Esta solicitud ya fue revisada.' });
+
+    if (accion === 'aprobar') {
+      const { error: otorgarError } = await withTimeout(access.database
+        .from('participante_insignias')
+        .upsert({ user_id: solicitud.user_id, insignia_id: solicitud.insignia_id, otorgado_por: 'PANEL_PROGRAMA' }, { onConflict: 'user_id,insignia_id', ignoreDuplicates: true }));
+      if (otorgarError) throw otorgarError;
+    }
+    const { error } = await withTimeout(access.database
+      .from('solicitudes_insignias')
+      .update({ estado: accion === 'aprobar' ? 'aprobado' : 'rechazado' })
+      .eq('id', solicitud.id));
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo revisar el logro.' });
+  }
+});
+
 app.get('/api/notifications/key', (_req, res) => {
   if (!pushReady) return res.status(503).json({ ok: false, error: 'Las notificaciones push no están configuradas.' });
   return res.json({ ok: true, publicKey: vapidPublicKey });

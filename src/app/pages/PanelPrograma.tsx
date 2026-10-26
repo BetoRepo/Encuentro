@@ -29,13 +29,31 @@ interface SolicitudLogro {
   user_id: string;
   insignia_id: string;
   estado: 'pendiente' | 'aprobado' | 'rechazado';
-  detalles: string;
-  fecha_solicitud: string;
+  descripcion_evidencia: string | null;
+  foto_url: string | null;
+  created_at: string;
   insignias?: {
     nombre: string;
     puntos: number;
-  };
+    imagen_url: string | null;
+  } | null;
+  persona?: {
+    nombre: string;
+    email?: string;
+    crew?: string | null;
+    grupo?: string | null;
+  } | null;
 }
+
+const programaRequest = async <T,>(url: string, init: RequestInit = {}): Promise<T> => {
+  const response = await fetch(url, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) throw new Error(result.error || 'No se pudo conectar con el servidor.');
+  return result as T;
+};
 
 export const PanelPrograma: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'alarmas' | 'consultas' | 'logros' | 'talleres'>('alarmas');
@@ -94,7 +112,7 @@ export const PanelPrograma: React.FC = () => {
       .channel('realtime-solicitudes')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'solicitudes_logros' },
+        { event: 'INSERT', schema: 'public', table: 'solicitudes_insignias' },
         () => fetchSolicitudes()
       )
       .subscribe();
@@ -180,14 +198,14 @@ export const PanelPrograma: React.FC = () => {
 
   const fetchSolicitudes = async () => {
     setLoadingSolicitudes(true);
-    const { data, error } = await supabase
-      .from('solicitudes_logros')
-      .select('*, insignias(nombre, puntos)')
-      .eq('estado', 'pendiente')
-      .order('fecha_solicitud', { ascending: false });
-      
-    if (!error && data) setSolicitudes(data as SolicitudLogro[]);
-    setLoadingSolicitudes(false);
+    try {
+      const data = await programaRequest<{ solicitudes: SolicitudLogro[] }>('/api/programa/logros');
+      setSolicitudes(data.solicitudes);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingSolicitudes(false);
+    }
   };
 
   const handleSubmitAlarma = async (e: React.FormEvent) => {
@@ -265,26 +283,20 @@ export const PanelPrograma: React.FC = () => {
 
   const handleAprobarLogro = async (solicitud: SolicitudLogro) => {
     try {
-      const { error: insertError } = await supabase.from('participante_insignias').insert([
-        { user_id: solicitud.user_id, insignia_id: solicitud.insignia_id, otorgado_por: 'PANEL_PROGRAMA' }
-      ]);
-      if (insertError && insertError.code !== '23505') throw insertError;
-
-      await supabase.from('solicitudes_logros').update({ estado: 'aprobado' }).eq('id', solicitud.id);
+      await programaRequest(`/api/programa/logros/${encodeURIComponent(solicitud.id)}`, { method: 'POST', body: JSON.stringify({ accion: 'aprobar' }) });
       setSolicitudes(prev => prev.filter(s => s.id !== solicitud.id));
     } catch (error) {
-      alert('Error al aprobar el logro.');
-      console.error(error);
+      alert(error instanceof Error ? error.message : 'Error al aprobar el logro.');
     }
   };
 
   const handleRechazarLogro = async (solicitudId: string) => {
     if (!confirm('¿Estás seguro de rechazar este logro?')) return;
     try {
-      await supabase.from('solicitudes_logros').update({ estado: 'rechazado' }).eq('id', solicitudId);
+      await programaRequest(`/api/programa/logros/${encodeURIComponent(solicitudId)}`, { method: 'POST', body: JSON.stringify({ accion: 'rechazar' }) });
       setSolicitudes(prev => prev.filter(s => s.id !== solicitudId));
     } catch (error) {
-      alert('Error al rechazar el logro.');
+      alert(error instanceof Error ? error.message : 'Error al rechazar el logro.');
     }
   };
 
@@ -538,17 +550,29 @@ export const PanelPrograma: React.FC = () => {
                     <div>
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-blue-800 text-sm flex items-center gap-2">
-                          <Award size={16} className="text-pink-600" /> 
+                          {sol.insignias?.imagen_url
+                            ? <img src={sol.insignias.imagen_url} alt="" className="w-10 h-10 object-contain" />
+                            : <Award size={16} className="text-pink-600" />}
                           {sol.insignias?.nombre || "Insignia Desconocida"}
                         </h3>
-                        <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">
-                          +{sol.insignias?.puntos || 0} pts
-                        </span>
+                        {sol.insignias?.puntos ? (
+                          <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">
+                            +{sol.insignias.puntos} pts
+                          </span>
+                        ) : null}
                       </div>
-                      <p className="text-xs text-slate-500 mb-1"><strong>ID Usuario:</strong> {sol.user_id}</p>
+                      <p className="text-sm font-semibold text-slate-800">{sol.persona?.nombre || 'Participante sin nombre'}</p>
+                      <p className="text-xs text-slate-500 mb-1">
+                        {[sol.persona?.email, sol.persona?.crew && `Crew ${sol.persona.crew}`, sol.persona?.grupo, new Date(sol.created_at).toLocaleString('es-VE')].filter(Boolean).join(' · ')}
+                      </p>
                       <div className="bg-white p-3 rounded border border-slate-200 my-3 text-sm text-slate-700 shadow-sm">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Prueba / Detalle enviado:</p>
-                        <p className="break-words">{sol.detalles || "Sin detalles adicionales proporcionados."}</p>
+                        <p className="break-words">{sol.descripcion_evidencia || "Sin detalles adicionales proporcionados."}</p>
+                        {sol.foto_url && (
+                          <a href={sol.foto_url} target="_blank" rel="noreferrer" className="block mt-2">
+                            <img src={sol.foto_url} alt="Evidencia" className="max-h-48 rounded border border-slate-200 object-contain" />
+                          </a>
+                        )}
                       </div>
                     </div>
 

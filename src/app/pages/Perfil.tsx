@@ -410,19 +410,14 @@ function SolicitudInsigniaModal({ insignia, userId, onClose, onSuccess }: ModalP
         fotoUrl = publicUrlData.publicUrl;
       }
 
-      const { error: insertError } = await supabase
-        .from("solicitudes_insignias")
-        .insert([
-          {
-            user_id: userId,
-            insignia_id: insignia.id,
-            descripcion_evidencia: descripcion.trim(),
-            foto_url: fotoUrl,
-            estado: "pendiente"
-          }
-        ]);
-
-      if (insertError) throw insertError;
+      // El servidor registra la solicitud para que aparezca en Logros del Panel de Programa.
+      const response = await fetch("/api/logros/solicitud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+        body: JSON.stringify({ insigniaId: insignia.id, descripcion: descripcion.trim(), fotoUrl }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) throw new Error(result.error || "No se pudo conectar con el servidor.");
 
       alert("¡Solicitud de insignia enviada con éxito al Equipo Evaluador!");
       onSuccess();
