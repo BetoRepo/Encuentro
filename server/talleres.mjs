@@ -37,7 +37,8 @@ export const findSesion = (sesionId) => SESIONES.get(sesionId) || null;
 export const seSolapan = (a, b) => a.inicio < b.fin && b.inicio < a.fin;
 
 // Revisa si el usuario puede tomar la sesión dadas sus inscripciones actuales (lista de sesion_id).
-export function validarInscripcion(sesionId, sesionesActuales = []) {
+// Programa puede pasar permitirCruces para inscribir aunque los horarios choquen.
+export function validarInscripcion(sesionId, sesionesActuales = [], { permitirCruces = false } = {}) {
   const sesion = findSesion(sesionId);
   if (!sesion) return { ok: false, error: 'La sesión solicitada no existe.' };
   for (const actualId of sesionesActuales) {
@@ -46,7 +47,7 @@ export function validarInscripcion(sesionId, sesionesActuales = []) {
     if (actual.actividad.id === sesion.actividad.id) {
       return { ok: false, error: `Ya estás inscrito en ${sesion.actividad.nombre}. Retírate de tu sesión actual para cambiarla.` };
     }
-    if (seSolapan(actual, sesion)) {
+    if (!permitirCruces && seSolapan(actual, sesion)) {
       return { ok: false, error: `Ese horario choca con ${actual.actividad.nombre} (${actual.inicio}–${actual.fin}).` };
     }
   }

@@ -20,6 +20,11 @@ test('validarInscripcion rechaza horarios que se cruzan pero no los contiguos', 
   assert.equal(validarInscripcion('cv-1', ['excel-1']).ok, true);
 });
 
+test('validarInscripcion con permitirCruces acepta choques pero no repetir actividad', () => {
+  assert.equal(validarInscripcion('ingles-emprendedor-1', ['lengua-senas-1'], { permitirCruces: true }).ok, true);
+  assert.equal(validarInscripcion('yoga-3', ['yoga-1'], { permitirCruces: true }).ok, false);
+});
+
 test('validarInscripcion rechaza sesiones inexistentes', () => {
   assert.equal(validarInscripcion('no-existe', []).ok, false);
 });

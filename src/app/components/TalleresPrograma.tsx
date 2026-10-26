@@ -1,6 +1,159 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarClock, Download, RefreshCw, Users } from 'lucide-react';
-import { formatRango, tallerRequest, type TallerActividad } from '../talleres';
+import { CalendarClock, Download, RefreshCw, Search, UserPlus, Users, X } from 'lucide-react';
+import { formatRango, seSolapan, tallerRequest, type TallerActividad, type TallerPersona } from '../talleres';
+
+// Cuadro para que Programa inscriba a un participante en las sesiones que necesite.
+const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: () => Promise<void> }> = ({ actividades, onCambio }) => {
+  const [busqueda, setBusqueda] = useState('');
+  const [resultados, setResultados] = useState<TallerPersona[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [persona, setPersona] = useState<TallerPersona | null>(null);
+  const [sesionId, setSesionId] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+
+  useEffect(() => {
+    const q = busqueda.trim();
+    if (persona || q.length < 2) { setResultados([]); return; }
+    const timer = setTimeout(async () => {
+      setBuscando(true);
+      try {
+        const data = await tallerRequest<{ participantes: TallerPersona[] }>(`/api/programa/talleres/participantes?q=${encodeURIComponent(q)}`);
+        setResultados(data.participantes);
+      } catch (err) {
+        setMensaje({ tipo: 'error', texto: err instanceof Error ? err.message : 'No se pudo buscar participantes.' });
+      } finally {
+        setBuscando(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [busqueda, persona]);
+
+  // Sesiones donde ya está inscrita la persona seleccionada.
+  const actuales = persona
+    ? actividades.flatMap((act) => act.sesiones.filter((ses) => (ses.personas || []).some((p) => p.id === persona.id)).map((ses) => ({ act, ses })))
+    : [];
+
+  const motivoBloqueo = (act: TallerActividad, ses: TallerActividad['sesiones'][number]) => {
+    if (actuales.some((a) => a.act.id === act.id)) return 'ya inscrito en esta actividad';
+    if (ses.inscritos >= act.cupo) return 'lleno';
+    return '';
+  };
+
+  // Los cruces no bloquean: Programa puede inscribir igual, solo se avisa.
+  const choqueCon = (ses: TallerActividad['sesiones'][number]) => actuales.find((a) => seSolapan(a.ses, ses))?.act.nombre || '';
+  const sesionElegida = actividades.flatMap((act) => act.sesiones).find((ses) => ses.id === sesionId);
+  const choqueElegida = sesionElegida ? choqueCon(sesionElegida) : '';
+
+  const seleccionar = (p: TallerPersona) => {
+    setPersona(p);
+    setBusqueda(p.nombre);
+    setResultados([]);
+    setSesionId('');
+    setMensaje(null);
+  };
+
+  const limpiar = () => {
+    setPersona(null);
+    setBusqueda('');
+    setSesionId('');
+  };
+
+  const inscribir = async () => {
+    if (!persona || !sesionId) return;
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      await tallerRequest('/api/programa/talleres/inscripcion', { method: 'POST', body: JSON.stringify({ userId: persona.id, sesionId }) });
+      setMensaje({ tipo: 'ok', texto: `${persona.nombre} quedó inscrito.` });
+      setSesionId('');
+      await onCambio();
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err instanceof Error ? err.message : 'No se pudo completar la inscripción.' });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="mb-6 border border-blue-200 bg-blue-50/50 rounded-xl p-4">
+      <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 mb-3">
+        <UserPlus size={16} className="text-blue-700" /> Cargar actividades a un participante
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-start">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+          <input
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setPersona(null); }}
+            placeholder="Buscar por nombre o correo"
+            className="w-full pl-8 pr-8 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
+          {busqueda && (
+            <button onClick={limpiar} className="absolute right-2 top-2 text-slate-400 hover:text-slate-700" aria-label="Limpiar búsqueda"><X size={16} /></button>
+          )}
+          {!persona && busqueda.trim().length >= 2 && (
+            <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-auto text-sm">
+              {buscando && <li className="px-3 py-2 text-slate-400">Buscando...</li>}
+              {!buscando && resultados.length === 0 && <li className="px-3 py-2 text-slate-400">Sin resultados</li>}
+              {resultados.map((p) => (
+                <li key={p.id}>
+                  <button onClick={() => seleccionar(p)} className="w-full text-left px-3 py-2 hover:bg-blue-50">
+                    <span className="font-semibold text-slate-800">{p.nombre}</span>
+                    <span className="block text-xs text-slate-500">{[p.email, p.crew && `Crew ${p.crew}`, p.grupo].filter(Boolean).join(' · ')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <select
+          value={sesionId}
+          onChange={(e) => setSesionId(e.target.value)}
+          disabled={!persona}
+          className="w-full py-2 px-2 text-sm border border-slate-300 rounded-lg bg-white disabled:opacity-50"
+        >
+          <option value="">{persona ? 'Elige la sesión' : 'Primero elige un participante'}</option>
+          {actividades.map((act) => (
+            <optgroup key={act.id} label={act.nombre}>
+              {act.sesiones.map((ses) => {
+                const motivo = motivoBloqueo(act, ses);
+                const choque = motivo ? '' : choqueCon(ses);
+                return (
+                  <option key={ses.id} value={ses.id} disabled={Boolean(motivo)}>
+                    {formatRango(ses)} · {ses.inscritos}/{act.cupo}{motivo ? ` · ${motivo}` : ''}{choque ? ` · choca con ${choque}` : ''}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+        <button
+          onClick={inscribir}
+          disabled={!persona || !sesionId || guardando}
+          className="inline-flex items-center justify-center gap-1 text-xs font-bold bg-blue-700 text-white px-4 py-2.5 rounded-lg hover:bg-blue-800 active:scale-95 disabled:opacity-50"
+        >
+          <UserPlus size={13} /> {guardando ? 'Inscribiendo...' : 'Inscribir'}
+        </button>
+      </div>
+      {persona && (
+        <p className="mt-3 text-xs text-slate-600">
+          {actuales.length === 0
+            ? `${persona.nombre} todavía no tiene actividades.`
+            : `${persona.nombre} tiene ${actuales.length}: ${actuales.map((a) => `${a.act.nombre} (${formatRango(a.ses)})`).join(', ')}.`}
+        </p>
+      )}
+      {choqueElegida && (
+        <p className="mt-2 text-xs font-semibold text-amber-800 bg-amber-50 p-2 rounded-lg">
+          Ojo: esta sesión choca con {choqueElegida}. Se puede inscribir igual.
+        </p>
+      )}
+      {mensaje && (
+        <p className={`mt-3 text-sm font-semibold p-2 rounded-lg ${mensaje.tipo === 'ok' ? 'text-emerald-800 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>{mensaje.texto}</p>
+      )}
+    </div>
+  );
+};
 
 // Pestaña del Panel de Programa: inscritos de cada sesión de los talleres.
 export const TalleresPrograma: React.FC = () => {
@@ -25,6 +178,16 @@ export const TalleresPrograma: React.FC = () => {
   };
 
   useEffect(() => { cargar(); }, []);
+
+  const retirar = async (actividad: TallerActividad, sesion: TallerActividad['sesiones'][number], persona: TallerPersona) => {
+    if (!window.confirm(`¿Retirar a ${persona.nombre} de ${actividad.nombre} (${formatRango(sesion)})?`)) return;
+    try {
+      await tallerRequest(`/api/programa/talleres/inscripcion/${encodeURIComponent(sesion.id)}/${encodeURIComponent(persona.id)}`, { method: 'DELETE' });
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo retirar al participante.');
+    }
+  };
 
   const total = actividades.reduce((suma, act) => suma + act.sesiones.reduce((s, ses) => s + ses.inscritos, 0), 0);
 
@@ -129,6 +292,8 @@ export const TalleresPrograma: React.FC = () => {
 
       {error && <p className="mb-4 text-sm font-semibold text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
 
+      <CargarActividades actividades={actividades} onCambio={cargar} />
+
       {!loading && pendientes.length > 0 && (
         <details className="mb-5 bg-amber-50 border border-amber-200 rounded-lg p-3">
           <summary className="text-sm font-bold text-amber-900 cursor-pointer">
@@ -170,11 +335,19 @@ export const TalleresPrograma: React.FC = () => {
                       ) : (
                         <ol className="text-xs text-slate-700 space-y-1 list-decimal list-inside">
                           {(sesion.personas || []).map((persona) => (
-                            <li key={persona.id}>
+                            <li key={persona.id} className="group">
                               <span className="font-semibold">{persona.nombre}</span>
                               {(persona.crew || persona.grupo) && (
                                 <span className="text-slate-400"> · {[persona.crew && `Crew ${persona.crew}`, persona.grupo].filter(Boolean).join(' · ')}</span>
                               )}
+                              <button
+                                onClick={() => retirar(actividad, sesion, persona)}
+                                className="ml-1 align-middle text-slate-300 hover:text-red-600"
+                                title="Retirar de esta sesión"
+                                aria-label={`Retirar a ${persona.nombre}`}
+                              >
+                                <X size={12} />
+                              </button>
                             </li>
                           ))}
                         </ol>

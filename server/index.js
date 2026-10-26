@@ -379,6 +379,32 @@ const loadTallerInscripciones = async (database) => {
   return data || [];
 };
 
+// Nombre, correo y datos scout de cada usuario, indexados por id.
+const loadTallerPersonas = async (database, ids) => {
+  const personas = new Map();
+  if (ids.length === 0) return personas;
+  const [{ data: usuarios, error: usuariosError }, { data: perfiles, error: perfilesError }] = await Promise.all([
+    withTimeout(database.from('user').select('id, name, email').in('id', ids)),
+    withTimeout(database.from('profiles').select('id, nombre, apellido, crew, selected_region, grupo_scout').in('id', ids)),
+  ]);
+  if (usuariosError) throw usuariosError;
+  if (perfilesError) throw perfilesError;
+  const perfilPorId = new Map((perfiles || []).map((perfil) => [perfil.id, perfil]));
+  for (const usuario of usuarios || []) {
+    const perfil = perfilPorId.get(usuario.id) || {};
+    const nombrePerfil = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim();
+    personas.set(usuario.id, {
+      id: usuario.id,
+      nombre: nombrePerfil || usuario.name || usuario.email,
+      email: usuario.email,
+      crew: perfil.crew || null,
+      region: perfil.selected_region || null,
+      grupo: perfil.grupo_scout || null,
+    });
+  }
+  return personas;
+};
+
 app.get('/api/talleres', async (req, res) => {
   try {
     if (!TALLERES_ABIERTOS) return res.json({ ok: true, abiertos: false });
@@ -446,32 +472,87 @@ app.get('/api/programa/talleres', async (req, res) => {
     if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
 
     const inscripciones = await loadTallerInscripciones(access.database);
-    const ids = [...new Set(inscripciones.map((fila) => fila.user_id))];
-    const personas = new Map();
-    if (ids.length > 0) {
-      const [{ data: usuarios, error: usuariosError }, { data: perfiles, error: perfilesError }] = await Promise.all([
-        withTimeout(access.database.from('user').select('id, name, email').in('id', ids)),
-        withTimeout(access.database.from('profiles').select('id, nombre, apellido, crew, selected_region, grupo_scout').in('id', ids)),
-      ]);
-      if (usuariosError) throw usuariosError;
-      if (perfilesError) throw perfilesError;
-      const perfilPorId = new Map((perfiles || []).map((perfil) => [perfil.id, perfil]));
-      for (const usuario of usuarios || []) {
-        const perfil = perfilPorId.get(usuario.id) || {};
-        const nombrePerfil = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim();
-        personas.set(usuario.id, {
-          id: usuario.id,
-          nombre: nombrePerfil || usuario.name || usuario.email,
-          email: usuario.email,
-          crew: perfil.crew || null,
-          region: perfil.selected_region || null,
-          grupo: perfil.grupo_scout || null,
-        });
-      }
-    }
+    const personas = await loadTallerPersonas(access.database, [...new Set(inscripciones.map((fila) => fila.user_id))]);
     return res.json({ ok: true, actividades: buildTalleresPayload(inscripciones, personas), minimoActividades: MINIMO_ACTIVIDADES });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message || 'No se pudieron cargar los inscritos.' });
+  }
+});
+
+// Buscador de participantes para que Programa los inscriba manualmente.
+app.get('/api/programa/talleres/participantes', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    // Se quitan los caracteres que rompen el filtro or() de PostgREST.
+    const q = String(req.query.q || '').replace(/[,()%*\\]/g, ' ').trim();
+    if (q.length < 2) return res.json({ ok: true, participantes: [] });
+
+    const patron = `%${q}%`;
+    const [{ data: usuarios, error: usuariosError }, { data: perfiles, error: perfilesError }] = await Promise.all([
+      withTimeout(access.database.from('user').select('id').or(`name.ilike.${patron},email.ilike.${patron}`).limit(15)),
+      withTimeout(access.database.from('profiles').select('id').or(`nombre.ilike.${patron},apellido.ilike.${patron}`).limit(15)),
+    ]);
+    if (usuariosError) throw usuariosError;
+    if (perfilesError) throw perfilesError;
+
+    const ids = [...new Set([...(usuarios || []), ...(perfiles || [])].map((fila) => fila.id))];
+    const personas = await loadTallerPersonas(access.database, ids);
+    const participantes = [...personas.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).slice(0, 15);
+    return res.json({ ok: true, participantes });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo buscar participantes.' });
+  }
+});
+
+// Programa inscribe a un participante en una sesión respetando el cupo, aunque choque con otro horario.
+app.post('/api/programa/talleres/inscripcion', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    const userId = String(req.body?.userId || '');
+    if (!userId) return res.status(400).json({ ok: false, error: 'Selecciona un participante.' });
+
+    const { data: actuales, error: actualesError } = await withTimeout(access.database
+      .from('taller_inscripciones')
+      .select('sesion_id')
+      .eq('user_id', userId));
+    if (actualesError) throw actualesError;
+
+    const validacion = validarInscripcion(String(req.body?.sesionId || ''), (actuales || []).map((fila) => fila.sesion_id), { permitirCruces: true });
+    if (!validacion.ok) {
+      return res.status(400).json({ ok: false, error: validacion.error.replace('Ya estás inscrito', 'El participante ya está inscrito').replace('Retírate de tu sesión actual para cambiarla.', 'Retíralo de esa sesión para cambiarla.') });
+    }
+
+    const { sesion } = validacion;
+    const { data: resultado, error } = await withTimeout(access.database.rpc('inscribir_taller', {
+      p_user_id: userId,
+      p_actividad_id: sesion.actividad.id,
+      p_sesion_id: sesion.id,
+      p_cupo: sesion.actividad.cupo,
+    }));
+    if (error) throw error;
+    if (resultado === 'lleno') return res.status(409).json({ ok: false, error: 'Esa sesión ya no tiene cupos disponibles.' });
+    if (resultado === 'duplicado') return res.status(409).json({ ok: false, error: `El participante ya está inscrito en ${sesion.actividad.nombre}.` });
+    return res.status(201).json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo completar la inscripción.' });
+  }
+});
+
+app.delete('/api/programa/talleres/inscripcion/:sesionId/:userId', async (req, res) => {
+  try {
+    const access = await getProgramManager(req);
+    if (access.error) return res.status(access.error.status).json({ ok: false, error: access.error.message });
+    const { error } = await withTimeout(access.database
+      .from('taller_inscripciones')
+      .delete()
+      .eq('user_id', req.params.userId)
+      .eq('sesion_id', req.params.sesionId));
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || 'No se pudo retirar al participante.' });
   }
 });
 
