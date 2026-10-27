@@ -34,12 +34,18 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
     ? actividades.flatMap((act) => act.sesiones.filter((ses) => (ses.personas || []).some((p) => p.id === persona.id)).map((ses) => ({ act, ses })))
     : [];
 
-  const motivoBloqueo = (act: TallerActividad) => (actuales.some((a) => a.act.id === act.id) ? 'ya inscrito en esta actividad' : '');
+  const motivoBloqueo = (ses: TallerActividad['sesiones'][number]) => (actuales.some((a) => a.ses.id === ses.id) ? 'ya está en esta sesión' : '');
 
   // Los cruces y los cupos llenos no bloquean: Programa puede inscribir igual, solo se avisa.
+  // Si ya tiene otra sesión de la misma actividad, se le cambia el horario a la elegida.
   const avisos = (act: TallerActividad, ses: TallerActividad['sesiones'][number]) => {
-    const choque = actuales.find((a) => seSolapan(a.ses, ses))?.act.nombre;
-    return [ses.inscritos >= act.cupo && 'llena', choque && `choca con ${choque}`].filter(Boolean) as string[];
+    const previa = actuales.find((a) => a.act.id === act.id);
+    const choque = actuales.find((a) => a.act.id !== act.id && seSolapan(a.ses, ses))?.act.nombre;
+    return [
+      previa && `cambia de horario (ahora ${formatRango(previa.ses)})`,
+      ses.inscritos >= act.cupo && 'llena',
+      choque && `choca con ${choque}`,
+    ].filter(Boolean) as string[];
   };
   const elegida = actividades.flatMap((act) => act.sesiones.map((ses) => ({ act, ses }))).find(({ ses }) => ses.id === sesionId);
   const avisosElegida = elegida ? avisos(elegida.act, elegida.ses) : [];
@@ -63,8 +69,9 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
     setGuardando(true);
     setMensaje(null);
     try {
-      await tallerRequest('/api/programa/talleres/inscripcion', { method: 'POST', body: JSON.stringify({ userId: persona.id, sesionId }) });
-      setMensaje({ tipo: 'ok', texto: `${persona.nombre} quedó inscrito.` });
+      const result = await tallerRequest<{ cambio?: boolean }>('/api/programa/talleres/inscripcion', { method: 'POST', body: JSON.stringify({ userId: persona.id, sesionId }) });
+      const destino = elegida ? `${elegida.act.nombre} (${formatRango(elegida.ses)})` : 'la sesión';
+      setMensaje({ tipo: 'ok', texto: result.cambio ? `${persona.nombre} se cambió a ${destino}.` : `${persona.nombre} quedó inscrito en ${destino}.` });
       setSesionId('');
       await onCambio();
     } catch (err) {
@@ -116,7 +123,7 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
           {actividades.map((act) => (
             <optgroup key={act.id} label={act.nombre}>
               {act.sesiones.map((ses) => {
-                const motivo = motivoBloqueo(act);
+                const motivo = motivoBloqueo(ses);
                 const notas = motivo ? [motivo] : avisos(act, ses);
                 return (
                   <option key={ses.id} value={ses.id} disabled={Boolean(motivo)}>
@@ -144,7 +151,7 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
       )}
       {avisosElegida.length > 0 && (
         <p className="mt-2 text-xs font-semibold text-amber-800 bg-amber-50 p-2 rounded-lg">
-          Ojo: esta sesión está {avisosElegida.join(' y ')}. Se puede inscribir igual.
+          Ojo: {avisosElegida.join(' · ')}. Se puede inscribir igual.
         </p>
       )}
       {mensaje && (
