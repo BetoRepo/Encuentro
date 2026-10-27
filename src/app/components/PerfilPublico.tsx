@@ -8,6 +8,7 @@ import {
   Instagram,
   MapPin,
   Sparkles,
+  Trophy,
   User,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
@@ -32,6 +33,13 @@ interface PublicProfile {
   crew: string | null;
 }
 
+interface Estampilla {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  imagen_url: string | null;
+}
+
 export function PerfilPublico() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -41,6 +49,8 @@ export function PerfilPublico() {
   const [handshakeLoading, setHandshakeLoading] = useState(false);
   const [handshakeError, setHandshakeError] = useState("");
   const [hasHandshaked, setHasHandshaked] = useState(false);
+  const [estampillas, setEstampillas] = useState<Estampilla[]>([]);
+  const [ganadasIds, setGanadasIds] = useState<string[]>([]);
   const [currentUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("enj_user") || "null") as { id?: string } | null;
@@ -76,6 +86,20 @@ export function PerfilPublico() {
       setLoading(false);
     };
     fetchPublicProfile();
+  }, [id]);
+
+  // Estampillas que ya consiguió este participante.
+  useEffect(() => {
+    if (!id) return;
+    const fetchEstampillas = async () => {
+      const [{ data: catalogo }, { data: ganadas }] = await Promise.all([
+        supabase.from("insignias").select("id, nombre, descripcion, imagen_url").order("orden", { ascending: true, nullsFirst: false }),
+        supabase.from("participante_insignias").select("insignia_id").eq("user_id", id),
+      ]);
+      if (catalogo) setEstampillas(catalogo);
+      if (ganadas) setGanadasIds(ganadas.map((fila: { insignia_id: string }) => fila.insignia_id));
+    };
+    fetchEstampillas();
   }, [id]);
 
   const handleHandshake = async () => {
@@ -239,6 +263,34 @@ export function PerfilPublico() {
                 </div>
               </section>
             </div>
+
+            {estampillas.length > 0 && (() => {
+              const ganadas = estampillas.filter((e) => ganadasIds.includes(e.id));
+              return (
+                <section style={{ marginTop: 16, padding: 22, border: "1px solid #E8EBF6", borderRadius: 22, background: "linear-gradient(145deg, #FCFCFF, #F8F9FE)" }}>
+                  <h2 style={{ display: "flex", alignItems: "center", gap: 9, margin: "0 0 14px", color: ENJ_NAVY, fontSize: 14, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    <Trophy size={18} color={ENJ_MAGENTA} /> Estampillas
+                    <span style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 99, background: "#EEF0FC", fontSize: 12, letterSpacing: 0 }}>
+                      {ganadas.length} de {estampillas.length}
+                    </span>
+                  </h2>
+                  {ganadas.length === 0 ? (
+                    <p style={{ margin: 0, color: "#64748B", fontSize: 13 }}>Todavía no ha conseguido estampillas.</p>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 14 }}>
+                      {ganadas.map((e) => (
+                        <div key={e.id} title={[e.nombre, e.descripcion].filter(Boolean).join("\n")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textAlign: "center" }}>
+                          {e.imagen_url
+                            ? <img src={e.imagen_url} alt="" loading="lazy" style={{ width: 76, height: 76, objectFit: "contain" }} />
+                            : <Award size={40} color={ENJ_MAGENTA} />}
+                          <span style={{ color: ENJ_NAVY, fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}>{e.nombre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
           </div>
         </article>
       </div>
