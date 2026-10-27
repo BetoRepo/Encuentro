@@ -505,7 +505,7 @@ app.get('/api/programa/talleres/participantes', async (req, res) => {
   }
 });
 
-// Programa inscribe a un participante en una sesión respetando el cupo, aunque choque con otro horario.
+// Programa inscribe a un participante en una sesión aunque esté llena o choque con otro horario.
 app.post('/api/programa/talleres/inscripcion', async (req, res) => {
   try {
     const access = await getProgramManager(req);
@@ -524,16 +524,13 @@ app.post('/api/programa/talleres/inscripcion', async (req, res) => {
       return res.status(400).json({ ok: false, error: validacion.error.replace('Ya estás inscrito', 'El participante ya está inscrito').replace('Retírate de tu sesión actual para cambiarla.', 'Retíralo de esa sesión para cambiarla.') });
     }
 
+    // Sin pasar por inscribir_taller: Programa puede inscribir aunque la sesión esté llena.
     const { sesion } = validacion;
-    const { data: resultado, error } = await withTimeout(access.database.rpc('inscribir_taller', {
-      p_user_id: userId,
-      p_actividad_id: sesion.actividad.id,
-      p_sesion_id: sesion.id,
-      p_cupo: sesion.actividad.cupo,
-    }));
+    const { error } = await withTimeout(access.database
+      .from('taller_inscripciones')
+      .insert({ user_id: userId, actividad_id: sesion.actividad.id, sesion_id: sesion.id }));
+    if (error?.code === '23505') return res.status(409).json({ ok: false, error: `El participante ya está inscrito en ${sesion.actividad.nombre}.` });
     if (error) throw error;
-    if (resultado === 'lleno') return res.status(409).json({ ok: false, error: 'Esa sesión ya no tiene cupos disponibles.' });
-    if (resultado === 'duplicado') return res.status(409).json({ ok: false, error: `El participante ya está inscrito en ${sesion.actividad.nombre}.` });
     return res.status(201).json({ ok: true });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message || 'No se pudo completar la inscripción.' });

@@ -34,16 +34,15 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
     ? actividades.flatMap((act) => act.sesiones.filter((ses) => (ses.personas || []).some((p) => p.id === persona.id)).map((ses) => ({ act, ses })))
     : [];
 
-  const motivoBloqueo = (act: TallerActividad, ses: TallerActividad['sesiones'][number]) => {
-    if (actuales.some((a) => a.act.id === act.id)) return 'ya inscrito en esta actividad';
-    if (ses.inscritos >= act.cupo) return 'lleno';
-    return '';
-  };
+  const motivoBloqueo = (act: TallerActividad) => (actuales.some((a) => a.act.id === act.id) ? 'ya inscrito en esta actividad' : '');
 
-  // Los cruces no bloquean: Programa puede inscribir igual, solo se avisa.
-  const choqueCon = (ses: TallerActividad['sesiones'][number]) => actuales.find((a) => seSolapan(a.ses, ses))?.act.nombre || '';
-  const sesionElegida = actividades.flatMap((act) => act.sesiones).find((ses) => ses.id === sesionId);
-  const choqueElegida = sesionElegida ? choqueCon(sesionElegida) : '';
+  // Los cruces y los cupos llenos no bloquean: Programa puede inscribir igual, solo se avisa.
+  const avisos = (act: TallerActividad, ses: TallerActividad['sesiones'][number]) => {
+    const choque = actuales.find((a) => seSolapan(a.ses, ses))?.act.nombre;
+    return [ses.inscritos >= act.cupo && 'llena', choque && `choca con ${choque}`].filter(Boolean) as string[];
+  };
+  const elegida = actividades.flatMap((act) => act.sesiones.map((ses) => ({ act, ses }))).find(({ ses }) => ses.id === sesionId);
+  const avisosElegida = elegida ? avisos(elegida.act, elegida.ses) : [];
 
   const seleccionar = (p: TallerPersona) => {
     setPersona(p);
@@ -117,11 +116,11 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
           {actividades.map((act) => (
             <optgroup key={act.id} label={act.nombre}>
               {act.sesiones.map((ses) => {
-                const motivo = motivoBloqueo(act, ses);
-                const choque = motivo ? '' : choqueCon(ses);
+                const motivo = motivoBloqueo(act);
+                const notas = motivo ? [motivo] : avisos(act, ses);
                 return (
                   <option key={ses.id} value={ses.id} disabled={Boolean(motivo)}>
-                    {formatRango(ses)} · {ses.inscritos}/{act.cupo}{motivo ? ` · ${motivo}` : ''}{choque ? ` · choca con ${choque}` : ''}
+                    {formatRango(ses)} · {ses.inscritos}/{act.cupo}{notas.map((n) => ` · ${n}`).join('')}
                   </option>
                 );
               })}
@@ -143,9 +142,9 @@ const CargarActividades: React.FC<{ actividades: TallerActividad[]; onCambio: ()
             : `${persona.nombre} tiene ${actuales.length}: ${actuales.map((a) => `${a.act.nombre} (${formatRango(a.ses)})`).join(', ')}.`}
         </p>
       )}
-      {choqueElegida && (
+      {avisosElegida.length > 0 && (
         <p className="mt-2 text-xs font-semibold text-amber-800 bg-amber-50 p-2 rounded-lg">
-          Ojo: esta sesión choca con {choqueElegida}. Se puede inscribir igual.
+          Ojo: esta sesión está {avisosElegida.join(' y ')}. Se puede inscribir igual.
         </p>
       )}
       {mensaje && (
